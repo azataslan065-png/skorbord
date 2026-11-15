@@ -364,6 +364,7 @@ function beep(){
 }
 function notify(title,body,tag){
   try{
+    if(window.SkorbordApp){SkorbordApp.bildir(title,body,String(tag));return}
     if(!('Notification' in window)||Notification.permission!=='granted')return;
     var opt={body:body,tag:'gol-'+tag,icon:'canli-skor-192.png'};
     if(swReg&&swReg.showNotification)swReg.showNotification(title,opt);else new Notification(title,opt);
@@ -680,6 +681,12 @@ $('list').addEventListener('click',function(ev){
     if(favs[k])delete favs[k];else favs[k]=(e.home.id===t?e.home:e.away).name;save();render()}
   else if(act==='team'&&e){showTeam(e,b.getAttribute('data-t'))}
 });
+// Android uygulamasında geri tuşu: önce açık pencereyi kapatır
+window.__appGeri=function(){
+  if(!$('sheet').hidden){closeSheet();return true}
+  if(!$('settings').hidden){$('settings').hidden=true;$('setbtn').setAttribute('aria-expanded','false');return true}
+  return false;
+};
 $('sheet-x').onclick=closeSheet;
 $('sheet').addEventListener('click',function(ev){if(ev.target===this)closeSheet()});
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape')closeSheet()});
@@ -697,13 +704,21 @@ applyTheme();
 // ayarlar
 $('setbtn').onclick=function(){var s=$('settings');s.hidden=!s.hidden;this.setAttribute('aria-expanded',!s.hidden)};
 $('s-sound').checked=!!set.sound;$('s-vib').checked=!!set.vib;
-$('s-notif').checked=!!set.notif&&('Notification' in window)&&Notification.permission==='granted';
+$('s-notif').checked=!!set.notif&&(window.SkorbordApp?SkorbordApp.izin()==='granted':('Notification' in window)&&Notification.permission==='granted');
 $('s-sound').onchange=function(){set.sound=this.checked;save();if(set.sound){initAudio();beep()}};
 $('s-vib').onchange=function(){set.vib=this.checked;save();if(set.vib&&navigator.vibrate){try{navigator.vibrate(150)}catch(e){}}
   if(set.vib&&!navigator.vibrate)$('s-info').textContent='Bu cihaz veya tarayıcı titreşimi desteklemiyor.'};
 $('s-notif').onchange=function(){
   var box=this;
   if(!box.checked){set.notif=false;save();return}
+  function sonuc(ok){
+    if(ok){set.notif=true;save();$('s-info').textContent=Object.keys(favs).length?'Bildirimler açık. Uygulama açık kaldığı sürece gelir.':'Bildirimler açık. Bir maça dokunup ☆ ile favori takım ekleyin.'}
+    else{box.checked=false;set.notif=false;save();$('s-info').textContent='Bildirim izni verilmedi. Telefon ayarlarından Skorbord için bildirimlere izin verebilirsiniz.'}
+  }
+  if(window.SkorbordApp){ // Android uygulaması: izin ve bildirim telefonun kendi sistemiyle
+    if(SkorbordApp.izin()==='granted'){sonuc(true);return}
+    window.__appIzin=sonuc;SkorbordApp.izinIste();return;
+  }
   if(!('Notification' in window)){box.checked=false;$('s-info').textContent='Bu tarayıcı bildirimleri desteklemiyor. iPhone\'da önce sayfayı ana ekrana ekleyin.';return}
   Promise.resolve(Notification.requestPermission()).then(function(p){
     if(p==='granted'){set.notif=true;save();$('s-info').textContent=Object.keys(favs).length?'Bildirimler açık. Sayfa açık kaldığı sürece gelir.':'Bildirimler açık. Bir maça dokunup ☆ ile favori takım ekleyin.'}
@@ -712,7 +727,7 @@ $('s-notif').onchange=function(){
 };
 
 // ana ekrana ekleme ve bildirim için service worker (yalnızca http/https üzerinde çalışır)
-if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+if(!window.SkorbordApp&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
   navigator.serviceWorker.register('canli-skor-sw.js').then(function(r){swReg=r}).catch(function(){});
 }
 
