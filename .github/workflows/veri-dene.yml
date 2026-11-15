@@ -1,0 +1,20 @@
+# ESPN skor servisinin gerçek yanıtlarını kaydeder; sonuçlar "teshis" dalına yazılır.
+name: Veri dene
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/veri-dene.yml, .github/teshis/**]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  dene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash .github/teshis/veri.sh
+      - name: Sonuclari yaz
+        run: |
+          cd out && git init -q -b teshis && git add -A
+          git -c user.name=teshis -c user.email=teshis@users.noreply.github.com commit -q -m "teshis $GITHUB_RUN_NUMBER"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" teshis
