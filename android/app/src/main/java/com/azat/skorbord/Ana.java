@@ -21,7 +21,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,6 +71,7 @@ public class Ana extends Activity {
             if (!"GET".equalsIgnoreCase(r.getMethod()) || !EV.equals(u.getHost())) return null;
             String p = u.getPath();
             if (p == null || !p.startsWith(YOL)) return null;
+            if (p.startsWith(YOL + "__espn/")) return espn(u, p.substring((YOL + "__espn/").length()));
             String ad = p.substring(YOL.length());
             if (ad.isEmpty() || ad.equals("index.html")) ad = "canli-skor.html";
             if (ad.contains("/") || ad.contains("..")) return null;
@@ -79,6 +83,28 @@ public class Ana extends Activity {
             h.put("Cache-Control", "no-store");
             return new WebResourceResponse(tur, tur.startsWith("image/") ? null : "utf-8", 200, "OK", h, in);
         } catch (Exception e) { return null; }
+    }
+
+    /* SKOR SERVİSİ YEDEK YOLU: sayfa skor servisine tarayıcı isteğiyle ulaşamazsa aynı adresi "__espn/" önekiyle ister (bkz. sayfada getJSON);
+       istek burada uygulamanın kendi bağlantısıyla yapılır ve yanıt sayfaya kendi adresinden verilir. Yalnızca skor servisine gider. */
+    private WebResourceResponse espn(Uri u, String yol) {
+        Map<String, String> h = new HashMap<>();
+        h.put("Cache-Control", "no-store");
+        try {
+            String q = u.getEncodedQuery();
+            HttpURLConnection c = (HttpURLConnection) new URL("https://site.api.espn.com/" + yol + (q != null ? "?" + q : "")).openConnection();
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(25000);
+            c.setRequestProperty("Accept", "application/json");
+            int kod = c.getResponseCode();
+            InputStream in = kod >= 400 ? c.getErrorStream() : c.getInputStream();
+            if (in == null) in = new ByteArrayInputStream(new byte[0]);
+            if (kod < 200 || kod > 599 || (kod >= 300 && kod < 400)) kod = 502;
+            return new WebResourceResponse("application/json", "utf-8", kod, kod < 400 ? "OK" : "Hata", h, in);
+        } catch (Exception e) {
+            byte[] b = String.valueOf(e).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            return new WebResourceResponse("text/plain", "utf-8", 502, "Baglanti hatasi", h, new ByteArrayInputStream(b));
+        }
     }
 
     @Override public void onBackPressed() {

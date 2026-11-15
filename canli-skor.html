@@ -149,6 +149,7 @@ td img{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-righ
 
 .msg{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:10px;padding:22px 16px;text-align:center;color:var(--muted)}
 .msg strong{display:block;color:var(--ink);margin-bottom:4px}
+.msg small{display:block;margin-top:8px;font-size:11px;overflow-wrap:anywhere}
 .foot{margin-top:18px;font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion:reduce){.livedot,.loading .spin,.match.goal{animation:none}.match.goal{background-color:var(--goal)}}
 </style>
@@ -185,7 +186,7 @@ td img{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-righ
     <div class="chips" id="chips"></div>
   </div>
   <div id="list"><div class="msg">Maçlar yükleniyor…</div></div>
-  <div class="foot">Veri: ESPN açık skor servisi. Canlı maçlar 30 saniyede bir yenilenir. Saatler cihazınızın saatine göredir.</div>
+  <div class="foot">Veri: ESPN açık skor servisi. Canlı maçlar 5 saniyede bir yenilenir. Saatler cihazınızın saatine göredir.</div>
 </div>
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="sheet-t">
@@ -197,8 +198,10 @@ td img{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-righ
 <script>
 (function(){
 'use strict';
-var SITE='https://site.api.espn.com/apis/site/v2/sports/', STAND='https://site.api.espn.com/apis/v2/sports/';
-var REFRESH_LIVE=30000, REFRESH_IDLE=300000;
+var ESPN='https://site.api.espn.com/', SITE=ESPN+'apis/site/v2/sports/', STAND=ESPN+'apis/v2/sports/';
+var HIZLI=5000, ORTA=60000, TAM=300000; // canlı maç: 5 sn; oynanacak maç varken: 60 sn; hepsi yeniden: 5 dk
+// ESPN lig numarası -> [kısa ad, İngilizce ad, puan durumu var mı]. "Tüm ligler" yanıtı lig adını vermez; maçın lig numarası buradan çözülür.
+var LIG={"606":["fifa.world","FIFA World Cup",0],"795":["fifa.wwc","FIFA Women's World Cup",0],"775":["uefa.champions","UEFA Champions League",1],"700":["eng.1","English Premier League",1],"740":["esp.1","Spanish LALIGA",1],"770":["usa.1","MLS",0],"8301":["usa.nwsl","NWSL",0],"776":["uefa.europa","UEFA Europa League",1],"20296":["uefa.europa.conf","UEFA Conference League",1],"3920":["eng.league_cup","English Carabao Cup",0],"19267":["concacaf.nations.league","Concacaf Nations League",1],"2395":["uefa.nations","UEFA Nations League",1],"720":["ger.1","German Bundesliga",1],"730":["ita.1","Italian Serie A",1],"760":["mex.1","Mexican Liga BBVA MX",1],"3922":["fifa.friendly","International Friendly",0],"19425":["concacaf.leagues.cup","Leagues Cup",0],"18771":["campeones.cup","Campeones Cup",0],"19868":["usa.nwsl.cup","NWSL Challenge Cup",0],"19728":["fifa.shebelieves","SheBelieves Cup",1],"19483":["uefa.wchampions","UEFA Women's Champions League",1],"24081":["fifa.w.champions_cup","FIFA Women's Champions Cup",0],"8097":["eng.w.1","English Women's Super League",1],"710":["fra.1","French Ligue 1",1],"3918":["eng.fa","English FA Cup",0],"3951":["esp.copa_del_rey","Spanish Copa del Rey",0],"3954":["ger.dfb_pokal","German Cup",0],"3956":["ita.coppa_italia","Coppa Italia",0],"3952":["fra.coupe_de_france","Coupe de France",0],"725":["ned.1","Dutch Eredivisie",1],"8102":["esp.super_cup","Spanish Supercopa",0],"8103":["ita.super_cup","Italian Supercoppa",0],"8357":["fra.super_cup","French Trophee des Champions",0],"8304":["ger.playoff.relegation","German Bundesliga Promotion/Relegation Playoff",0],"8101":["ger.super_cup","German Supercup",0],"3914":["eng.2","English League Championship",1],"5329":["eng.charity","English FA Community Shield",0],"24405":["eng.w.promotion.relegation","English Women's Super League Promotion/Relegation Playoff",0],"20649":["fifa.wworldq.uefa","FIFA Women's World Cup Qualifying - UEFA",0],"3923":["fifa.friendly.w","Women's International Friendly",0],"5337":["usa.open","U.S. Open Cup",0],"783":["conmebol.libertadores","CONMEBOL Libertadores",0],"5699":["concacaf.champions","Concacaf Champions Cup",0],"786":["fifa.worldq.uefa","FIFA World Cup Qualifying - UEFA",0],"23449":["fifa.wcq.ply","FIFA World Cup Qualifying - Playoff Tournament",0],"788":["fifa.worldq.concacaf","FIFA World Cup Qualifying - Concacaf",1],"789":["fifa.worldq.afc","FIFA World Cup Qualifying - AFC",0],"790":["fifa.worldq.caf","FIFA World Cup Qualifying - CAF",0],"787":["fifa.worldq.conmebol","FIFA World Cup Qualifying - CONMEBOL",1],"792":["fifa.worldq.ofc","FIFA World Cup Qualifying - OFC",0],"21211":["fifa.wwcq.ply","FIFA Women's World Cup Qualifying - Playoff Tournament",1],"23088":["uefa.w.nations","UEFA Women's Nations League",1],"23633":["usa.w.usl.1","USL Super League",1],"19874":["uefa.champions_qual","UEFA Champions League Qualifying",0],"24458":["uefa.wchampions_qual","UEFA Women's Champions League Qualifying",0],"20226":["eng.w.fa","English Women's FA Cup",0],"23390":["eng.w.league_cup","English WSL Players Cup",1],"20956":["esp.w.1","Spanish Liga F",1],"20381":["esp.copa_de_la_reina","Spanish Copa de la Reina",0],"20955":["fra.w.1","French Première Ligue",1],"3957":["ned.cup","Dutch KNVB Beker",0],"735":["sco.1","Scottish Premiership",1],"3959":["sco.tennents","Scottish Cup",0],"5330":["sco.cis","Scottish League Cup",0],"3906":["aus.1","Australian A-League Men",1],"18992":["aus.w.1","Australian A-League Women",1],"21231":["ksa.1","Saudi Pro League",1],"22057":["ksa.kings.cup","Saudi King's Cup",0],"715":["por.1","Portuguese Primeira Liga",1],"20922":["por.taca.portugal","Taca de Portugal",0],"3946":["tur.1","Turkish Super Lig",1],"3908":["caf.nations","Africa Cup of Nations",0],"3902":["afc.champions","AFC Champions League Elite",1],"8315":["caf.nations_qual","Africa Cup of Nations Qualifying",1],"2466":["afc.cup","AFC Champions League Two",1],"5501":["fifa.cwc","FIFA Club World Cup",0],"3924":["fifa.olympics","Men's Olympic Soccer Tournament",0],"3925":["fifa.w.olympics","Women's Olympic Soccer Tournament",0],"4004":["concacaf.gold","Concacaf Gold Cup",0],"19778":["concacaf.gold_qual","Concacaf Gold Cup Qualifying",0],"22060":["concacaf.w.gold","Concacaf W Gold Cup",0],"8360":["concacaf.confederations_playoff","Concacaf Cup",0],"22946":["concacaf.w.champions_cup","Concacaf W Champions Cup",0],"18969":["concacaf.womens.championship","Concacaf W Championship",0],"781":["uefa.euro","UEFA European Championship",0],"3947":["uefa.euroq","UEFA European Championship Qualifying",0],"17915":["uefa.weuro","UEFA Women's European Championship",0],"5693":["uefa.euro_u21","UEFA European Under-21 Championship",0],"5462":["uefa.super_cup","UEFA Super Cup",0],"780":["conmebol.america","Copa América",0],"20703":["conmebol.america.femenina","Copa América Femenina",0],"4002":["usa.usl.1","USL Championship",0],"19915":["usa.usl.l1","USL League One",0],"22059":["usa.usl.l1.cup","USL Cup",0],"3932":["mex.2","Mexican Liga de Expansión MX",0],"23541":["mex.w.1","Mexican Liga BBVA MX Femenil",0],"20704":["global.finalissima","CONMEBOL-UEFA Cup of Champions",0],"22781":["global.u20.intercontinental_cup","CONMEBOL-UEFA U20 Intercontinental Cup",0],"21191":["global.w.finalissima","CONMEBOL-UEFA Women's Cup of Champions",0],"5694":["fifa.world.u20","FIFA Under-20 World Cup",0],"20219":["afc.asian.cup","AFC Asian Cup",1],"23537":["afc.w.asian.cup","AFC Women's Asian Cup",0],"5662":["afc.cupq","AFC Asian Cup Qualifiers",1],"5672":["aff.championship","ASEAN Championship",0],"23523":["caf.w.nations","Women's Africa Cup of Nations",0],"8365":["caf.championship","African Nations Championship",0],"23286":["can.w.nsl","Northern Super League",0],"19887":["uefa.europa_qual","UEFA Europa League Qualifying",0],"20221":["uefa.europa.conf_qual","UEFA Conference League Qualifying",0],"24079":["uefa.w.europa","UEFA Women's Europa Cup",0],"22902":["fifa.intercontinental_cup","FIFA Intercontinental Cup",0],"24452":["afc.champions_qual","AFC Champions League Elite Qualifying",0],"24455":["afc.cup_qual","AFC Champions League Two Qualifying",0],"19834":["club.friendly","Club Friendly",0],"19725":["nonfifa","Non-FIFA Friendly",0],"3939":["rus.1","Russian Premier League",1],"20731":["rus.1.promotion.relegation","Russian Premier League Relegation/Promotion Playoffs",0],"3901":["bel.1","Belgian Pro League",1],"20116":["bel.promotion.relegation","Belgian Pro League Promotion/Relegation Playoffs",0],"3921":["esp.2","Spanish LALIGA 2",1],"3927":["ger.2","German 2. Bundesliga",1],"3931":["ita.2","Italian Serie B",1],"20159":["fra.1.promotion.relegation","French Ligue 1 Promotion/Relegation Playoffs",0],"3926":["fra.2","French Ligue 2",1],"20186":["por.1.promotion.relegation","Portuguese Primeira Liga Promotion/Relegation Playoffs",0],"3907":["aut.1","Austrian Bundesliga",1],"3955":["gre.1","Greek Super League",1],"8376":["chn.1","Chinese Super League",1],"21597":["global.club_challenge","CONMEBOL-UEFA Club Challenge",0],"10749":["ned.supercup","Dutch Johan Cruyff Shield",0],"20571":["global.pinatar_cup","Pinatar Cup",1],"11108":["friendly.emirates_cup","Emirates Cup",0],"17929":["esp.joan_gamper","Trofeo Joan Gamper",0],"17931":["jpn.world_challenge","Japanese J.League World Challenge",0],"20566":["global.arnold.clark_cup","Arnold Clark Cup",1],"19727":["fifa.conmebol.olympicsq","CONMEBOL Pre-Olympic Tournament",1],"19831":["fifa.concacaf.olympicsq","Men's Olympic Qualifying Playoff",0],"5342":["fifa.w.concacaf.olympicsq","Concacaf Women's Olympic Qualifying",0],"5697":["fifa.world.u17","FIFA Under-17 World Cup",1],"20865":["fifa.wworld.u17","FIFA Under-17 Women's World Cup",0],"20114":["uefa.euro_u21_qual","UEFA European Under-21 Championship Qualifying",0],"5698":["uefa.euro.u19","UEFA European Under-19 Championship",0],"20132":["fifa.friendly_u21","Under-21 International Friendly",0],"19871":["ger.2.promotion.relegation","German Bundesliga 2. Promotion/Relegation Playoffs",0],"18481":["eng.trophy","English EFL Trophy",1],"3915":["eng.3","English League One",1],"3916":["eng.4","English League Two",1],"3917":["eng.5","English National League",1],"23480":["eng.fa_qual","English FA Cup Qualifying",0],"20133":["sco.1.promotion.relegation","Scottish Premiership Promotion/Relegation Playoffs",0],"3940":["sco.2","Scottish Championship",1],"20134":["sco.2.promotion.relegation","Scottish Championship Promotion/Relegation Playoffs",0],"5331":["sco.challenge","Scottish League Challenge Cup",0],"24457":["sco.tennents_qual","Scottish Cup Qualifying",0],"8305":["ned.playoff.relegation","Dutch Eredivisie Promotion/Relegation Playoffs",0],"3933":["ned.2","Dutch Keuken Kampioen Divisie",1],"20798":["ned.3.promotion.relegation","Dutch Tweede Divisie Promotion/Relegation Playoffs",0],"20115":["ned.w.knvb_cup","Dutch KNVB Beker Vrouwen",0],"19945":["ned.w.1","Dutch Vrouwen Eredivisie",1],"3945":["swe.1","Swedish Allsvenskan",1],"19968":["swe.1.promotion.relegation","Swedish Allsvenskan Promotion/Relegation Playoffs",0],"3913":["den.1","Danish Superliga",1],"19989":["nor.1.promotion.relegation","Norwegian Eliteserien Promotion/Relegation Playoffs",0],"3960":["nor.1","Norwegian Eliteserien",1],"5454":["conmebol.sudamericana","CONMEBOL Sudamericana",0],"8333":["conmebol.recopa","CONMEBOL Recopa",0],"745":["arg.1","Argentine Liga Profesional de Fútbol",0],"8107":["arg.copa","Copa Argentina",0],"19264":["arg.copa_de_la_superliga","Argentine Copa de la Superliga",0],"19705":["arg.trofeo_de_la_campeones","Argentine Trofeo de Campeones",0],"3903":["arg.2","Argentine Nacional B",0],"8346":["arg.supercopa","Argentine Supercopa",0],"23348":["arg.supercopa.internacional","Argentine Supercopa Internacional",0],"3904":["arg.3","Argentine Primera B",0],"19721":["bra.supercopa_do_brazil","Brazilian Supercopa Rei",0],"630":["bra.1","Brazilian Serie A",1],"4007":["bra.2","Brazilian Serie B",1],"8306":["bra.copa_do_brazil","Copa do Brasil",0],"2265":["bra.camp.carioca","Brazilian Campeonato Carioca",0],"8207":["bra.camp.paulista","Brazilian Campeonato Paulista",0],"2272":["bra.camp.gaucho","Brazilian Campeonato Gaucho",0],"10872":["bra.camp.mineiro","Brazilian Campeonato Mineiro",0],"8364":["chi.super_cup","Chilean Supercopa",0],"640":["chi.1","Chilean Primera División",1],"20524":["chi.1.promotion.relegation","Chilean Primera División Promotion/Relegation Playoffs",0],"8312":["chi.copa_chi","Copa Chile",0],"680":["uru.1","Liga AUF Uruguaya",1],"3948":["uru.2","Segunda División de Uruguay",0],"19112":["col.superliga","Colombian Superliga",0],"650":["col.1","Colombian Primera A",1],"8313":["col.copa","Copa Colombia",0],"670":["per.1","Peruvian Liga 1",1],"3934":["par.1","Paraguayan Primera División",1],"20526":["par.1.supercopa","Paraguayan Supercopa",0],"660":["ecu.1","LigaPro Ecuador",1],"3949":["ven.1","Venezuelan Primera División",1],"20525":["bol.ply.rel","Bolivian Liga Profesional Promotion/Relegation Playoffs",0],"23284":["bol.copa","Copa Bolivia",0],"620":["bol.1","Bolivian Liga Profesional",1],"750":["jpn.1","Japanese J.League",1],"17893":["mex.campeon","Mexican Campeon de Campeones",0],"22947":["concacaf.central.american.cup","Concacaf Central American Cup",0],"5692":["concacaf.champions_cup","CONCACAF Champions Cup",0],"3911":["concacaf.u23","CONCACAF U23 Tournament",0],"3929":["hon.1","Honduran Liga Nacional",1],"4005":["crc.1","Costa Rican Primera Division",1],"3928":["gua.1","Guatemalan Liga Nacional",1],"3943":["slv.1","Salvadoran Primera Division",1],"782":["fifa.intercontinental.cup","Intercontinental Cup (India)",0],"18914":["afc.saff.championship","SAFF Championship",0],"19948":["chn.1.promotion.relegation","Chinese Super League Promotion/Relegation Playoffs",0],"8316":["ind.1","Indian Super League",1],"18505":["ind.2","Indian Football League",1],"23107":["global.gulf_cup","Arabian Gulf Cup",0],"20220":["caf.cosafa","COSAFA Cup",0],"2391":["caf.champions","CAF Champions League",1],"18000":["caf.confed","CAF Confederation Cup",0],"3937":["rsa.1","South African Premiership",1],"5487":["usa.ncaa.m.1","NCAA Men's Soccer",0],"5499":["usa.ncaa.w.1","NCAA Women's Soccer",0]};
 
 // Türkçe lig adları ve öncelik sırası (listede olmayan ligler ESPN adıyla, alfabetik gelir)
 var TR={
@@ -226,6 +229,7 @@ var SPORTS={
   soccer:{all:true,leagues:Object.keys(TR),names:TR},
   basketball:{all:false,leagues:Object.keys(BB),names:BB}
 };
+var sonHata='';
 var STAT=[['possessionPct','Topa sahip olma %'],['totalShots','Şut'],['shotsOnTarget','İsabetli şut'],['wonCorners','Korner'],
  ['foulsCommitted','Faul'],['offsides','Ofsayt'],['yellowCards','Sarı kart'],['redCards','Kırmızı kart'],['saves','Kurtarış'],
  ['totalPasses','Pas'],['accuratePasses','İsabetli pas'],['totalTackles','Top kapma'],['totalCrosses','Orta'],['blockedShots','Engellenen şut']];
@@ -233,7 +237,7 @@ var STAT=[['possessionPct','Topa sahip olma %'],['totalShots','Şut'],['shotsOnT
 var store=loadStore();
 var stars=store.stars, favs=store.favs, set=store.set;
 var sport='soccer', sel=startOfDay(new Date()), filter='all', query='', onlyStar=false;
-var events=[], byId={}, timer=null, loading=false, usedFallback=false;
+var events=[], byId={}, timer=null, htimer=null, loading=false, hizliMesgul=false, sonTam=0;
 var closed={}, open={}, tabs={}, sums={}, prev=null, flash={}, actx=null, swReg=null;
 
 function $(id){return document.getElementById(id)}
@@ -258,8 +262,19 @@ function isFav(e,t){return !!(t.id&&favs[favKey(e,t)])}
 function hasFav(e){return isFav(e,e.home)||isFav(e,e.away)}
 
 // ---- veri ----
+function ham(url){
+  return fetch(url).then(function(r){
+    if(r.ok)return r.json();
+    return r.text().then(function(t){throw new Error('HTTP '+r.status+' '+String(t||'').slice(0,120))},function(){throw new Error('HTTP '+r.status)});
+  });
+}
 function getJSON(url){
-  return fetch(url,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
+  return ham(url).catch(function(e){
+    // Android uygulaması: tarayıcı isteği olmazsa aynı adres uygulamanın kendi bağlantısıyla denenir (bkz. Ana.java "__espn")
+    if(window.SkorbordApp&&url.indexOf(ESPN)===0)
+      return ham(location.origin+'/skorbord/__espn/'+url.slice(ESPN.length)).catch(function(e2){throw new Error(e.message+' / uygulama: '+e2.message)});
+    throw e;
+  });
 }
 function evKind(d){
   var t=fold(((d.type&&(d.type.type||d.type.text))||''));
@@ -277,11 +292,12 @@ function toEvent(d){
     who2:(ps[1]&&(ps[1].displayName||ps[1].shortName))||'',team:String((d.team&&d.team.id)||''),
     og:!!d.ownGoal||t.indexOf('own')>=0,pk:!!d.penaltyKick||(k==='goal'&&t.indexOf('penalty')>=0)};
 }
-function parse(j,sp,slugHint){
-  var lmap={}, leagues=(j&&j.leagues)||[], names=SPORTS[sp].names;
-  leagues.forEach(function(l){lmap[String(l.id)]=l});
+function parse(j,sp,slugHint,kova){
+  var leagues=(j&&j.leagues)||[], names=SPORTS[sp].names;
+  var tek=(leagues.length===1&&leagues[0]&&leagues[0].id)?leagues[0]:null;
   return ((j&&j.events)||[]).map(function(ev){
-    var m=/l:(\d+)/.exec(ev.uid||''), lg=(m&&lmap[m[1]])||(leagues.length===1?leagues[0]:null)||ev.league||{};
+    var m=/l:(\d+)/.exec(ev.uid||''), lid=(m&&m[1])||(tek&&String(tek.id))||'';
+    var bilgi=(sp==='soccer'&&LIG[lid])||null;
     var comp=(ev.competitions&&ev.competitions[0])||{}, cs=comp.competitors||[];
     var h=cs.filter(function(c){return c.homeAway==='home'})[0]||cs[0]||{};
     var a=cs.filter(function(c){return c.homeAway==='away'})[0]||cs[1]||{};
@@ -290,42 +306,47 @@ function parse(j,sp,slugHint){
       logo:t.logo||'',score:sc(c.score),pen:c.shootoutScore,winner:!!c.winner,
       lines:(c.linescores||[]).map(function(l){return sc(l.displayValue!=null?l.displayValue:l.value)})}}
     var evs=(comp.details||[]).map(toEvent).filter(Boolean);
-    var slug=slugHint||lg.slug||'';
-    return {id:String(ev.id),sport:sp,date:new Date(ev.date),lkey:sp+':'+String(lg.id||slug||lg.name||'diger'),lslug:slug,
-      lname:names[slug]||lg.name||lg.abbreviation||'Diğer',state:tp.state||'pre',sname:tp.name||'',clock:st.displayClock||'',
+    var slug=slugHint||(tek&&tek.slug)||(bilgi&&bilgi[0])||'';
+    var not=String(comp.altGameNote||'').split(',')[0].trim();
+    var ad=names[slug]||(tek&&tek.name)||(bilgi&&bilgi[1])||not||'Diğer';
+    return {id:String(ev.id),sport:sp,date:new Date(ev.date),lkey:sp+':'+(lid||slug||ad),lslug:slug,lname:ad,
+      tablo:sp==='basketball'?!!slug:!!(bilgi&&bilgi[2]),kova:kova||'',
+      state:tp.state||'pre',sname:tp.name||'',clock:st.displayClock||'',
       period:+st.period||0,detail:tp.shortDetail||tp.detail||'',home:side(h),away:side(a),evs:evs};
   });
 }
-function loadDay(day,sp){
-  var cfg=SPORTS[sp], days=[addDays(day,-1),day,addDays(day,1)], range=ymd(days[0])+'-'+ymd(days[2]);
-  function perLeague(){
-    return Promise.all(cfg.leagues.map(function(s){
-      return getJSON(SITE+sp+'/'+s+'/scoreboard?dates='+range+'&limit=300').then(function(j){return parse(j,sp,s)}).catch(function(){return null});
-    })).then(function(rs){
-      var ok=rs.filter(Boolean);
-      if(!ok.length)throw new Error('Skor servisine ulaşılamadı');
-      usedFallback=cfg.all;return merge(ok,day);
-    });
-  }
-  if(!cfg.all)return perLeague();
-  return Promise.all(days.map(function(d){return getJSON(SITE+sp+'/all/scoreboard?dates='+ymd(d)+'&limit=1000')}))
-    .then(function(rs){usedFallback=false;return merge(rs.map(function(j){return parse(j,sp)}),day)})
-    .catch(perLeague); // "tüm ligler" ucu yanıt vermezse ligleri tek tek çek
+// Bir günün ("kova": ESPN'in YYYYMMDD günü) maçları. Tarih aralığı verilince servis 400 döndürüyor; her gün ayrı istenir.
+function kovaYukle(sp,kova){
+  var cfg=SPORTS[sp];
+  if(cfg.all)return getJSON(SITE+sp+'/all/scoreboard?dates='+kova+'&limit=1000').then(function(j){return parse(j,sp,'',kova)});
+  return Promise.all(cfg.leagues.map(function(s){
+    return getJSON(SITE+sp+'/'+s+'/scoreboard?dates='+kova).then(function(j){return parse(j,sp,s,kova)},function(e){sonHata=e.message;return null});
+  })).then(function(rs){
+    var ok=rs.filter(Boolean);if(!ok.length)throw new Error(sonHata||'yanıt yok');
+    return [].concat.apply([],ok);
+  });
 }
-function merge(lists,day){
-  var seen={},out=[];
-  lists.forEach(function(l){l.forEach(function(e){
-    if(seen[e.id]||isNaN(e.date)||!sameDay(e.date,day))return;
-    seen[e.id]=1;out.push(e);
-  })});
-  return out;
+// Seçili günün maçları üç ESPN gününe dağılabilir (saat farkı): dün, bugün, yarın kovaları istenir, yerel güne göre süzülür.
+function loadDay(day,sp,kovalar){
+  var hepsi=[addDays(day,-1),day,addDays(day,1)].map(ymd), iste=kovalar||hepsi;
+  return Promise.all(iste.map(function(k){
+    return kovaYukle(sp,k).then(function(l){return {k:k,l:l}},function(e){sonHata=e.message;return null});
+  })).then(function(rs){
+    var ok=rs.filter(Boolean);
+    if(!ok.length)throw new Error(sonHata||'yanıt yok');
+    var gelen={},out=[],seen={};
+    ok.forEach(function(r){gelen[r.k]=1});
+    events.forEach(function(e){if(e.sport===sp&&sameDay(e.date,day)&&!gelen[e.kova]&&!seen[e.id]){seen[e.id]=1;out.push(e)}}); // yenilenmeyen kovalar olduğu gibi kalır
+    ok.forEach(function(r){r.l.forEach(function(e){if(seen[e.id]||isNaN(e.date)||!sameDay(e.date,day))return;seen[e.id]=1;out.push(e)})});
+    return out;
+  });
 }
 function loadSummary(e){
   var c=sums[e.id]||(sums[e.id]={});
   if(c.loading)return;
   if(c.data&&(e.state!=='in'||Date.now()-c.t<60000))return;
   c.loading=true;
-  getJSON(SITE+e.sport+'/'+(e.lslug||'all')+'/summary?event='+e.id)
+  getJSON(SITE+e.sport+'/'+(e.sport==='soccer'?'all':e.lslug)+'/summary?event='+e.id)
     .then(function(d){c.data=d;c.t=Date.now();c.err=false})
     .catch(function(){c.err=true})
     .then(function(){c.loading=false;render()});
@@ -333,11 +354,11 @@ function loadSummary(e){
 
 // ---- gol takibi ----
 function detectGoals(evs){
-  var now=Date.now(), old=prev; prev={};
+  var now=Date.now(), ilk=!prev; if(ilk)prev={};
   evs.forEach(function(e){
-    var h=+e.home.score||0,a=+e.away.score||0; prev[e.id]=[h,a];
-    if(e.sport!=='soccer'||!old||!old[e.id]||e.state==='pre')return;
-    var side=h>old[e.id][0]?'home':(a>old[e.id][1]?'away':'');
+    var h=+e.home.score||0,a=+e.away.score||0, o=prev[e.id]; prev[e.id]=[h,a];
+    if(ilk||e.sport!=='soccer'||!o||e.state==='pre')return;
+    var side=h>o[0]?'home':(a>o[1]?'away':'');
     if(!side)return;
     flash[e.id]={until:now+12000,side:side};
     setTimeout(render,12500);
@@ -387,7 +408,7 @@ function label(e){
   if(e.state==='post'){
     if(e.sport==='basketball')return e.period>4?'UZ':'MS';
     if(/PEN/.test(n))return 'PEN';
-    if(/AET|EXTRA/.test(n))return 'UZ';
+    if(/AET|AGT|EXTRA/.test(n))return 'UZ';
     return 'MS';
   }
   return hhmm(e.date);
@@ -425,7 +446,7 @@ var ICON={goal:'⚽',yellow:'🟨',red:'🟥',sub:'🔁'};
 function evLine(e,x){
   var away=x.team&&x.team===e.away.id, txt;
   if(x.kind==='sub')txt='↑ '+esc(x.who||'?')+(x.who2?' ↓ '+esc(x.who2):'');
-  else txt=esc(x.who||(x.kind==='goal'?'Gol':'Kart'))+(x.pk?' (P)':'')+(x.og?' (KK)':'')+(x.kind==='goal'&&x.who2?' · asist: '+esc(x.who2):'');
+  else txt=esc(x.who||(x.kind==='goal'?'Gol':'Kart'))+(x.pk?' (P)':'')+(x.og?' (KK)':'');
   return '<div'+(away?' class="a"':'')+'>'+ICON[x.kind]+' '+esc(x.min)+' '+txt+'</div>';
 }
 function eventsTab(e,sum){
@@ -511,7 +532,7 @@ function groupHtml(g,pre){
     '<div class="lhead"><button class="ltoggle" data-act="toggle" data-l="'+esc(g.key)+'" aria-expanded="'+!closed[g.key]+'">'+
       (g.live?'<span class="livedot" title="Canlı maç var"></span>':'')+
       '<span class="lname">'+esc(g.name)+'</span><span class="lcount">'+g.items.length+' maç</span></button>'+
-      (real&&g.slug?'<button class="tbl-btn" data-act="table" data-slug="'+esc(g.slug)+'" data-name="'+esc(g.name)+'">Tablo</button>':'')+
+      (real&&g.slug&&g.tablo?'<button class="tbl-btn" data-act="table" data-slug="'+esc(g.slug)+'" data-name="'+esc(g.name)+'">Tablo</button>':'')+
       (real?'<button class="star" data-act="star" data-l="'+esc(g.key)+'" aria-pressed="'+!!stars[g.key]+'" aria-label="'+esc(g.name)+' ligini üste sabitle">'+(stars[g.key]?'★':'☆')+'</button>':'<span style="width:8px"></span>')+'</div>'+
     '<div class="matches">'+g.items.map(function(e){return matchHtml(e,pre)}).join('')+'</div></section>';
 }
@@ -521,7 +542,7 @@ function listHtml(){
     if(hasFav(e)){fav.items.push(e);if(e.state==='in')fav.live++}
     if(onlyStar&&!stars[e.lkey])return;
     var g=groups[e.lkey];
-    if(!g){g=groups[e.lkey]={key:e.lkey,slug:e.lslug,name:e.lname,items:[],live:0};list.push(g)}
+    if(!g){g=groups[e.lkey]={key:e.lkey,slug:e.lslug,name:e.lname,tablo:e.tablo,items:[],live:0};list.push(g)}
     g.items.push(e);if(e.state==='in')g.live++;
   });
   if(!list.length&&!fav.items.length){
@@ -562,7 +583,8 @@ function standingsHtml(j,sp){
     var en=(g.standings&&g.standings.entries)||[];
     if(!en.length)return;
     function sv(e,n){var s=(e.stats||[]).filter(function(x){return x.name===n})[0];return s?(s.displayValue!=null?s.displayValue:s.value):'-'}
-    en=en.slice().sort(function(a,b){var x=+sv(a,'rank'),y=+sv(b,'rank');return (isNaN(x)||isNaN(y))?0:x-y});
+    en=en.slice().sort(function(a,b){var x=+sv(a,'rank'),y=+sv(b,'rank');if(!isNaN(x)&&!isNaN(y))return x-y;
+      x=parseFloat(sv(a,'winPercent'));y=parseFloat(sv(b,'winPercent'));return (isNaN(x)||isNaN(y))?0:y-x});
     if(groups.length>1&&g.name)out+='<div class="grp">'+esc(g.name)+'</div>';
     out+='<div class="scroll"><table><tr><th>#</th><th class="t">Takım</th>'+cols.map(function(c){return '<th>'+c[1]+'</th>'}).join('')+'</tr>'+
       en.map(function(e,i){
@@ -600,52 +622,96 @@ function teamHtml(list,tid){
     '<div class="grp">Gelecek maçlar</div>'+(next.length?next.slice(0,5).map(function(x){return row(x,false)}).join(''):'<div class="note">Planlanmış maç görünmüyor.</div>');
 }
 function showTeam(e,tid){
-  var t=e.home.id===tid?e.home:e.away, base=SITE+e.sport+'/'+(e.lslug||'all')+'/teams/'+tid+'/schedule';
+  var t=e.home.id===tid?e.home:e.away, base=SITE+e.sport+'/'+(e.sport==='soccer'?'all':e.lslug)+'/teams/'+tid+'/schedule';
   sheet(t.full||t.name,'<div class="msg">Yükleniyor…</div>');
   var reqs=[getJSON(base).then(parseSched).catch(function(){return null})];
   if(e.sport==='soccer')reqs.push(getJSON(base+'?fixture=true').then(parseSched).catch(function(){return null}));
   Promise.all(reqs).then(function(rs){
     var ok=rs.filter(Boolean);
     if(!ok.length){sheet(t.full||t.name,'<div class="msg"><strong>Takım maçları alınamadı.</strong></div>');return}
-    sheet(t.full||t.name,'<p class="note" style="margin:10px 0 0">'+esc(e.lname)+' maçları</p>'+teamHtml([].concat.apply([],ok),tid));
+    sheet(t.full||t.name,teamHtml([].concat.apply([],ok),tid));
   });
 }
 
 // ---- yenileme ----
-function refresh(){
+// Üç kademe: canlı maçlar 5 saniyede bir yalnızca kendi ligleri üzerinden (küçük istek), günün kalan maçları dakikada bir,
+// her şey 5 dakikada bir. Servis yanıtları zaten birkaç saniye önbellekte tutuyor; daha sık sormak daha taze veri getirmez.
+function imza(l){return l.map(function(e){return e.id+e.state+e.sname+e.home.score+e.away.score+e.clock+e.evs.length+(e.home.pen||'')+(e.away.pen||'')}).join('|')}
+function yerles(evs){
+  events=evs;byId={};evs.forEach(function(e){byId[e.id]=e});
+}
+function refresh(tam){
   if(loading)return;
   loading=true;document.body.classList.add('loading');
-  var day=sel,sp=sport;
-  loadDay(day,sp).then(function(evs){
+  var day=sel,sp=sport,kovalar=null;
+  if(tam===false&&events.length){ // orta kademe: yalnızca bitmemiş maçı olan günler
+    var k={};events.forEach(function(e){if(e.state!=='post'&&e.kova)k[e.kova]=1});kovalar=Object.keys(k);
+    if(!kovalar.length)kovalar=null;
+  }
+  if(!kovalar)sonTam=Date.now();
+  sonHata='';
+  loadDay(day,sp,kovalar).then(function(evs){
     if(day!==sel||sp!==sport)return;
-    detectGoals(evs);
-    events=evs;byId={};evs.forEach(function(e){byId[e.id]=e});
+    detectGoals(evs);yerles(evs);
     Object.keys(open).forEach(function(k){var e=open[k]&&byId[k.replace(/^f:/,'')];if(e&&e.state==='in')loadSummary(e)});
-    setStatus('Güncellendi '+new Date().toLocaleTimeString('tr-TR')+(usedFallback?' · seçili ligler':''));
+    setStatus('Güncellendi '+new Date().toLocaleTimeString('tr-TR'));
     render();
-  }).catch(function(){
+  }).catch(function(err){
     if(day!==sel||sp!==sport)return;
     setStatus('Bağlantı hatası');
-    if(!events.length)$('list').innerHTML='<div class="msg"><strong>Skorlar alınamadı.</strong>İnternet bağlantınızı kontrol edip ↻ ile yeniden deneyin. Sayfa bir önizleme içinde açıldıysa dış bağlantı engellenmiş olabilir; dosyayı tarayıcıda açın.</div>';
+    if(!events.length)$('list').innerHTML='<div class="msg"><strong>Skorlar alınamadı.</strong>İnternet bağlantınızı kontrol edip ↻ ile yeniden deneyin.<br><small>Ayrıntı: '+esc((err&&err.message)||err)+'</small></div>';
   }).then(function(){
     loading=false;document.body.classList.remove('loading');schedule();
   });
 }
+function canlilar(){
+  var now=Date.now();
+  return events.filter(function(e){return e.state==='in'||(e.state==='pre'&&e.date-now<60000&&now-e.date<1800000)});
+}
+function hizli(){
+  var day=sel,sp=sport,l=canlilar();
+  if(hizliMesgul||loading||document.hidden||!l.length||!sameDay(sel,new Date())){hizliKur();return}
+  var grup={},kova={},eksik=false;
+  l.forEach(function(e){if(!e.lslug||!e.kova)eksik=true;grup[e.lslug+'|'+e.kova]=[e.lslug,e.kova];if(e.kova)kova[e.kova]=1});
+  var g=Object.keys(grup).map(function(k){return grup[k]}), iste;
+  if(sp==='soccer'&&(eksik||g.length>6)) // çok lig ya da adı bilinmeyen lig: günün tamamı tek istekte
+    iste=Object.keys(kova).map(function(k){return getJSON(SITE+sp+'/all/scoreboard?dates='+k+'&limit=1000').then(function(j){return parse(j,sp,'',k)})});
+  else iste=g.map(function(x){return getJSON(SITE+sp+'/'+x[0]+'/scoreboard?dates='+x[1]).then(function(j){return parse(j,sp,x[0],x[1])})});
+  hizliMesgul=true;
+  Promise.all(iste.map(function(p){return p.catch(function(){return []})})).then(function(rs){
+    if(day!==sel||sp!==sport||loading)return;
+    var yeni=[].concat.apply([],rs).filter(function(e){return byId[e.id]}); // yalnızca listede olan maçlar güncellenir
+    if(!yeni.length)return;
+    var once=imza(yeni.map(function(e){return byId[e.id]})), sonra=imza(yeni);
+    setStatus('Canlı · '+new Date().toLocaleTimeString('tr-TR'));
+    if(once===sonra)return;
+    detectGoals(yeni);
+    var m={};yeni.forEach(function(e){m[e.id]=e});
+    yerles(events.map(function(e){return m[e.id]||e}));
+    render();
+  }).then(function(){hizliMesgul=false;hizliKur()});
+}
+function hizliKur(){
+  clearTimeout(htimer);
+  if(document.hidden||!sameDay(sel,new Date())||!canlilar().length)return;
+  htimer=setTimeout(hizli,HIZLI);
+}
 function schedule(){
   clearTimeout(timer);
   if(document.hidden)return;
-  var live=events.some(function(e){return e.state==='in'});
-  var soon=events.some(function(e){return e.state==='pre'&&e.date-Date.now()<600000});
-  timer=setTimeout(refresh,(live||soon)&&sameDay(sel,new Date())?REFRESH_LIVE:REFRESH_IDLE);
+  hizliKur();
+  var bugun=sameDay(sel,new Date()), acik=events.some(function(e){return e.state!=='post'});
+  var tamZamani=Date.now()-sonTam>=TAM-1000;
+  timer=setTimeout(function(){refresh(tamZamani||!(bugun&&acik))},bugun&&acik?ORTA:TAM);
 }
 function reset(){
-  events=[];byId={};open={};prev=null;flash={};loading=false;
+  events=[];byId={};open={};prev=null;flash={};loading=false;clearTimeout(htimer);
   renderHead();$('list').innerHTML='<div class="msg">Maçlar yükleniyor…</div>';refresh();
 }
 function go(day){if(isNaN(day))return;sel=startOfDay(day);reset()}
 
 if(typeof module!=='undefined'&&module.exports){
-  module.exports={parse:parse,merge:merge,label:label,listHtml:listHtml,standingsHtml:standingsHtml,teamHtml:teamHtml,parseSched:parseSched,
+  module.exports={loadDay:loadDay,getEvents:function(){return events},detectGoals:detectGoals,getFlash:function(){return flash},parse:parse,label:label,listHtml:listHtml,detailHtml:detailHtml,imza:imza,standingsHtml:standingsHtml,teamHtml:teamHtml,parseSched:parseSched,
     state:function(o){if(o.events){events=o.events;byId={};events.forEach(function(e){byId[e.id]=e})}if(o.open)open=o.open;if(o.sums)sums=o.sums;if(o.tabs)tabs=o.tabs;if(o.favs)favs=o.favs;if(o.sport)sport=o.sport;if(o.flash)flash=o.flash}};
   return;
 }
@@ -654,7 +720,7 @@ if(typeof module!=='undefined'&&module.exports){
 $('prev').onclick=function(){go(addDays(sel,-1))};
 $('next').onclick=function(){go(addDays(sel,1))};
 $('today').onclick=function(){go(new Date())};
-$('refresh').onclick=refresh;
+$('refresh').onclick=function(){refresh()};
 $('dpick').addEventListener('change',function(){var p=this.value.split('-');if(p.length===3)go(new Date(+p[0],+p[1]-1,+p[2]))});
 $('dpick').addEventListener('click',function(){try{if(this.showPicker)this.showPicker()}catch(e){}});
 $('q').addEventListener('input',function(){query=this.value.trim();render()});
@@ -690,7 +756,7 @@ window.__appGeri=function(){
 $('sheet-x').onclick=closeSheet;
 $('sheet').addEventListener('click',function(ev){if(ev.target===this)closeSheet()});
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape')closeSheet()});
-document.addEventListener('visibilitychange',function(){if(document.hidden)clearTimeout(timer);else refresh()});
+document.addEventListener('visibilitychange',function(){if(document.hidden){clearTimeout(timer);clearTimeout(htimer)}else refresh()});
 document.addEventListener('pointerdown',initAudio);
 
 // tema
