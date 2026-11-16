@@ -40,3 +40,21 @@ isle('index.html', [
 isle('ortak/ortak.js', [
   ('supabase', rx(r"var URLK = 'https://[a-z0-9]+\.supabase\.co', ANAHTAR = '[^']*'", "var URLK = '', ANAHTAR = ''   /* Skorbord: yükleme deposu yok */", "var URLK = '', ANAHTAR = ''")),
 ])
+
+# ── AD DEĞİŞİKLİĞİ (2026-11-16, kullanıcı: "Skorbord uygulamasında ne kadar 'puan tablosu' yazısı varsa 'skorbord' olarak değiştir")
+#    Uygulama adı olan "Puan Tablosu" → "Skorbord" (Türkçe ekler: 'nun→'un, 'nda→'da, 'na→'a, 'ndaki→'daki, -nu→'u ...).
+#    Sıralama tablosu anlamındaki küçük harfli "puan tablosu…" → "puan durumu…" (ekler aynı kalır: tablosunda→durumunda).
+def _ek(m):
+    e = m.group(1) or ''
+    e = e.lstrip("'")
+    if e[:1] in ('n', 'y'): e = e[1:]
+    return m.group(0)[:0] + ('SKORBORD' if m.group(0).isupper() else 'Skorbord') + ("'" + e if e else '')
+def adDegis(s):
+    s = re.sub(r"(?:Puan Tablosu|PUAN TABLOSU)((?:'?(?:nun|nu|ndaki|ndan|nda|na|yla))?)(?![a-zçğıöşü])", _ek, s)
+    s = re.sub(r"\b([Pp])uan tablosu", lambda m: m.group(1) + 'uan durumu', s)
+    return s
+for _y in ('index.html', 'ortak/ortak.js', 'gercek.js', 'yerel-vt.js'):
+    isle(_y, [('ad', adDegis)])
+
+# APK geri tuşu: Skorbord köprüsü "SkorbordApp" adındadır; geri tuşunu uygulama yönetir, sayfa geçmiş tamponu kurmaz.
+isle('index.html', [('geri tuşu', degis("if(window.SahaApp)return;   // (2026-11-07) APK", "if(window.SahaApp||window.SkorbordApp)return;   // (2026-11-07) APK"))])

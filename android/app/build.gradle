@@ -25,6 +25,7 @@ android {
         }
     }
     buildTypes { release { minifyEnabled false; signingConfig signingConfigs.imza } }
+    buildFeatures { buildConfig true }
     sourceSets { main.assets.srcDirs = ['build/site'] }
     lint { checkReleaseBuilds false; abortOnError false }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }

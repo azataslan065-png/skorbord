@@ -1,5 +1,5 @@
-/* GERÇEK VERİ MODÜLÜ (Skorbord). Puan Tablosu arayüzünü gerçek liglerle besler.
-   - Veri: ESPN'in açık skor servisi (anahtar gerektirmez). Hiçbir şey SAHA / Admin / Puan Tablosu veritabanına yazılmaz;
+/* GERÇEK VERİ MODÜLÜ (Skorbord). Skorbord arayüzünü gerçek liglerle besler.
+   - Veri: ESPN'in açık skor servisi (anahtar gerektirmez). Hiçbir şey SAHA / Admin / Skorbord veritabanına yazılmaz;
      lig verisi yalnızca cihaz belleğindeki yerel ağaca (yerel-vt.js) "leagues/<lig>" altına yerleştirilir ve arayüz onu
      kendi olağan yolundan okur. Böylece puan durumu, fikstür, sonuçlar, form, istatistik, karşılaştırma ve lig analizi
      arayüzün kendi hesaplarıyla, gerçek maçlardan çıkar.
@@ -243,7 +243,7 @@ function agacaYaz(v){
 }
 function metaYaz(){
   var meta={}, i=0;
-  aktifLigler().forEach(function(l){ i++; meta[ligKimlik(l[0])]={name:l[1], status:'active', createdAt:1000000-i, sbSlug:l[0], sira:i}; });
+  aktifLigler().forEach(function(l){ i++; meta[ligKimlik(l[0])]={name:LIG_AD[l[0]]||l[1], status:'active', createdAt:1000000-i, sbSlug:l[0], sira:i}; });
   YerelVT.yaz('leaguesMeta', meta);
   YerelVT.yaz('activeDisplayLeague', ligKimlik(A.lig));
 }
@@ -482,7 +482,7 @@ function ayarBolumu(){
   var sel='border-radius:10px;border:1px solid var(--br);background:var(--s3);color:var(--tx);padding:.55rem;width:100%;font-size:.8rem;font-family:inherit';
   var obek={}, sira=[];
   aktifLigler().forEach(function(l){ if(!obek[l[2]]){ obek[l[2]]=[]; sira.push(l[2]); } obek[l[2]].push(l); });
-  var ops=sira.map(function(o){ return '<optgroup label="'+esc(o)+'">'+obek[o].map(function(l){ return '<option value="'+esc(l[0])+'"'+(l[0]===A.lig?' selected':'')+'>'+esc(l[1])+'</option>'; }).join('')+'</optgroup>'; }).join('');
+  var ops=sira.map(function(o){ return '<optgroup label="'+esc(o)+'">'+obek[o].map(function(l){ return '<option value="'+esc(l[0])+'"'+(l[0]===A.lig?' selected':'')+'>'+esc(LIG_AD[l[0]]||l[1])+'</option>'; }).join('')+'</optgroup>'; }).join('');
   var seritAcik=false; try{ seritAcik=!!_liveTickerEnabled; }catch(e){}
   return '<div id="sbAyarBolum"><div style="font-size:.68rem;font-weight:800;color:var(--mu);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Skorbord</div>'+
    '<div style="background:var(--s2);border-radius:12px;padding:.75rem .85rem;margin-bottom:.9rem">'+
@@ -521,7 +521,14 @@ function uzakUygula(d){
   var eski=JSON.stringify(U); U=(d&&typeof d==='object')?d:{};
   if(JSON.stringify(U)===eski) return;
   var sn=+U.canliYenileSn; HIZLI=(sn>=3&&sn<=60)?sn*1000:5000;
+  // (2026-11-16) Admin › Skorbord paneli: lig adı ve takım adı düzeltmeleri, şerit varsayılanları.
+  var adImza=adlariUygula();
+  if(_ilkAcilis){
+    if(U.seritVarsayilan==='hepsi'||U.seritVarsayilan==='secili'){ A.serit=U.seritVarsayilan; ayarYaz(); }
+    if(typeof U.seritAcikVarsayilan==='boolean'){ try{ if(localStorage.getItem('pt_liveTicker')===null){ _liveTickerEnabled=U.seritAcikVarsayilan; localStorage.setItem('pt_liveTicker', U.seritAcikVarsayilan?'on':'off'); } }catch(e){} }
+  }
   try{ metaYaz(); }catch(e){}
+  if(adImza!==_adImza){ var ilk=_adImza===null; _adImza=adImza; if(!ilk||adImza!==''){ sonTam=0; ligYukle(A.lig, true).then(agacaYaz, function(){}); } }
   // Görünen ligler dışında kalan lig seçiliyse ya da bu cihazda ilk açılışsa yöneticinin varsayılan ligine geçilir.
   var hedef=null;
   if(!ligAktifMi(A.lig)) hedef=(U.varsayilanLig&&ligAktifMi(U.varsayilanLig))?U.varsayilanLig:aktifLigler()[0][0];
@@ -529,6 +536,17 @@ function uzakUygula(d){
   _ilkAcilis=false;
   if(hedef){ try{ ligSec(hedef); }catch(e){} }
   duyuruCiz(); bakimCiz();
+}
+var LIG_AD0=JSON.parse(JSON.stringify(LIG_AD)), TR_AD0=JSON.parse(JSON.stringify(TR_AD)), _adImza=null;
+/* ligAdlari: {"tur_1":"Trendyol Süper Lig"}; takimAdlari: [{espn:"Istanbul Basaksehir", tr:"RAMS Başakşehir"}] (Firebase anahtarında nokta olamadığından liste). */
+function adlariUygula(){
+  Object.keys(LIG_AD0).forEach(function(k){ LIG_AD[k]=LIG_AD0[k]; });
+  Object.keys(TR_AD).forEach(function(k){ if(!(k in TR_AD0)) delete TR_AD[k]; else TR_AD[k]=TR_AD0[k]; });
+  var la=(U.ligAdlari&&typeof U.ligAdlari==='object')?U.ligAdlari:{}, ta=U.takimAdlari, imza=[];
+  LIGLER.forEach(function(l){ var v=la[l[0].replace(/\./g,'_')]; if(typeof v==='string'&&v.trim()){ LIG_AD[l[0]]=v.trim().slice(0,60); imza.push(l[0]+'='+LIG_AD[l[0]]); } });
+  (Array.isArray(ta)?ta:(ta&&typeof ta==='object'?Object.keys(ta).map(function(k){ return ta[k]; }):[])).forEach(function(x){
+    if(x&&typeof x.espn==='string'&&typeof x.tr==='string'&&x.espn.trim()&&x.tr.trim()){ TR_AD[x.espn.trim()]=x.tr.trim().slice(0,60); imza.push(x.espn+'='+x.tr); } });
+  return imza.join('|');
 }
 function duyuruCiz(){
   var d=U.duyuru||{}, id='sbDuyuru', el=document.getElementById(id), imza=String(d.metin||'')+'|'+(d.ts||'');

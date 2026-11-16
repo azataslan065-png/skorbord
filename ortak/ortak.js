@@ -1,5 +1,5 @@
 /* ═══ ORTAK MODÜL (2026-10-26-E, onaylanan öneri 21) ══════════════════════════════════════════════════════════════════
-   Puan Tablosu (index.html), admin paneli (admin.html) ve SAHA (saha.html) bu dosyayı paylaşır. Önceden aynı parçalar üç dosyada
+   Skorbord (index.html), admin paneli (admin.html) ve SAHA (saha.html) bu dosyayı paylaşır. Önceden aynı parçalar üç dosyada
    ayrı kopyalar halindeydi; bir düzeltme birinde yapılıp diğerinde unutulunca uygulamalar farklı davranıyordu.
    İÇERİK: (1) Renk arama motoru - Türkçe/İngilizce renk sözlüğü, renk adı / hex / rgb çözümleme, Premium ton, kategoriler,
    görselden baskın renk çıkarma. (2) formaSvg - forma + şort çizimi (desenli). (3) ortakKitAlanlari - kullanıcının SAHA'da
@@ -655,7 +655,7 @@ var SahaGoogle = (function(){
 /* ═══ DOKUNARAK GİRİŞ KABUĞU (2026-11-15-H) ════════════════════════════════════════════════════════════════════════
    Kullanıcı: "giriş ekranındaki giriş düğmelerini kaldır; sağ alt köşede üç çizgili bir düğme olsun, giriş bilgileri, Google ile hesap
    bağlama, isim ve şifre ayarları oradan gelsin. İsim, şifre ve Google hesabı yalnızca bir kez girilecek, sonra ekrana bir kez dokunmak
-   yeterli olacak." SAHA ve Puan Tablosu aynı kabuğu kullanır:
+   yeterli olacak." SAHA ve Skorbord aynı kabuğu kullanır:
    · Giriş ekranı sade: arka plan + altta "Başlamak için dokun" + sağ altta menü düğmesi.
    · Dokunma: bu cihazda o hesabın kimlik oturumu açıksa (bir kez ad+şifre ya da Google ile girilmiş) şifre sorulmadan girilir.
      Şifre hiçbir yerde saklanmaz; doğrulama Firebase'in cihazda tuttuğu oturumdur. Oturum yoksa menü açılır.
@@ -816,7 +816,7 @@ var SahaGirisKabuk = (function(){
 })();
 /* ═══ ZORUNLU GÜNCELLEME (2026-10-30-A, V1.4.0) ══════════════════════════════════════════════════════════════════
    Yönetici admin panelinden globalConfig/minSurum = { build:'YYYY-AA-GG-H', mesaj, ts } yazar. Yüklü sürümü (APP_BUILD) bundan
-   eski olan Puan Tablosu, SAHA ve admin ekranı "Güncelle" ekranı gösterir. Güncelle: medya dışındaki önbellekleri siler, servis
+   eski olan Skorbord, SAHA ve admin ekranı "Güncelle" ekranı gösterir. Güncelle: medya dışındaki önbellekleri siler, servis
    çalışanını yeniler, sayfayı ağdan zorla çekip yeniden yükler. secenek.ertele() true döndükçe (ör. SAHA'da maç sürerken) ekran
    açılmaz, 5 sn'de bir yeniden bakılır. secenek.gecilebilir: "Şimdilik geç" düğmesi (yalnızca yönetici paneli). */
 var SahaGuncelleme = (function(){
@@ -888,7 +888,7 @@ var SahaGuncelleme = (function(){
   }
   function iDaire(cap, boy, ek){ return '<div style="' + (ek || '') + ';width:' + cap + 'px;height:' + cap + 'px;border-radius:50%;background:linear-gradient(135deg,#a066ff,#6a33e6);display:flex;align-items:center;justify-content:center;'
     + 'color:#fff;font:italic 800 ' + boy + 'px/1 Georgia,serif;box-shadow:0 6px 18px rgba(122,60,240,.45)">i</div>'; }
-  function uygulamaAdi(){ var d = _o.dosya, ad = d === 'index' ? 'Puan Tablosu' : (d === 'saha' ? 'SAHA' : (d === 'admin' ? 'Admin Paneli' : (document.title || 'Uygulama')));
+  function uygulamaAdi(){ var d = _o.dosya, ad = d === 'index' ? 'Skorbord' : (d === 'saha' ? 'SAHA' : (d === 'admin' ? 'Admin Paneli' : (document.title || 'Uygulama')));
     try{ if(/\/test\//.test(location.pathname)) ad += ' Test'; }catch(e){} return ad; }
   function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
   function guncelle(){
@@ -905,7 +905,7 @@ var SahaGuncelleme = (function(){
     setTimeout(git, 6000);
   }
   function kaldir(){ if(_ov){ try{ _ov.remove(); }catch(e){} _ov = null; } }
-  /* GİRİŞ EKRANI BANDI (2026-10-30-E, kullanıcı: "yeni güncelleme mevcut olduğunda kullanıcı SAHA'da, Puan Tablosu'nda ve admin
+  /* GİRİŞ EKRANI BANDI (2026-10-30-E, kullanıcı: "yeni güncelleme mevcut olduğunda kullanıcı SAHA'da, Skorbord'da ve admin
      panelinde isim ve şifre girmeden önce giriş ekranında bunu görmeli ve indirebilmelidir"). Giriş ekranı açıkken (secenek.giris()
      true) tam ekran yerine üstte bir bant çıkar: yeni sürüm ve "Güncelle" düğmesi. Giriş yapılınca bant kalkar, güncelleme ekranı gelir. */
   var _bant = null, _bantZ = 0;
@@ -982,7 +982,7 @@ var SahaGuncelleme = (function(){
   return { karsilastir:karsilastir, baslat:baslat, guncelle:guncelle, durum:function(){ return _min; } };
 })();
 /* ═══ DOSYA YÜKLEME (2026-10-30-B) ═════════════════════════════════════════════════════════════════════════════
-   SAHA geri bildirimine fotoğraf/video eklemek için (Puan Tablosu'ndaki uploadImageToSupabase/uploadVideoToSupabase ile
+   SAHA geri bildirimine fotoğraf/video eklemek için (Skorbord'daki uploadImageToSupabase/uploadVideoToSupabase ile
    aynı Supabase deposu ve aynı yol: videos/feedback/...). Ham XMLHttpRequest: gerçek yükleme yüzdesi okunur. Fotoğraf
    tuvalle küçültülüp JPEG'e çevrilir (sonuç sınırı aşarsa kalite düşürülerek yeniden denenir). Hepsi Promise döndürür. */
 var SahaYukleme = (function(){
@@ -1009,7 +1009,7 @@ var SahaYukleme = (function(){
       x.send(blob);
     });
   }
-  // HEIC/HEIF (iPhone): tarayıcı açamazsa Puan Tablosu'ndaki aynı dönüştürücü (heic2any) yüklenip JPEG'e çevrilir.
+  // HEIC/HEIF (iPhone): tarayıcı açamazsa Skorbord'daki aynı dönüştürücü (heic2any) yüklenip JPEG'e çevrilir.
   var _heicBek = null;
   function heicKutuphane(){
     if(window.heic2any) return Promise.resolve();
@@ -1070,7 +1070,7 @@ var SahaYukleme = (function(){
   }
   return { resim:resim, video:video };
 })();
-/* ═══ YENİLİKLER + GERİ BİLDİRİM (2026-10-30-E, kullanıcı: "Puan Tablosu ve SAHA'daki yenilikler, geri bildirim sistemi ve
+/* ═══ YENİLİKLER + GERİ BİLDİRİM (2026-10-30-E, kullanıcı: "Skorbord ve SAHA'daki yenilikler, geri bildirim sistemi ve
    ikonlar tamamen aynı olmalı; ikon olarak sahadakiler kullanılabilir"). İki uygulama da bu tek bileşeni çağırır: aynı pencere,
    aynı düzen, aynı SAHA ikonları (SahaIkon yazı tipi, U+E9xx). Veri kaynağı ve yazılacak yol uygulamadan gelir:
    SahaDestek.yenilikler({ surumler:[{v,date,notes}], yuklu:'V1.4.0 (…)', geriBildirim:fn, ek:html, acildi:fn })

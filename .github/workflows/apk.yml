@@ -25,6 +25,7 @@ jobs:
         run: |
           mkdir out
           cp android/app/build/outputs/apk/release/*.apk out/Skorbord.apk
+          printf '{"kod":%s,"ad":"1.0.%s"}' "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" > out/surum.json
           ls -la out
           gh release delete apk -y --cleanup-tag 2>/dev/null || true
-          gh release create apk out/Skorbord.apk --title "Skorbord APK (derleme $GITHUB_RUN_NUMBER)" --notes "Telefona indirip kur; yeni sürüm eskisinin üstüne kurulur." --latest
+          gh release create apk out/Skorbord.apk out/surum.json --title "Skorbord APK (derleme $GITHUB_RUN_NUMBER)" --notes "Telefona indirip kur; yeni sürüm eskisinin üstüne kurulur." --latest

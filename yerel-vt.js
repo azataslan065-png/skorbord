@@ -1,4 +1,4 @@
-/* YEREL VERİ KATMANI (Skorbord). Bu uygulama Puan Tablosu arayüzünü kullanır ama SAHA / Admin / Puan Tablosu'nun
+/* YEREL VERİ KATMANI (Skorbord). Bu uygulama Skorbord arayüzünü kullanır ama SAHA / Admin / Skorbord'un
    Firebase veritabanına HİÇ bağlanmaz. Arayüzün beklediği "firebase" nesnesi burada, tamamen cihaz belleğinde çalışan
    bir kopyayla karşılanır: okuma, yazma ve dinleme çağrıları aynı biçimde çalışır, hiçbir şey ağa gitmez.
    Lig verisi bu ağaca gerçek veri modülü (gercek.js) tarafından yerleştirilir. Kullanıcının kendi ayarları
