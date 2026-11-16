@@ -3,7 +3,7 @@ name: APK
 on:
   push:
     branches: [main]
-    paths: [android/**, .github/workflows/apk.yml, canli-skor.html, canli-skor.webmanifest, canli-skor-192.png, canli-skor-512.png]
+    paths: [android/**, .github/workflows/apk.yml, index.html, yerel-vt.js, gercek.js, manifest.json, app-icon-192.png, app-icon-512.png, ortak/**]
   workflow_dispatch:
 permissions:
   contents: write

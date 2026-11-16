@@ -28,13 +28,13 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-/* Skorbord Android kabuğu: sayfayı (canli-skor.html) tam ekran bir WebView içinde açar.
+/* Skorbord Android kabuğu: sayfayı (index.html) tam ekran bir WebView içinde açar.
    Sayfa APK'nın içindedir; site adresine giden istekler içerideki kopyayla yanıtlanır (bkz. ver),
    böylece adres https kalır (kayıtlı ayarlar, skor servisi çağrıları sorunsuz çalışır) ve site yayında olmasa da uygulama açılır.
    Geri tuşu önce sayfadaki açık pencereyi kapatır; favori takım gol bildirimi telefonun kendi bildirimiyle gösterilir. */
 public class Ana extends Activity {
     private static final String EV = "azataslan065-png.github.io", YOL = "/skorbord/";
-    private static final String ADRES = "https://" + EV + YOL + "canli-skor.html";
+    private static final String ADRES = "https://" + EV + YOL + "index.html";
     private WebView w;
 
     @Override protected void onCreate(Bundle b) {
@@ -73,15 +73,16 @@ public class Ana extends Activity {
             if (p == null || !p.startsWith(YOL)) return null;
             if (p.startsWith(YOL + "__espn/")) return espn(u, p.substring((YOL + "__espn/").length()));
             String ad = p.substring(YOL.length());
-            if (ad.isEmpty() || ad.equals("index.html")) ad = "canli-skor.html";
-            if (ad.contains("/") || ad.contains("..")) return null;
-            String tur = ad.endsWith(".html") ? "text/html" : ad.endsWith(".png") ? "image/png"
+            if (ad.isEmpty()) ad = "index.html";
+            if (ad.contains("..") || ad.startsWith("/")) return null;
+            String tur = ad.endsWith(".html") ? "text/html" : ad.endsWith(".js") ? "text/javascript" : ad.endsWith(".png") ? "image/png"
+                : ad.endsWith(".ttf") ? "font/ttf" : ad.endsWith(".json") ? "application/json"
                 : ad.endsWith(".webmanifest") ? "application/manifest+json" : null;
             if (tur == null) return null;
             InputStream in = getAssets().open(ad);
             Map<String, String> h = new HashMap<>();
             h.put("Cache-Control", "no-store");
-            return new WebResourceResponse(tur, tur.startsWith("image/") ? null : "utf-8", 200, "OK", h, in);
+            return new WebResourceResponse(tur, (tur.startsWith("image/") || tur.startsWith("font/")) ? null : "utf-8", 200, "OK", h, in);
         } catch (Exception e) { return null; }
     }
 

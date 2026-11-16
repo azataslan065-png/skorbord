@@ -1,8 +1,8 @@
 plugins { id 'com.android.application' }
 // Sayfa ve ikonlar APK'ya gömülür (bkz. Ana.ver): uygulama, site yayında olmasa da kendi kopyasından açılır.
-def SITE = ['canli-skor.html', 'canli-skor.webmanifest', 'canli-skor-192.png', 'canli-skor-512.png']
+def SITE = ['index.html', 'yerel-vt.js', 'gercek.js', 'manifest.json', 'app-icon-192.png', 'app-icon-512.png', 'saha-icon-192.png', 'ortak/ortak.js', 'ortak/saha-ikon.ttf']
 def hedef = file('build/site'); hedef.mkdirs()
-SITE.each { ad -> new File(hedef, ad).bytes = file("../../${ad}").bytes }
+SITE.each { ad -> def f = new File(hedef, ad); f.parentFile.mkdirs(); f.bytes = file("../../${ad}").bytes }
 def NO = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
 android {
     namespace 'com.azat.skorbord'
