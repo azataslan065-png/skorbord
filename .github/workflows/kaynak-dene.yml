@@ -14,6 +14,7 @@ jobs:
           (async()=>{
             const al=async(u,h)=>{ try{ const r=await fetch(u,{headers:Object.assign({"Origin":"https://azataslan065-png.github.io","User-Agent":"Mozilla/5.0"},h||{})}); const t=await r.text(); let j=null; try{ j=JSON.parse(t); }catch(e){} return {s:r.status,cors:r.headers.get("access-control-allow-origin"),j,t:t.slice(0,200)}; }catch(e){ return {s:"HATA "+e.message}; } };
             const ozet=(o,d)=>{ if(d>2||!o||typeof o!=="object") return typeof o; const r={}; for(const k of Object.keys(o).slice(0,40)){ const v=o[k]; r[k]=Array.isArray(v)?("["+v.length+"]"):(v&&typeof v==="object"?ozet(v,d+1):(v===null||v===""?"BOŞ":typeof v)); } return r; };
+            { const a=await al("https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/ayarlar.json"); console.log("SKORBORD AYAR OKUMA",a.s,"cors",a.cors,a.t.slice(0,80)); const b=await al("https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/userProfiles.json?shallow=true"); console.log("KAPALI VERİ",b.s,b.t.slice(0,60)); }
             // ESPN: son oynanan Süper Lig maçları
             const sb=await al("https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard?dates=20261108");
             let E=((sb.j&&sb.j.events)||[]); for(const d of ["20261109","20261102","20261101"]){ const x=await al("https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard?dates="+d); E=E.concat((x.j&&x.j.events)||[]); } const evs=E.filter(e=>e.status&&e.status.type&&e.status.type.completed).slice(-3);
