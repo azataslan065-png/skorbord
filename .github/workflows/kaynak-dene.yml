@@ -1,0 +1,35 @@
+# Ücretsiz veri kaynaklarını dener (salt okunur): ESPN Süper Lig maç özetinde hangi alanlar boş, ek kaynaklar ne veriyor, tarayıcıdan erişime (CORS) izin var mı.
+name: Kaynak dene
+on:
+  workflow_dispatch:
+jobs:
+  dene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Dene
+        run: |
+          node -e '
+          (async()=>{
+            const al=async(u,h)=>{ try{ const r=await fetch(u,{headers:Object.assign({"Origin":"https://azataslan065-png.github.io","User-Agent":"Mozilla/5.0"},h||{})}); const t=await r.text(); let j=null; try{ j=JSON.parse(t); }catch(e){} return {s:r.status,cors:r.headers.get("access-control-allow-origin"),j,t:t.slice(0,200)}; }catch(e){ return {s:"HATA "+e.message}; } };
+            const ozet=(o,d)=>{ if(d>2||!o||typeof o!=="object") return typeof o; const r={}; for(const k of Object.keys(o).slice(0,40)){ const v=o[k]; r[k]=Array.isArray(v)?("["+v.length+"]"):(v&&typeof v==="object"?ozet(v,d+1):(v===null||v===""?"BOŞ":typeof v)); } return r; };
+            // ESPN: son oynanan Süper Lig maçları
+            const sb=await al("https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/scoreboard?dates=20261101-20261116&limit=50");
+            const evs=((sb.j&&sb.j.events)||[]).filter(e=>e.status&&e.status.type&&e.status.type.completed).slice(-3);
+            console.log("ESPN scoreboard",sb.s,"cors",sb.cors,"tamamlanan",evs.length);
+            for(const e of evs){ const s=await al("https://site.api.espn.com/apis/site/v2/sports/soccer/tur.1/summary?event="+e.id);
+              const j=s.j||{}; const ros=(j.rosters||[]).map(r=>(r.roster||[]).length); const ke=(j.keyEvents||[]).length; const st=((j.boxscore||{}).teams||[]).map(t=>(t.statistics||[]).length); const com=(j.commentary||[]).length;
+              console.log("  ESPN ozet",e.name,"| kadro",JSON.stringify(ros),"| olay",ke,"| istatistik",JSON.stringify(st),"| anlatım",com,"| hakem",JSON.stringify(((j.gameInfo||{}).officials||[]).length),"| stat",JSON.stringify((j.gameInfo||{}).venue?1:0)); }
+            // TheSportsDB (ücretsiz anahtar 3)
+            const T="https://www.thesportsdb.com/api/v1/json/3/";
+            const tp=await al(T+"eventspastleague.php?id=4339"); const tev=((tp.j&&tp.j.events)||[]);
+            console.log("TheSportsDB son maçlar",tp.s,"cors",tp.cors,"adet",tev.length, tev[0]?JSON.stringify(ozet(tev[0],0)).slice(0,900):tp.t);
+            if(tev[0]){ const id=tev[0].idEvent;
+              for(const u of ["lookuplineup.php?id=","lookuptimeline.php?id=","lookupeventstats.php?id=","lookuptv.php?id="]){ const r=await al(T+u+id); console.log("  TSDB",u,r.s,"cors",r.cors,JSON.stringify(r.j?Object.fromEntries(Object.entries(r.j).map(([k,v])=>[k,Array.isArray(v)?v.length:v])):r.t).slice(0,300)); } }
+            const tl=await al(T+"livescore.php?l=4339"); console.log("TSDB canlı",tl.s,tl.t.slice(0,150));
+            // football-data.org (anahtarsız)
+            const fd=await al("https://api.football-data.org/v4/competitions"); console.log("football-data",fd.s,"cors",fd.cors, fd.j&&fd.j.competitions?fd.j.competitions.map(c=>c.code+":"+c.name).filter(x=>/TUR|Süper|Super/i.test(x)).join(",")||"Süper Lig yok":fd.t);
+            // OpenFootball (statik açık veri)
+            const of=await al("https://raw.githubusercontent.com/openfootball/football.json/master/2025-26/tr.1.json"); console.log("openfootball tr.1",of.s,"cors",of.cors, of.j?("maç "+((of.j.matches||[]).length)):of.t.slice(0,80));
+          })();'
