@@ -1,8 +1,6 @@
-/* YEREL VERİ KATMANI (Skorbord). Bu uygulama Skorbord arayüzünü kullanır ama SAHA / Admin / Skorbord'un
-   Firebase veritabanına HİÇ bağlanmaz. Arayüzün beklediği "firebase" nesnesi burada, tamamen cihaz belleğinde çalışan
-   bir kopyayla karşılanır: okuma, yazma ve dinleme çağrıları aynı biçimde çalışır, hiçbir şey ağa gitmez.
-   Lig verisi bu ağaca gerçek veri modülü (gercek.js) tarafından yerleştirilir. Kullanıcının kendi ayarları
-   (profil, favori takım vb.) cihazda saklanır (localStorage "sb_yerel"). */
+/* YEREL VERİ KATMANI (Skorbord). Arayüzün beklediği "firebase" nesnesi burada karşılanır. Lig / maç / takım verisi cihaz belleğinde
+   tutulur (gerçek veri modülü gercek.js yerleştirir); yönetici ayarları Firebase'deki skorbord/ düğümünden salt okunur alınır (bkz. UZAK KÖK).
+   SAHA / Puan Tablosu verisine hiç bağlanmaz. Kullanıcının kendi ayarları (profil, favori takım vb.) cihazda saklanır (localStorage "sb_yerel"). */
 (function(){
 'use strict';
 var KOK = {}, DINLEYEN = [], SAKLA = /^(userProfiles|kullanicilar|kimlik)(\/|$)/, SAKLA_ANAHTAR = 'sb_yerel';
@@ -17,9 +15,58 @@ function duz(y){ // yol: baştaki/sondaki eğik çizgi ve adres atılır; test/ 
   return y;
 }
 function parcala(y){ return y ? y.split('/') : []; }
+/* ═══ UZAK KÖK (2026-11-16-D, kullanıcı: "adminindeki varsayılan bütün özellikler skorboard için de geçerli olacak; saha ve saha dışı
+   sistem aynı, sadece veritabanı ayrı"). Admin, Skorbord kaynağında bütün ayarlarını Firebase'deki skorbord/ düğümüne yazar (bakım,
+   duyuru, görünüm, menüler, lig ayarları...). Bu katman o düğümü salt okunur olarak canlı dinler (herkese açık okuma, kimlik gerekmez)
+   ve uygulamanın gördüğü ağaçla birleştirir:
+   · Maç / takım / lig listesi (ESPN, gercek.js) ve kullanıcının kendi verisi YEREL kalır ve aynı alanda yerel kazanır.
+   · Diğer her şey uzaktan gelir. Kullanıcı yazmaları yalnızca cihazda kalır (Skorbord'da hesap yok). */
+var UZAK = {}, UZAK_ADRES = 'https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord.json';
+var YALNIZ_YEREL = /^(leaguesMeta|activeDisplayLeague|userProfiles|kullanicilar|kimlik|ayarlar)(\/|$)|^leagues\/[^\/]+\/(teams|matches|season|leagueName)(\/|$)/;
+function agacOku(kok, y){
+  var p = parcala(y), n = kok;
+  for(var i = 0; i < p.length; i++){ if(n == null || typeof n !== 'object') return null; n = n[p[i]]; }
+  return n === undefined ? null : n;
+}
+function birlestir(u, l, y){ // u: uzak, l: yerel; aynı alanda yerel kazanır; yalnız-yerel dallarda uzak yok sayılır
+  if(l === null || l === undefined) return YALNIZ_YEREL.test(y) ? null : u;
+  if(u === null || u === undefined || typeof u !== 'object' || typeof l !== 'object' || Array.isArray(l)) return l;
+  var o = {};
+  Object.keys(u).forEach(function(k){ var cy = y ? y + '/' + k : k; if(!YALNIZ_YEREL.test(cy)) o[k] = u[k]; });
+  Object.keys(l).forEach(function(k){ o[k] = (k in o) ? birlestir(o[k], l[k], y ? y + '/' + k : k) : l[k]; });
+  return o;
+}
 function oku(y){
   if(y === '.info/connected') return true;
   if(y === '.info/serverTimeOffset') return 0;
+  var l = yerelOku(y);
+  if(YALNIZ_YEREL.test(y)) return l;
+  var u = agacOku(UZAK, y);
+  return (u === null) ? l : birlestir(u, l, y);
+}
+function uzakYaz(yol, v, yama){
+  var p = parcala(String(yol || '').replace(/^\/+|\/+$/g, ''));
+  if(!p.length){ if(yama && v && typeof v === 'object'){ Object.keys(v).forEach(function(k){ uzakYaz(k, v[k]); }); } else UZAK = (v && typeof v === 'object') ? v : {}; return; }
+  if(yama && v && typeof v === 'object'){ Object.keys(v).forEach(function(k){ uzakYaz(p.join('/') + '/' + k, v[k]); }); return; }
+  var m = UZAK;
+  for(var i = 0; i < p.length - 1; i++){ if(m[p[i]] == null || typeof m[p[i]] !== 'object') m[p[i]] = {}; m = m[p[i]]; }
+  if(v === null) delete m[p[p.length - 1]]; else m[p[p.length - 1]] = v;
+}
+function uzakDinle(){
+  var olay = function(yama){ return function(e){ try{ var d = JSON.parse(e.data); if(!d) return; uzakYaz(d.path, d.data, yama); bildir(String(d.path || '').replace(/^\/+|\/+$/g, '')); }catch(x){} }; };
+  var tazele = function(){ fetch(UZAK_ADRES, { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(v){ UZAK = (v && typeof v === 'object') ? v : {}; bildir(''); }, function(){}); };
+  try{
+    if(window.EventSource){
+      var es = new EventSource(UZAK_ADRES), hata = 0;
+      es.addEventListener('put', olay(false)); es.addEventListener('patch', olay(true));
+      es.addEventListener('open', function(){ hata = 0; });
+      es.onerror = function(){ if(++hata > 6){ try{ es.close(); }catch(e){} tazele(); setInterval(tazele, 120000); } };
+      return;
+    }
+  }catch(e){}
+  tazele(); setInterval(tazele, 120000);
+}
+function yerelOku(y){
   var p = parcala(y), n = KOK;
   for(var i = 0; i < p.length; i++){ if(n == null || typeof n !== 'object') return null; n = n[p[i]]; }
   return n === undefined ? null : n;
@@ -195,6 +242,7 @@ window.firebase = {
   storage: function(){ var r = { child: function(){ return r; }, put: function(){ return Promise.reject(new Error('Bu uygulamada dosya yükleme yok')); }, putString: function(){ return Promise.reject(new Error('Bu uygulamada dosya yükleme yok')); }, getDownloadURL: function(){ return Promise.reject(new Error('yok')); }, delete: function(){ return Promise.resolve(); } }; return { ref: function(){ return r; }, refFromURL: function(){ return r; } }; }
 };
 /* Gerçek veri modülü ağaca buradan yazar / okur. */
-window.YerelVT = { yaz: function(y, v){ y = duz(y); yaz(y, v); bildir(y); }, oku: function(y){ return kopya(oku(duz(y))); }, ham: function(y){ return oku(duz(y)); },
+window.YerelVT = { yaz: function(y, v){ y = duz(y); yaz(y, v); bildir(y); }, oku: function(y){ return kopya(yerelOku(duz(y))); }, ham: function(y){ return yerelOku(duz(y)); }, uzak: function(y){ return kopya(agacOku(UZAK, duz(y))); },
   guncelle: function(y, o){ return new Ref(y).update(o); }, bildir: function(y){ bildir(duz(y)); } };
+try{ uzakDinle(); }catch(e){}
 })();
