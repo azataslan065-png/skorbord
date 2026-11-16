@@ -173,7 +173,7 @@ Object.defineProperty(S,'length',{configurable:true,get:function(){return bizim(
 </script>
 <meta charset="UTF-8"/>
 <link rel="preload" href="ortak/saha-ikon.ttf?v=48919b70" as="font" type="font/ttf" crossorigin>
-<script src="ortak/ortak.js?v=2d808306"></script>
+<script src="ortak/ortak.js?v=d977d94d"></script>
 <style id="sahaIkonStil">@font-face{font-family:"SahaIkon";src:url("ortak/saha-ikon.ttf?v=48919b70") format("truetype");font-display:block}saha-ik{font-family:"SahaIkon"!important;font-style:normal!important;font-weight:400!important;font-variant:normal;text-transform:none;letter-spacing:0;line-height:1;display:inline-block;vertical-align:-.1em;text-decoration:none;text-shadow:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}</style>
 <script id="sahaIkonBetik">/* SAHA İKONLARI (2026-10-20-B, kullanıcı: "üç dosyadaki emoji ile sunulan ikonların hepsini kaldırın, yerine kendi
    tasarladığınız ikonları koyun"). Emojiler kaynakta özel kullanım alanı karakterlerine (U+E900-E9FF) çevrildi; her biri
@@ -2437,10 +2437,7 @@ iframe.ptp-video{pointer-events:none}
 <script>
 (function(){
   var httpMi=(location.protocol==='https:'||location.protocol==='http:');
-  window._authOrtamUygun=httpMi;
-  if(httpMi){
-    document.write('<scr'+'ipt src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js" crossorigin="anonymous" onerror="window._fbAuthLoadFailed=true"><\/scr'+'ipt>');
-  }
+  window._authOrtamUygun=false;   /* Skorbord: futbol-ligi kimlik altyapısı yüklenmez (bkz. kaynak/bag-kes.py) */
 })();
 </script>
 
@@ -3108,7 +3105,7 @@ _adjustTopbarSpacing();
 setTimeout(_adjustTopbarSpacing,300); // Fontlar/ikonlar geç yüklenirse yükseklik değişebilir - kısa bir gecikmeyle tekrar ölçülür.
 </script>
 <script>
-const FB={apiKey:"AIzaSyDzWf2yD0rlOUJCSHkHJg-JLvBssX1dNUY",authDomain:"superlig-208e3.firebaseapp.com",databaseURL:"https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app",projectId:"superlig-208e3",storageBucket:"superlig-208e3.firebasestorage.app",messagingSenderId:"879221404148",appId:"1:879221404148:web:daae84d7187311400209a1"};
+const FB={apiKey:"skorbord-yerel",authDomain:"",databaseURL:"",projectId:"skorbord-yerel",storageBucket:"",messagingSenderId:"",appId:"skorbord-yerel"};
 const app=firebase.initializeApp(FB);
 /* DİNLEYİCİ KURTARMA (2026-10-23-B). KÖK SEBEP (bakım ekranı açılmıyor, canlı maç izleyicisi "tek açı"da donuk kalıyor): sayfa,
    anonim kimlik oturumu açılmadan veritabanını dinlemeye başlıyordu. Kurallar "auth != null" istediği için o ilk dinleme
@@ -3458,7 +3455,7 @@ var DIAG_AUTH_MOD='pt_auth';
      5. Ancak ondan sonra "Enforce" edin
    ANAHTAR BOŞ BIRAKILIRSA bu blok hiç çalışmaz ve uygulama bugünkü gibi davranır - yani
    yanlışlıkla kimseyi dışarıda bırakmaz. */
-window.APP_CHECK_SITE_KEY='6Ld4-4EtAAAAAPC1eNtLyCC-w74V0PGwFAz9Cpbf';   // reCAPTCHA v3 SİTE anahtarı (herkese açık olması normaldir;
+window.APP_CHECK_SITE_KEY='';   /* Skorbord: App Check yok */   // reCAPTCHA v3 SİTE anahtarı (herkese açık olması normaldir;
                                                                 // gizli anahtar yalnızca Firebase'de durur, buraya ASLA yazılmaz)
 (function appCheckBaslat(){
   if(!window.APP_CHECK_SITE_KEY)return;
@@ -3682,8 +3679,8 @@ db.ref('globalAdminSettings/settingsSectionOrder').on('value',s=>{
 // KULLANICI TALEBİ (proje değişti): Yeni Supabase projesine geçildi - anahtar artık eski JWT
 // formatında ("eyJ...") değil, Supabase'in yeni "publishable key" formatında ("sb_publishable_...").
 // İkisi de supabase-js istemcisinde AYNI şekilde kullanılır, davranış değişmez.
-const SUPABASE_URL='https://oasyhelzshbehnpyrssw.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_DxSYVhhxvfVw_yAA7xkS6A_s1Usv41C';
+const SUPABASE_URL='';   /* Skorbord: futbol-ligi deposuna yükleme yok */
+const SUPABASE_ANON_KEY='';
 const SUPABASE_VIDEO_BUCKET='videos';
 let supabaseClient=null;
 try{
@@ -18867,6 +18864,10 @@ function renderMdIstatistik(id,m,h,a){
     ${varMi('isabetliPas')?bar(' İsabetli Pas',ss.home.isabetliPas||0,ss.away.isabetliPas||0):''}
     ${varMi('kurtaris')?bar(' Kurtarış',ss.home.kurtaris||0,ss.away.kurtaris||0):''}
     ${varMi('direk')?bar(' Direkten Dönen',ss.home.direk||0,ss.away.direk||0):''}
+    ${varMi('engellenen')?bar(' Engellenen Şut',ss.home.engellenen||0,ss.away.engellenen||0):''}
+    ${varMi('topKapma')?bar(' Top Kapma',ss.home.topKapma||0,ss.away.topKapma||0):''}
+    ${varMi('uzaklastirma')?bar(' Uzaklaştırma',ss.home.uzaklastirma||0,ss.away.uzaklastirma||0):''}
+    ${varMi('pasIsabet')?bar(' Pas İsabeti %',ss.home.pasIsabet||0,ss.away.pasIsabet||0,true):''}
     ${bar(' Korner',ss.home.korner||0,ss.away.korner||0)}
     ${bar(' Faul',ss.home.faul||0,ss.away.faul||0)}
     ${bar(' Ofsayt',ss.home.ofsayt||0,ss.away.ofsayt||0)}
@@ -40217,6 +40218,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=77e1f84e"></script>
+<script src="gercek.js?v=dffbafe6"></script>
 </body>
 </html>

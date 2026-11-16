@@ -9,6 +9,9 @@
 if(window.Gercek) return;
 var ESPN='https://site.api.espn.com/', SITE=ESPN+'apis/site/v2/sports/soccer/', STAND=ESPN+'apis/v2/sports/soccer/';
 var HIZLI=5000, ORTA=60000, SEZON_TAZE=6*3600*1000;
+/* YÖNETİCİ AYARLARI (2026-11-16): Admin > Yönetim > Skorbord'dan yönetilir; burada YALNIZCA OKUNUR (Skorbord hiçbir yere yazmaz).
+   Skorbord'un futbol-ligi ile tek bilinçli bağı budur: herkese açık, salt okunur "skorbord/ayarlar" düğümü (oyuncu/lig verisi yok). */
+var UZAK_URL='https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/ayarlar.json', U={};
 function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call(arguments))); }catch(e){} }
 
 /* ---------- ligler: [ESPN kısa adı, Türkçe ad, ülke/öbek] ; sıra = seçicideki sıra ---------- */
@@ -24,6 +27,9 @@ var LIGLER=[
  ['jpn.1','Japonya J1 Lig','Japonya'],['aus.1','Avustralya A-League','Avustralya'],['uefa.nations','UEFA Uluslar Ligi','Milli'],['fifa.worldq.uefa','Dünya Kupası Elemeleri (Avrupa)','Milli']
 ];
 var LIG_AD={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; });
+/* Yönetici "görünen ligleri" seçtiyse yalnız onlar listelenir; seçmediyse hepsi. */
+function aktifLigler(){ var a=U&&U.ligler; if(!a||typeof a!=='object') return LIGLER; var f=LIGLER.filter(function(l){ return a[l[0].replace(/\./g,'_')]; }); return f.length?f:LIGLER; }
+function ligAktifMi(slug){ return aktifLigler().some(function(l){ return l[0]===slug; }); }
 
 /* ---------- Türkçe adlar: ESPN'in İngilizce / harfsiz yazdığı takım ve ülke adları ---------- */
 var TR_AD={
@@ -49,6 +55,7 @@ var MEVKI={G:'Kaleci',D:'Defans',M:'Orta Saha',F:'Forvet'};
 
 /* ---------- ayar ---------- */
 var AK='sb_ayar', A={lig:'tur.1', serit:'hepsi'};
+var _ilkAcilis=true; try{ _ilkAcilis=!localStorage.getItem(AK); }catch(e){}
 try{ var _a=JSON.parse(localStorage.getItem(AK)||'{}'); if(_a&&typeof _a==='object') Object.keys(_a).forEach(function(k){ A[k]=_a[k]; }); }catch(e){}
 function ayarYaz(){ try{ localStorage.setItem(AK, JSON.stringify(A)); }catch(e){} }
 
@@ -236,7 +243,7 @@ function agacaYaz(v){
 }
 function metaYaz(){
   var meta={}, i=0;
-  LIGLER.forEach(function(l){ i++; meta[ligKimlik(l[0])]={name:l[1], status:'active', createdAt:1000000-i, sbSlug:l[0], sira:i}; });
+  aktifLigler().forEach(function(l){ i++; meta[ligKimlik(l[0])]={name:l[1], status:'active', createdAt:1000000-i, sbSlug:l[0], sira:i}; });
   YerelVT.yaz('leaguesMeta', meta);
   YerelVT.yaz('activeDisplayLeague', ligKimlik(A.lig));
 }
@@ -349,7 +356,9 @@ function ozetIsle(mid, j){
   var ts=j.boxscore&&j.boxscore.teams;
   if(ts&&ts.length>=2){
     var al=function(tid){ var t=ts.filter(function(x){ return x.team&&String(x.team.id)===tid; })[0]; if(!t) return null; var o={}; (t.statistics||[]).forEach(function(s){ o[s.name]=parseFloat(s.displayValue); });
-      var r={sahiplik:o.possessionPct, sut:o.totalShots, isabet:o.shotsOnTarget, pas:o.totalPasses, isabetliPas:o.accuratePasses, kurtaris:o.saves, korner:o.wonCorners, faul:o.foulsCommitted, ofsayt:o.offsides};
+      var r={sahiplik:o.possessionPct, sut:o.totalShots, isabet:o.shotsOnTarget, pas:o.totalPasses, isabetliPas:o.accuratePasses, kurtaris:o.saves, korner:o.wonCorners, faul:o.foulsCommitted, ofsayt:o.offsides,
+             // (2026-11-16) ESPN'in verdiği ama önceden kullanılmayan istatistikler
+             engellenen:o.blockedShots, topKapma:o.effectiveTackles, uzaklastirma:o.totalClearance, pasIsabet:(o.passPct!=null&&!isNaN(o.passPct)?Math.round(o.passPct*(o.passPct<=1?100:1)):null)};
       Object.keys(r).forEach(function(k){ if(r[k]==null||isNaN(r[k])) delete r[k]; }); return Object.keys(r).length?r:null; };
     var sh=al(hId), sa=al(aId);
     if(sh&&sa) m2.sahaStats={home:sh, away:sa};
@@ -472,7 +481,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ ret
 function ayarBolumu(){
   var sel='border-radius:10px;border:1px solid var(--br);background:var(--s3);color:var(--tx);padding:.55rem;width:100%;font-size:.8rem;font-family:inherit';
   var obek={}, sira=[];
-  LIGLER.forEach(function(l){ if(!obek[l[2]]){ obek[l[2]]=[]; sira.push(l[2]); } obek[l[2]].push(l); });
+  aktifLigler().forEach(function(l){ if(!obek[l[2]]){ obek[l[2]]=[]; sira.push(l[2]); } obek[l[2]].push(l); });
   var ops=sira.map(function(o){ return '<optgroup label="'+esc(o)+'">'+obek[o].map(function(l){ return '<option value="'+esc(l[0])+'"'+(l[0]===A.lig?' selected':'')+'>'+esc(l[1])+'</option>'; }).join('')+'</optgroup>'; }).join('');
   var seritAcik=false; try{ seritAcik=!!_liveTickerEnabled; }catch(e){}
   return '<div id="sbAyarBolum"><div style="font-size:.68rem;font-weight:800;color:var(--mu);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Skorbord</div>'+
@@ -482,7 +491,7 @@ function ayarBolumu(){
      [['hepsi','Bugünün bütün maçları ve canlı skorlar'],['secili','Yalnızca seçili lig']].map(function(x){ return '<option value="'+x[0]+'"'+(A.serit===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('')+'</select>'+
    '<label style="display:flex;align-items:center;gap:.55rem;padding:.6rem 0 .1rem;font-size:.8rem"><input type="checkbox" style="width:17px;height:17px;accent-color:var(--ac)"'+(seritAcik?' checked':'')+' onchange="Gercek.ayarla(\'seritAcik\',this.checked)"> Alt şerit açık</label>'+
    '<button type="button" onclick="Gercek.yenile()" style="margin-top:.6rem;width:100%;border-radius:10px;border:1px solid var(--br);background:var(--s3);color:var(--tx);padding:.55rem;font-size:.8rem;font-weight:700;font-family:inherit">Veriyi şimdi yenile</button>'+
-   '<div style="font-size:.66rem;color:var(--mu);margin-top:.5rem;line-height:1.5">Veri: ESPN açık skor servisi. Canlı maçlar 5 saniyede bir yenilenir.</div>'+
+   '<div style="font-size:.66rem;color:var(--mu);margin-top:.5rem;line-height:1.5">Veri: ESPN açık skor servisi. Canlı maçlar '+Math.round(HIZLI/1000)+' saniyede bir yenilenir.</div>'+
    '</div></div>';
 }
 function ayarla(k,v){
@@ -507,8 +516,51 @@ function ayarKancasi(){
   window.openSettings._sb=1;
 }
 
+/* ---------- yönetici ayarları: duyuru, bakım, görünen ligler, varsayılan lig, yenileme hızı ---------- */
+function uzakUygula(d){
+  var eski=JSON.stringify(U); U=(d&&typeof d==='object')?d:{};
+  if(JSON.stringify(U)===eski) return;
+  var sn=+U.canliYenileSn; HIZLI=(sn>=3&&sn<=60)?sn*1000:5000;
+  try{ metaYaz(); }catch(e){}
+  // Görünen ligler dışında kalan lig seçiliyse ya da bu cihazda ilk açılışsa yöneticinin varsayılan ligine geçilir.
+  var hedef=null;
+  if(!ligAktifMi(A.lig)) hedef=(U.varsayilanLig&&ligAktifMi(U.varsayilanLig))?U.varsayilanLig:aktifLigler()[0][0];
+  else if(_ilkAcilis&&U.varsayilanLig&&U.varsayilanLig!==A.lig&&ligAktifMi(U.varsayilanLig)) hedef=U.varsayilanLig;
+  _ilkAcilis=false;
+  if(hedef){ try{ ligSec(hedef); }catch(e){} }
+  duyuruCiz(); bakimCiz();
+}
+function duyuruCiz(){
+  var d=U.duyuru||{}, id='sbDuyuru', el=document.getElementById(id), imza=String(d.metin||'')+'|'+(d.ts||'');
+  var kapali=false; try{ kapali=localStorage.getItem('sb_duyuruKapat')===imza; }catch(e){}
+  if(!d.acik||!d.metin||kapali){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id=id; el.style.cssText='position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:2147483000;display:flex;gap:.6rem;align-items:flex-start;padding:.7rem .85rem;border-radius:14px;color:#fff;font:600 .82rem/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)'; document.body.appendChild(el); }
+  el.style.background=d.renk||'#2563eb';
+  el.innerHTML='<div style="flex:1;min-width:0;white-space:pre-wrap">'+esc(d.metin)+'</div><button type="button" aria-label="Kapat" style="background:none;border:0;color:#fff;font-size:1.2rem;line-height:1;cursor:pointer;padding:0 .2rem">×</button>';
+  el.querySelector('button').onclick=function(){ try{ localStorage.setItem('sb_duyuruKapat', imza); }catch(e){} el.remove(); };
+}
+function bakimCiz(){
+  var b=U.bakim||{}, id='sbBakim', el=document.getElementById(id);
+  if(!b.acik){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id=id; el.style.cssText='position:fixed;inset:0;z-index:2147483001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;padding:2rem;text-align:center;background:var(--bg,#0a0a0f);color:var(--tx,#fff);font-family:system-ui,sans-serif'; document.body.appendChild(el); }
+  el.innerHTML='<div style="font-size:2.4rem">⏳</div><div style="font-size:1.15rem;font-weight:900">Skorbord bakımda</div><div style="font-size:.86rem;opacity:.8;max-width:360px;white-space:pre-wrap">'+esc(b.mesaj||'Kısa bir süre sonra tekrar deneyin.')+'</div>';
+}
+function uzakDinle(){
+  var al=function(){ return fetch(UZAK_URL,{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(uzakUygula, function(){}); };
+  al();
+  try{
+    if(window.EventSource){ var es=new EventSource(UZAK_URL), say=0;
+      var yenile=function(){ al(); };   // değişiklik bildirimi gelince tamamını yeniden oku (küçük belge)
+      es.addEventListener('put', yenile); es.addEventListener('patch', yenile);
+      es.onerror=function(){ if(++say>5){ try{ es.close(); }catch(e){} setInterval(al, 5*60000); } };
+      return;
+    }
+  }catch(e){}
+  setInterval(al, 5*60000);
+}
 function baslat(){
   if(!kimliktenSlug(ligKimlik(A.lig))){ A.lig='tur.1'; ayarYaz(); }
+  uzakDinle();
   metaYaz();
   // lig belgesi gelene kadar arayüz boş bir sezon görür
   YerelVT.yaz('leagues/'+ligKimlik(A.lig), {leagueName:LIG_AD[A.lig]||A.lig, season:'', teams:{}, matches:{}, lgConfig:{winPts:3,drawPts:1}});

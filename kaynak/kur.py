@@ -38,3 +38,4 @@ i=s.rindex('</body>')
 s=s[:i]+'<script src="gercek.js?v='+_v('gercek.js')+'"></script>\n'+s[i:]
 open('index.html','w',encoding='utf-8').write(s)
 print('kuruldu',len(s))
+exec(open('kaynak/bag-kes.py',encoding='utf-8').read())   # futbol-ligi bağlarını kes (bkz. bag-kes.py)

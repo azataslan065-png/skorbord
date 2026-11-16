@@ -10,4 +10,7 @@ tasarımını ve özelliklerini kullanır; ama ayrı bir uygulamadır: SAHA / Ad
 - `android/` — APK kabuğu; `.github/workflows/apk.yml` her yüklemede APK'yı derleyip "apk" sürümüne koyar.
 - `canli-skor.html` — ilk, sade sürüm (yedek olarak duruyor).
 
+Yönetim: Admin > Yönetim > **Skorbord ayarlarını aç** (görünen ligler, varsayılan lig, canlı yenileme hızı, duyuru, bakım modu). Skorbord bu ayarları
+herkese açık, salt okunur `skorbord/ayarlar` düğümünden canlı okur; futbol-ligi ile başka hiçbir bağı yoktur (bkz. `kaynak/bag-kes.py`).
+
 Puan Tablosu güncellenince: `python3 kaynak/kur.py <futbol-ligi/test/index.html>` çalıştırılır, `ortak/` kopyaları tazelenir.

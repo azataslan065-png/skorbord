@@ -986,7 +986,7 @@ var SahaGuncelleme = (function(){
    aynı Supabase deposu ve aynı yol: videos/feedback/...). Ham XMLHttpRequest: gerçek yükleme yüzdesi okunur. Fotoğraf
    tuvalle küçültülüp JPEG'e çevrilir (sonuç sınırı aşarsa kalite düşürülerek yeniden denenir). Hepsi Promise döndürür. */
 var SahaYukleme = (function(){
-  var URLK = 'https://oasyhelzshbehnpyrssw.supabase.co', ANAHTAR = 'sb_publishable_DxSYVhhxvfVw_yAA7xkS6A_s1Usv41C', KOVA = 'videos';
+  var URLK = '', ANAHTAR = ''   /* Skorbord: yükleme deposu yok */, KOVA = 'videos';
   function yolAdi(klasor, uzanti){ return (klasor || 'genel') + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + uzanti; }
   function gonder(blob, yol, tur, ilerleme){
     return new Promise(function(coz, red){
