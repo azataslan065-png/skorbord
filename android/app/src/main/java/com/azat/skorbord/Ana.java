@@ -2,7 +2,6 @@ package com.azat.skorbord;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -12,7 +11,6 @@ import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -40,7 +38,6 @@ import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -54,15 +51,14 @@ import java.util.Map;
    - Kenar esnemesi (overscroll) ve kaydırma çubukları kapalı; sayfa motoru "önemli" öncelikte.
    - Dosya seçme, tam ekran video, indirme (DownloadManager + blob/data yaması), paylaşma, titreşim, ekran yönü, window.close.
    - Bağlantı yoksa uygulamanın kendi hata ekranı; boş ekran kalırsa bir kez yeniden yükleme.
-   - Güncelleme: açılışta ve arka plandan dönüşte (15 dk) "apk" sürümündeki surum.json okunur; yeni derleme varsa kart çıkar.
-     Admin Skorbord panelindeki "zorunlu güncelleme" (skorbord/ayarlar/guncelleme/minSurum) bu derlemeden yeniyse kart kapatılamaz.
+   - Güncelleme (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"): Puan Tablosu'nun sistemi (bkz. Guncelle): tam ekran
+     kart, uygulama içinde indirme + ilerleme çubuğu, Android kurulum ekranı. Admin'in Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı
+     açıkken kart çıkar ve geçilemez; kapalıyken kart çıkmaz, sitede yeni sayfa sürümü varsa sayfa sessizce siteden açılır (siteYukle).
+   - Çıkış: Puan Tablosu'ndaki çıkış penceresi (bkz. Cikis).
    Sayfa APK'nın içindedir; site adresine giden istekler içerideki kopyayla yanıtlanır (bkz. ver). */
 public class Ana extends Activity {
     private static final String EV = "azataslan065-png.github.io", YOL = "/skorbord/";
     private static final String ADRES = "https://" + EV + YOL + "index.html";
-    private static final String SURUM = "https://github.com/azataslan065-png/skorbord/releases/download/apk/surum.json";
-    private static final String APK = "https://github.com/azataslan065-png/skorbord/releases/download/apk/Skorbord.apk";
-    private static final String AYAR = "https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/ayarlar/guncelleme.json";
     private static final int DOSYA = 7;
     private final Handler h = new Handler(Looper.getMainLooper());
     private FrameLayout kok;
@@ -71,7 +67,7 @@ public class Ana extends Activity {
     private WebChromeClient.CustomViewCallback tamEkranGeri;
     private ValueCallback<Uri[]> dosyaGeri;
     private int bosDeneme;
-    private AlertDialog kart;
+    private boolean siteden;   // sitede yeni sayfa sürümü var, zorunluluk kapalı: sayfa APK'daki kopya yerine siteden açılır
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -98,7 +94,9 @@ public class Ana extends Activity {
         w.setVerticalScrollBarEnabled(false);
         w.setHorizontalScrollBarEnabled(false);
         if (Build.VERSION.SDK_INT >= 26) w.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
-        w.addJavascriptInterface(new Kopru(), "SkorbordApp");
+        Kopru k = new Kopru();
+        w.addJavascriptInterface(k, "SkorbordApp");
+        w.addJavascriptInterface(k, "SahaApp");   // ortak.js'deki güncelleme sistemi uygulamayı bu adla tanır (kabuk, guncellemeDenetle, guncellemeAyar, siteYukle)
         w.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return disari(r.getUrl()); }
             @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) { return ver(r); }
@@ -143,7 +141,7 @@ public class Ana extends Activity {
             } catch (Exception e) { ac(Uri.parse(url)); }
         });
         w.loadUrl(ADRES);
-        guncellemeDenetle(false);
+        Guncelle.acilis(this);
     }
 
     /* Site adresindeki dosyalar için APK'daki kopyayı verir; içeride olmayan dosya ağdan istenir. */
@@ -156,7 +154,8 @@ public class Ana extends Activity {
             if (p.startsWith(YOL + "__espn/")) return espn(u, p.substring((YOL + "__espn/").length()));
             String ad = p.substring(YOL.length());
             if (ad.isEmpty()) ad = "index.html";
-            if (ad.contains("..") || ad.startsWith("/")) return null;
+            if (ad.contains("..") || ad.startsWith("/") || ad.startsWith("surum.json")) return null;
+            if (siteden && (ad.endsWith(".html") || ad.endsWith(".js"))) return null;   // sessiz güncelleme: sayfa siteden
             String tur = ad.endsWith(".html") ? "text/html" : ad.endsWith(".js") ? "text/javascript" : ad.endsWith(".png") ? "image/png"
                 : ad.endsWith(".ttf") ? "font/ttf" : ad.endsWith(".json") ? "application/json"
                 : ad.endsWith(".webmanifest") ? "application/manifest+json" : null;
@@ -232,60 +231,18 @@ public class Ana extends Activity {
     }
 
     @Override public void onBackPressed() {
+        if (Guncelle.geri(this)) return;
+        if (Cikis.acik()) { Cikis.kapat(); return; }
         if (tamEkran != null) { tamEkranKapat(); return; }
         if (w == null) { super.onBackPressed(); return; }
         w.evaluateJavascript("(function(){try{return !!(window.__appGeri&&window.__appGeri())}catch(e){return false}})()", new ValueCallback<String>() {
-            @Override public void onReceiveValue(String v) { if (!"true".equals(v)) finish(); }
+            @Override public void onReceiveValue(String v) { if (!"true".equals(v)) Cikis.goster(Ana.this); }
         });
     }
 
-    @Override protected void onResume() {
-        super.onResume();
-        if (w != null) w.onResume();
-        SharedPreferences sp = getSharedPreferences("guncelle", Context.MODE_PRIVATE);
-        if (System.currentTimeMillis() - sp.getLong("son", 0) > 15L * 60 * 1000) guncellemeDenetle(false);
-    }
+    @Override protected void onResume() { super.onResume(); if (w != null) w.onResume(); Guncelle.donus(this); }
     @Override protected void onPause() { if (w != null) w.onPause(); super.onPause(); }
-    @Override protected void onDestroy() { if (kart != null) kart.dismiss(); if (w != null) { w.destroy(); w = null; } super.onDestroy(); }
-
-    /* ── GÜNCELLEME ── surum.json: {"kod": derleme no, "ad": "1.0.N"}. Zorunluluk: skorbord/ayarlar/guncelleme {minSurum, not}. */
-    private static String oku(String adres) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(adres).openConnection();
-        c.setConnectTimeout(10000); c.setReadTimeout(15000); c.setInstanceFollowRedirects(true);
-        c.setRequestProperty("Cache-Control", "no-cache");
-        if (c.getResponseCode() >= 400) return "";
-        try (InputStream in = c.getInputStream(); ByteArrayOutputStream o = new ByteArrayOutputStream()) {
-            byte[] t = new byte[4096]; int n; while ((n = in.read(t)) > 0) o.write(t, 0, n); return o.toString("UTF-8");
-        }
-    }
-    private void guncellemeDenetle(final boolean elle) {
-        new Thread(() -> {
-            int yeni = 0, min = 0; String not = "";
-            try { org.json.JSONObject j = new org.json.JSONObject(oku(SURUM)); yeni = j.optInt("kod", 0); } catch (Exception e) { }
-            try {
-                String a = oku(AYAR);
-                if (a != null && a.trim().startsWith("{")) { org.json.JSONObject j = new org.json.JSONObject(a); min = j.optInt("minSurum", 0); not = j.optString("not", ""); }
-            } catch (Exception e) { }
-            getSharedPreferences("guncelle", Context.MODE_PRIVATE).edit().putLong("son", System.currentTimeMillis()).apply();
-            final int Y = yeni, M = min; final String N = not;
-            h.post(() -> {
-                int benim = BuildConfig.VERSION_CODE;
-                boolean zorunlu = M > benim;
-                if (Y > benim || zorunlu) kartGoster(Y, zorunlu, N);
-                else if (elle) Toast.makeText(this, "Skorbord güncel (derleme " + benim + ")", Toast.LENGTH_SHORT).show();
-            });
-        }).start();
-    }
-    private void kartGoster(int yeni, boolean zorunlu, String not) {
-        if (isFinishing() || (kart != null && kart.isShowing())) return;
-        String m = "Skorbord'un yeni sürümü hazır" + (yeni > 0 ? " (derleme " + yeni + ")" : "") + ". Yüklü olan: derleme " + BuildConfig.VERSION_CODE + "."
-            + (not != null && !not.isEmpty() ? "\n\n" + not : "") + (zorunlu ? "\n\nBu güncelleme zorunlu." : "");
-        AlertDialog.Builder b = new AlertDialog.Builder(this).setTitle("Güncelleme").setMessage(m)
-            .setPositiveButton("Güncelle", (d, i) -> { ac(Uri.parse(APK)); if (zorunlu) h.postDelayed(this::finish, 600); });
-        if (zorunlu) b.setCancelable(false).setNegativeButton("Kapat", (d, i) -> finish());
-        else b.setNegativeButton("Sonra", null);
-        kart = b.show();
-    }
+    @Override protected void onDestroy() { Guncelle.sifirla(this); if (w != null) { w.destroy(); w = null; } super.onDestroy(); }
 
     private boolean izinVar() {
         if (Build.VERSION.SDK_INT >= 33) return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
@@ -302,7 +259,10 @@ public class Ana extends Activity {
     private final class Kopru {
         @JavascriptInterface public int surumKod() { return BuildConfig.VERSION_CODE; }
         @JavascriptInterface public String surumAd() { return BuildConfig.VERSION_NAME; }
-        @JavascriptInterface public void guncellemeDenetle() { h.post(() -> Ana.this.guncellemeDenetle(true)); }
+        @JavascriptInterface public int kabuk() { return 3; }   // 3: sayfa APK'ya gömülü, güncellemeyi uygulama yapar (bkz. ortak.js apkGomulu)
+        @JavascriptInterface public void guncellemeDenetle() { h.post(() -> Guncelle.denetle(Ana.this, true)); }
+        @JavascriptInterface public void guncellemeAyar(final boolean acik) { h.post(() -> Guncelle.ayar(Ana.this, acik)); }
+        @JavascriptInterface public void siteYukle() { h.post(() -> { if (siteden || w == null) return; siteden = true; w.clearCache(false); w.reload(); }); }
         @JavascriptInterface public String izin() { return izinVar() ? "granted" : "default"; }
         @JavascriptInterface public void izinIste() {
             runOnUiThread(() -> {

@@ -1,6 +1,6 @@
 /* YEREL VERİ KATMANI (Skorbord). Arayüzün beklediği "firebase" nesnesi burada karşılanır. Lig / maç / takım verisi cihaz belleğinde
    tutulur (gerçek veri modülü gercek.js yerleştirir); yönetici ayarları Firebase'deki skorbord/ düğümünden salt okunur alınır (bkz. UZAK KÖK).
-   SAHA / Puan Tablosu verisine hiç bağlanmaz. Kullanıcının kendi ayarları (profil, favori takım vb.) cihazda saklanır (localStorage "sb_yerel"). */
+   SAHA / Skorbord verisine hiç bağlanmaz. Kullanıcının kendi ayarları (profil, favori takım vb.) cihazda saklanır (localStorage "sb_yerel"). */
 (function(){
 'use strict';
 var KOK = {}, DINLEYEN = [], SAKLA = /^(userProfiles|kullanicilar|kimlik)(\/|$)/, SAKLA_ANAHTAR = 'sb_yerel';
@@ -42,6 +42,11 @@ function oku(y){
   var l = yerelOku(y);
   if(YALNIZ_YEREL.test(y)) return l;
   var u = agacOku(UZAK, y);
+  /* (2026-11-16-E) Admin lig ayarlarını tek sezonda yapar (yayındaki sezon; yoksa Süper Lig). Skorbord'da 35 lig var: o sezonun ayarları
+     bütün liglere temel olur, ligin kendi uzak ayarı onun üstüne, ESPN verisi en üste gelir. */
+  var m = /^leagues\/([^\/]+)(\/.*)?$/.exec(y);
+  if(m){ var t = agacOku(UZAK, 'activeDisplayLeague'); t = (typeof t === 'string' && t) ? t : 'sb_tur_1';
+    if(t !== m[1]){ var ub = agacOku(UZAK, 'leagues/' + t + (m[2] || '')); if(ub !== null) u = (u === null) ? ub : birlestir(ub, u, y); } }
   return (u === null) ? l : birlestir(u, l, y);
 }
 function uzakYaz(yol, v, yama){

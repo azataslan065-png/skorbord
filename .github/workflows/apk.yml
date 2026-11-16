@@ -25,7 +25,11 @@ jobs:
         run: |
           mkdir out
           cp android/app/build/outputs/apk/release/*.apk out/Skorbord.apk
-          printf '{"kod":%s,"ad":"1.0.%s"}' "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" > out/surum.json
+          # Güncelleme bilgisi (bkz. android Guncelle): "skorbord" alanı yeni sistem, üst düzey kod eski (derleme 6-7) kabuk için.
+          BOY=$(stat -c %s out/Skorbord.apk); NOT=$(git log -1 --pretty=%s | tr -d '"\\' | cut -c1-160)
+          URL="https://github.com/${{ github.repository }}/releases/download/apk/Skorbord.apk"
+          printf '{"kod":%s,"ad":"1.0.%s","skorbord":{"kod":%s,"ad":"1.0.%s","url":"%s","boyut":%s,"tarih":%s,"not":"%s"}}' "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" "$URL" "$BOY" "$(date +%s%3N)" "$NOT" > out/surum.json
+          cat out/surum.json
           ls -la out
           gh release delete apk -y --cleanup-tag 2>/dev/null || true
           gh release create apk out/Skorbord.apk out/surum.json --title "Skorbord APK (derleme $GITHUB_RUN_NUMBER)" --notes "Telefona indirip kur; yeni sürüm eskisinin üstüne kurulur." --latest
