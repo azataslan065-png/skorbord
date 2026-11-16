@@ -198,7 +198,7 @@ function ligYukle(slug, zorla){
       var hf=haftalariBul(es, Object.keys(teams).length), matches={};
       es.forEach(function(e){ matches['m'+e.rid]=macNesnesi(e, hf[e.rid]); });
       k.veri={slug:slug, lid:String(lg.id||''), ad:LIG_AD[slug]||lg.name||slug, sezon:sezonAdi(sez)||String(yil), yil:yil,
-        logo:(lg.logos&&lg.logos[0]&&lg.logos[0].href)||'', teams:teams, matches:matches, notlar:bolgeNotlari(r[2])};
+        logo:(lg.logos&&lg.logos[0]&&lg.logos[0].href)||'', teams:teams, matches:matches, notlar:bolgeNotlari(r[2]), gruplar:gruplariAl(r[2], teams)};
       k.t=Date.now(); k.yukleniyor=null;
       gunluk('lig yüklendi', slug, Object.keys(teams).length+' takım', es.length+' maç');
       return k.veri;
@@ -230,10 +230,52 @@ function bolgeNotlari(j){
   }catch(e){ return []; }
 }
 
+/* ---------- GRUPLAR (2026-11-16, kullanıcı: "sıralama stabil görünmüyor" - UEFA Uluslar Ligi ekran görüntüsü). KÖK SEBEP: gruplu
+   turnuvalarda (Uluslar Ligi, Dünya Kupası elemeleri...) bütün gruplar tek tabloda hesaplanıyordu: 54 takım farklı maç sayılarıyla tek
+   sırada, sıra okları (▼5, ▲8) başka grupların maçlarıyla oynuyordu. Artık ESPN'in grup listesi alınır, puan durumu grup grup gösterilir
+   (üstte grup seçici); sıra, ok ve hesap yalnızca o grubun takımlarıyla yapılır. ---------- */
+function grupAdi(a){
+  a=String(a||'').trim(); var m;
+  if((m=/^League ([A-D])\s*,?\s*Group (\d+)$/i.exec(a))) return m[1].toUpperCase()+' Ligi · '+m[2]+'. Grup';
+  if((m=/^Group ([A-Z0-9]+)$/i.exec(a))) return m[1].toUpperCase()+' Grubu';
+  if((m=/^League ([A-D])$/i.exec(a))) return m[1].toUpperCase()+' Ligi';
+  return a.replace(/\bGroup\b/i,'Grup').replace(/\bLeague\b/i,'Lig');
+}
+function gruplariAl(j, teams){
+  try{
+    var ust=(j&&j.children)||[], gr=[];
+    var topla=function(c){ if(c&&c.children&&c.children.length){ c.children.forEach(topla); return; }
+      var en=(c&&c.standings&&c.standings.entries)||[], ids=[];
+      en.forEach(function(e){ var id=e&&e.team&&e.team.id; if(id&&teams['t'+id]) ids.push('t'+id); });
+      if(ids.length) gr.push({ad:grupAdi(c.name||c.abbreviation), takimlar:ids}); };
+    ust.forEach(topla);
+    return gr.length>1?gr:null;
+  }catch(e){ return null; }
+}
+var GRUP_AK='sb_grup';
+function seciliGrup(gr){ var s=''; try{ s=JSON.parse(localStorage.getItem(GRUP_AK)||'{}')[A.lig]||''; }catch(e){} return gr.some(function(g){ return g.ad===s; })?s:gr[0].ad; }
+window.__sbGrupTakim=function(teams){
+  try{ var gr=window.D&&D.sbGruplar; if(!Array.isArray(gr)||gr.length<2) return teams;
+    var g=gr.filter(function(x){ return x.ad===seciliGrup(gr); })[0]; if(!g) return teams;
+    var o={}; g.takimlar.forEach(function(id){ if(teams[id]) o[id]=teams[id]; }); return Object.keys(o).length?o:teams;
+  }catch(e){ return teams; }
+};
+window.__sbGrupSecici=function(){
+  try{ var gr=window.D&&D.sbGruplar; if(!Array.isArray(gr)||gr.length<2) return '';
+    var s=seciliGrup(gr);
+    return '<div class="sb-grup-sec" style="display:flex;gap:.35rem;overflow-x:auto;padding:.1rem 0 .6rem;touch-action:pan-x;scrollbar-width:none">'+gr.map(function(g){ var a=g.ad===s;
+      return '<button type="button" onclick="Gercek.grupSec(\''+esc(g.ad).replace(/'/g,"\\'")+'\')" style="flex:0 0 auto;padding:.38rem .7rem;border-radius:999px;font:inherit;font-size:.68rem;font-weight:700;cursor:pointer;border:1.5px solid '+(a?'var(--ac)':'var(--br)')+';background:'+(a?'var(--ac)':'var(--s2)')+';color:'+(a?'#fff':'var(--tx)')+'">'+esc(g.ad)+'</button>'; }).join('')+'</div>';
+  }catch(e){ return ''; }
+};
+function grupSec(ad){ try{ var o=JSON.parse(localStorage.getItem(GRUP_AK)||'{}'); o[A.lig]=ad; localStorage.setItem(GRUP_AK, JSON.stringify(o)); }catch(e){} try{ renderStandings(); var b=document.querySelector('.sb-grup-sec button[style*="var(--ac)"]'); if(b&&b.scrollIntoView) b.scrollIntoView({inline:'center',block:'nearest'}); }catch(e){} }
+/* Sıra numarası iki basamakta kesiliyordu (20 → "2(") ve takım adı uzunluğuna göre farklı boyda yazılıyordu: sabit genişlik ve tek boy. */
+(function(){ try{ var st=document.createElement('style'); st.textContent='#pg-standings .st-row .rank-num{width:auto!important;flex:0 0 auto!important;min-width:2.2ch!important;overflow:visible!important;font-variant-numeric:tabular-nums;letter-spacing:-.03em}'
+  +'#pg-standings .st-row .team-name-cell{font-size:.7rem!important}#pg-standings .st-row .t-logo-sm{object-fit:contain}.sb-grup-sec::-webkit-scrollbar{display:none}'; (document.head||document.documentElement).appendChild(st); }catch(e){} })();
+
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
   return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||null, teams:v.teams, matches:v.matches,
-    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGercek:{slug:v.slug, t:Date.now()}};
+    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbGercek:{slug:v.slug, t:Date.now()}};
 }
 function agacaYaz(v){
   var id=ligKimlik(v.slug), eski=YerelVT.ham('leagues/'+id)||{}, b=ligBelgesi(v);
@@ -591,6 +633,6 @@ function baslat(){
   bugunDongu();
 }
 
-window.Gercek={ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
+window.Gercek={grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
 baslat();
 })();

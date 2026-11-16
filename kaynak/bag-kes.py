@@ -62,6 +62,20 @@ isle('index.html', [('geri tuşu', degis("if(window.SahaApp)return;   // (2026-1
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-16-B'
+SB_BUILD = '2026-11-16-C'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
+
+# Gruplu turnuvalar: puan durumu seçili grubun takımlarıyla hesaplanır, üstte grup seçici (bkz. gercek.js GRUPLAR).
+isle('index.html', [
+  ('grup takımları', degis("""function renderStandings(){
+  const el=document.getElementById('pg-standings');
+  const teams=D.teams||{},matches=getEffectiveMatches();""", """function renderStandings(){
+  const el=document.getElementById('pg-standings');
+  const teams=(window.__sbGrupTakim?window.__sbGrupTakim(D.teams||{}):(D.teams||{})),matches=getEffectiveMatches();""")),
+  ('grup seçici', degis("""  let html=sponsorBannerHtml('standings')+nextMatchCountdownHtml()+onThisDayHtml();
+
+  // Live card""", """  let html=sponsorBannerHtml('standings')+nextMatchCountdownHtml()+onThisDayHtml()+(window.__sbGrupSecici?window.__sbGrupSecici():'');
+
+  // Live card""")),
+])
