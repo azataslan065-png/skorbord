@@ -14,7 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node .github/arac/kaynak2.js > rapor2.txt 2>&1 || true
-      - name: Rapor
-        run: |
-          git fetch -q origin rapor && git checkout -q -B rapor origin/rapor && cp -f rapor2.txt . 2>/dev/null; git config user.name github-actions && git config user.email actions@github.com
-          git add rapor2.txt && git commit -qm "kaynak2" && git push -q origin rapor
+      - run: cat rapor2.txt
