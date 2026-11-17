@@ -40,6 +40,8 @@ const parca = (a, n) => { const o = []; for(let i = 0; i < a.length; i += n) o.p
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i').replace(/ø/g, 'o').replace(/ß/g, 'ss').replace(/æ/g, 'ae').replace(/ł/g, 'l').replace(/đ/g, 'd').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const YAS_GEC = /\b(u ?1[5-9]|u ?2[0-3]|youth|academy|akademi|reserves?|women|womens|ladies|kadin|femenino|feminin|frauen|futsal|basketball|volleyball|beach)\b/i;
 
+let TR_AD = {};
+function trAdOku(){ try{ const s = fs.readFileSync(path.join(KOK, 'gercek.js'), 'utf8'); const m = /var TR_AD=\{([\s\S]*?)\n\};/.exec(s); if(m) TR_AD = Function('return {' + m[1] + '}')(); }catch(e){} }
 function ligleriOku(){
   const s = fs.readFileSync(path.join(KOK, 'gercek.js'), 'utf8'); const m = /var LIGLER=\[([\s\S]*?)\n\];/.exec(s);
   return [...m[1].matchAll(/\['([^']+)','([^']+)','([^']+)'(?:,'([^']+)')?\]/g)].map(x => ({ slug: x[1], ad: x[2], obek: x[3], tsdb: x[4] || '' }));
@@ -91,18 +93,28 @@ async function tsdbSezon(id, s){
     const j = await tsdb('eventsround.php?id=' + id + '&r=' + r + '&s=' + s); const e = (j && j.events) || [];
     if(!e.length){ if(gor && ++bos >= 2) break; if(!gor && r >= 3) break; continue; }
     gor = true; bos = 0;
-    e.forEach(x => mac.push({ id: x.idEvent, r: +x.intRound || r, z: x.strTimestamp ? x.strTimestamp + (/Z|[+-]\d\d:?\d\d$/.test(x.strTimestamp) ? '' : 'Z') : (x.dateEvent ? x.dateEvent + 'T' + (x.strTime || '00:00:00') + 'Z' : ''),
-      ev: x.idHomeTeam, dep: x.idAwayTeam, evAd: x.strHomeTeam, depAd: x.strAwayTeam, evLogo: x.strHomeTeamBadge || '', depLogo: x.strAwayTeamBadge || '',
-      evG: x.intHomeScore === null || x.intHomeScore === '' ? null : +x.intHomeScore, depG: x.intAwayScore === null || x.intAwayScore === '' ? null : +x.intAwayScore,
-      d: x.strStatus || '', st: x.strVenue || '' }));
+    e.forEach(x => mac.push(tsdbMac(x, r)));
   }
   return mac;
 }
-function tsdbSezonAdi(s){ return String(s || ''); }
+function tsdbMac(x, r){
+  return { id: x.idEvent, r: +x.intRound || r, z: x.strTimestamp ? x.strTimestamp + (/Z|[+-]\d\d:?\d\d$/.test(x.strTimestamp) ? '' : 'Z') : (x.dateEvent ? x.dateEvent + 'T' + (x.strTime || '00:00:00') + 'Z' : ''),
+    ev: x.idHomeTeam, dep: x.idAwayTeam, evAd: x.strHomeTeam, depAd: x.strAwayTeam, evLogo: x.strHomeTeamBadge || '', depLogo: x.strAwayTeamBadge || '',
+    evG: x.intHomeScore === null || x.intHomeScore === '' || x.intHomeScore === undefined ? null : +x.intHomeScore, depG: x.intAwayScore === null || x.intAwayScore === '' || x.intAwayScore === undefined ? null : +x.intAwayScore,
+    d: x.strStatus || '', st: x.strVenue || '' };
+}
 async function tsdbLig(L, eski){
   const lj = await tsdb('lookupleague.php?id=' + L.tsdb); const lig = (lj && lj.leagues && lj.leagues[0]) || {};
   const s = lig.strCurrentSeason || ((eski && eski.sezonAdi) || '');
-  const mac = await tsdbSezon(L.tsdb, s);
+  let mac;
+  if(HIZLI && eski && eski.mac && eski.mac.length && eski.sezonAdi === s){
+    // 30 dakikalık güncelleme: yalnızca bitmemiş ve şu ana yakın (dün-yarın) maçların turları yeniden istenir
+    const simdi = Date.now(), turlar = new Set();
+    eski.mac.forEach(m => { const z = Date.parse(m.z); if(!/^ft$|finish|aet|pen/i.test(m.d || '') && z > simdi - 864e5 && z < simdi + 2 * 864e5) turlar.add(m.r); });
+    mac = eski.mac.slice();
+    for(const r of turlar){ const j = await tsdb('eventsround.php?id=' + L.tsdb + '&r=' + r + '&s=' + s); const e = (j && j.events) || [];
+      e.forEach(x => { const i = mac.findIndex(m => m.id === x.idEvent); const yeni = tsdbMac(x, r); if(i >= 0) mac[i] = Object.assign({}, mac[i], yeni, { evLogo: mac[i].evLogo || yeni.evLogo, depLogo: mac[i].depLogo || yeni.depLogo }); else mac.push(yeni); }); }
+  } else mac = await tsdbSezon(L.tsdb, s);
   const takim = {};
   mac.forEach(m => { [[m.ev, m.evAd, m.evLogo], [m.dep, m.depAd, m.depLogo]].forEach(([id, ad, logo]) => { if(!takim[id]) takim[id] = { ad, kisa: ad, yer: '', logo: logo || '' }; else if(!takim[id].logo && logo) takim[id].logo = logo; }); });
   // Rozeti olmayan takımlar için bir kez takım kaydı (eski dosyadan gelir)
@@ -145,9 +157,13 @@ async function eslestir(takim, milli, eski){
   for(const id of bekleyen){
     const t = takim[id], adlar = [];
     if(milli){ adlar.push([t.ad + ' national football team', 'en'], [t.ad + ' milli futbol takımı', 'tr']); }
-    else { adlar.push([t.ad, 'en'], [t.ad, 'tr']); if(t.kisa && t.kisa !== t.ad) adlar.push([t.kisa, 'en']); if(t.yer && t.yer !== t.ad) adlar.push([t.yer, 'en']); adlar.push([t.ad + ' FC', 'en']); }
+    else { const tr = TR_AD[t.ad] || TR_AD[t.kisa];
+      if(tr) adlar.push([tr, 'tr']);
+      adlar.push([t.ad, 'en'], [t.ad, 'tr']); if(t.kisa && t.kisa !== t.ad) adlar.push([t.kisa, 'en']); if(t.yer && t.yer !== t.ad) adlar.push([t.yer, 'en']);
+      const kok = t.ad.replace(/\s+(BB|FK|SK|FC|AS|JK|S\.K\.|F\.K\.)$/i, '');
+      [kok + ' FK', kok + ' SK', kok + 'spor', kok + ' FC'].forEach(x => adlar.push([x, 'tr'])); }
     const aday = []; const gor = {};
-    for(const [a, d] of adlar){ (await wdAra(a, d)).forEach(x => { if(!gor[x.id] && !YAS_GEC.test(x.et)){ gor[x.id] = 1; aday.push(x.id); } }); if(aday.length >= 12) break; await bek(150); }
+    for(const [a, d] of adlar){ (await wdAra(a, d)).forEach(x => { if(!gor[x.id] && !YAS_GEC.test(x.et)){ gor[x.id] = 1; aday.push(x.id); } }); if(aday.length >= 20) break; await bek(150); }
     if(!aday.length){ sonuc[id] = null; continue; }
     // Önce futbol kulübü / milli futbol takımı; yoksa (çok branşlı kulüplerde) spor kulübü
     const tur = milli ? 'wd:Q6979593' : 'wd:Q476028 wd:Q847017';
@@ -308,6 +324,17 @@ async function ligIsle(L){
     }
     if(L.tsdb && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
   } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
+  // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
+  if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {
+    const C = Object.keys(temel.gecmis).map(Number).filter(y => (temel.gecmis[y].satir || []).some(r => r.t === id && r.s === 1 && !r.g));
+    if(!C.length || L.obek === 'Milli' || /uefa|conmebol|caf|afc|concacaf|fifa/.test(L.slug)) return;
+    const K = takim[id].kupa = takim[id].kupa || [];
+    let hedef = null, en = 0; K.forEach(k => { const o = (k.y || []).filter(y => C.includes(y)).length; if(o > en){ en = o; hedef = k; } });
+    if(!hedef) hedef = K.find(k => norm(k.ad) === norm(L.ad)) || null;
+    if(!hedef){ hedef = { ad: L.ad, sz: [], y: [] }; K.push(hedef); }
+    C.forEach(y => { if(!(hedef.y || []).includes(y)){ (hedef.y = hedef.y || []).push(y); hedef.sz.push(temel.gecmis[y].ad + ' ' + hedef.ad); } });
+    hedef.sz.sort(); K.sort((a, b) => b.sz.length - a.sz.length);
+  });
   const cikti = { lig: L.slug, ad: L.ad, kaynak: temel.kaynak || 'ESPN', yil: temel.yil, sezonAdi: temel.sezonAdi, takim, gecmis: temel.gecmis, foto, fotoT };
   if(temel.mac) cikti.mac = temel.mac;
   if(kadroDosya){ cikti.kadro = kadroDosya; cikti.kadroT = kadroT; }
@@ -321,7 +348,7 @@ async function ligIsle(L){
 }
 
 (async () => {
-  fs.mkdirSync(VERI, { recursive: true });
+  fs.mkdirSync(VERI, { recursive: true }); trAdOku();
   const ligler = ligleriOku().filter(l => !SECILI.length || SECILI.includes(l.slug));
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ t: Date.now(), ligler: ligler.map(l => l.slug) }));
