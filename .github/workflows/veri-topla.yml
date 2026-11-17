@@ -1,0 +1,30 @@
+# Skorbord verisi: kulüp bilgisi, kupalar, geçmiş sezonlar, oyuncu fotoğrafları (günde bir), ESPN'de olmayan liglerin maçları (30 dakikada bir).
+# Sonuç veri/<lig>.json olarak depoya yazılır; uygulama bu dosyaları okur. Ayrıntı: .github/arac/veri-topla.js
+name: Veri topla
+on:
+  schedule:
+    - cron: '23 2 * * *'        # her gün 05:23 (İstanbul): bütün veri
+    - cron: '7,37 * * * *'      # her 30 dk: TheSportsDB liglerinin maçları (--hizli)
+  workflow_dispatch:
+    inputs:
+      ligler: { description: 'Boşluklu lig listesi (boş = hepsi)', required: false, default: '' }
+      hizli: { description: 'Yalnızca TheSportsDB maçları', required: false, default: 'hayir' }
+permissions:
+  contents: write
+concurrency: { group: veri-topla, cancel-in-progress: false }
+jobs:
+  topla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Topla
+        run: |
+          H=""; if [ "${{ github.event.schedule }}" = "7,37 * * * *" ] || [ "${{ inputs.hizli }}" = "evet" ]; then H="--hizli"; fi
+          node .github/arac/veri-topla.js $H ${{ inputs.ligler }}
+      - name: Kaydet
+        run: |
+          git config user.name github-actions && git config user.email actions@github.com
+          git add veri && (git diff --cached --quiet || (git commit -qm "Veri $(date -u +%FT%TZ)" && for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done))

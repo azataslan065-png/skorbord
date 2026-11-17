@@ -14,17 +14,36 @@ var HIZLI=5000, ORTA=60000, SEZON_TAZE=6*3600*1000;
 var UZAK_URL='https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/ayarlar.json', U={};
 function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call(arguments))); }catch(e){} }
 
-/* ---------- ligler: [ESPN kısa adı, Türkçe ad, ülke/öbek] ; sıra = seçicideki sıra ---------- */
+/* ---------- ligler: [kısa ad, Türkçe ad, ülke/öbek, (TheSportsDB lig no)] ; sıra = seçicideki sıra ----------
+   (2026-11-18, kullanıcı: "yüklenmeyen ligleri kaldırmak değil, düzeltip ekstra ligler eklemek"). Teşhis (.github/arac/lig-dene.js):
+   · TFF 1. Lig ve İsviçre Süper Lig ESPN'de yok (ESPN'in lig listesinde değiller, eski sezonda kalmışlar) → TheSportsDB'den (4. alan).
+   · Suudi Arabistan'ın ESPN adı "ksa.1" (eskisi "sau.1" hata veriyordu).
+   · Ek ligler: ESPN'in futbol listesindeki diğer ulusal ligler ve büyük turnuvalar; TFF 2. Lig TheSportsDB'den. */
 var LIGLER=[
- ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye'],
- ['uefa.champions','UEFA Şampiyonlar Ligi','Avrupa'],['uefa.europa','UEFA Avrupa Ligi','Avrupa'],['uefa.europa.conf','UEFA Konferans Ligi','Avrupa'],
- ['eng.1','İngiltere Premier Lig','İngiltere'],['esp.1','İspanya La Liga','İspanya'],['ita.1','İtalya Serie A','İtalya'],['ger.1','Almanya Bundesliga','Almanya'],['fra.1','Fransa Ligue 1','Fransa'],
- ['ned.1','Hollanda Eredivisie','Hollanda'],['por.1','Portekiz Primeira Liga','Portekiz'],['bel.1','Belçika Pro Lig','Belçika'],['sco.1','İskoçya Premiership','İskoçya'],
- ['gre.1','Yunanistan Süper Lig','Yunanistan'],['rus.1','Rusya Premier Lig','Rusya'],['aut.1','Avusturya Bundesliga','Avusturya'],['sui.1','İsviçre Süper Lig','İsviçre'],
+ ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],
+ ['uefa.champions','UEFA Şampiyonlar Ligi','Avrupa'],['uefa.europa','UEFA Avrupa Ligi','Avrupa'],['uefa.europa.conf','UEFA Konferans Ligi','Avrupa'],['uefa.super_cup','UEFA Süper Kupa','Avrupa'],
+ ['eng.1','İngiltere Premier Lig','İngiltere'],['eng.2','İngiltere Championship','İngiltere'],['eng.3','İngiltere League One','İngiltere'],['eng.4','İngiltere League Two','İngiltere'],['eng.5','İngiltere National League','İngiltere'],
+ ['esp.1','İspanya La Liga','İspanya'],['esp.2','İspanya La Liga 2','İspanya'],
+ ['ita.1','İtalya Serie A','İtalya'],['ita.2','İtalya Serie B','İtalya'],
+ ['ger.1','Almanya Bundesliga','Almanya'],['ger.2','Almanya 2. Bundesliga','Almanya'],
+ ['fra.1','Fransa Ligue 1','Fransa'],['fra.2','Fransa Ligue 2','Fransa'],
+ ['ned.1','Hollanda Eredivisie','Hollanda'],['ned.2','Hollanda Eerste Divisie','Hollanda'],
+ ['por.1','Portekiz Primeira Liga','Portekiz'],['bel.1','Belçika Pro Lig','Belçika'],
+ ['sco.1','İskoçya Premiership','İskoçya'],['sco.2','İskoçya Championship','İskoçya'],
+ ['gre.1','Yunanistan Süper Lig','Yunanistan'],['rus.1','Rusya Premier Lig','Rusya'],['aut.1','Avusturya Bundesliga','Avusturya'],['sui.1','İsviçre Süper Lig','İsviçre','4675'],
  ['den.1','Danimarka Superliga','Danimarka'],['nor.1','Norveç Eliteserien','Norveç'],['swe.1','İsveç Allsvenskan','İsveç'],
- ['eng.2','İngiltere Championship','İngiltere'],['esp.2','İspanya La Liga 2','İspanya'],['ita.2','İtalya Serie B','İtalya'],['ger.2','Almanya 2. Bundesliga','Almanya'],['fra.2','Fransa Ligue 2','Fransa'],
- ['sau.1','Suudi Arabistan Pro Lig','Suudi Arabistan'],['usa.1','ABD MLS','ABD'],['bra.1','Brezilya Serie A','Brezilya'],['arg.1','Arjantin Primera','Arjantin'],['mex.1','Meksika Liga MX','Meksika'],
- ['jpn.1','Japonya J1 Lig','Japonya'],['aus.1','Avustralya A-League','Avustralya'],['uefa.nations','UEFA Uluslar Ligi','Milli'],['fifa.worldq.uefa','Dünya Kupası Elemeleri (Avrupa)','Milli']
+ ['ksa.1','Suudi Arabistan Pro Lig','Asya'],['jpn.1','Japonya J1 Lig','Asya'],['chn.1','Çin Süper Lig','Asya'],['ind.1','Hindistan Süper Lig','Asya'],['aus.1','Avustralya A-League','Asya'],
+ ['usa.1','ABD MLS','Amerika'],['mex.1','Meksika Liga MX','Amerika'],['mex.2','Meksika Liga de Expansión','Amerika'],
+ ['bra.1','Brezilya Serie A','Amerika'],['bra.2','Brezilya Serie B','Amerika'],['arg.1','Arjantin Primera','Amerika'],['arg.2','Arjantin Primera Nacional','Amerika'],
+ ['col.1','Kolombiya Primera A','Amerika'],['chi.1','Şili Primera División','Amerika'],['uru.1','Uruguay Primera División','Amerika'],['ecu.1','Ekvador LigaPro','Amerika'],
+ ['per.1','Peru Liga 1','Amerika'],['par.1','Paraguay Primera División','Amerika'],['bol.1','Bolivya Primera División','Amerika'],['crc.1','Kosta Rika Primera División','Amerika'],
+ ['rsa.1','Güney Afrika Premiership','Afrika'],
+ ['conmebol.libertadores','Copa Libertadores','Kıtalar arası'],['conmebol.sudamericana','Copa Sudamericana','Kıtalar arası'],['caf.champions','CAF Şampiyonlar Ligi','Kıtalar arası'],
+ ['afc.champions','AFC Şampiyonlar Ligi Elite','Kıtalar arası'],['concacaf.champions','CONCACAF Şampiyonlar Kupası','Kıtalar arası'],['fifa.cwc','FIFA Kulüpler Dünya Kupası','Kıtalar arası'],
+ ['fifa.world','FIFA Dünya Kupası','Milli'],['uefa.euro','UEFA Avrupa Şampiyonası','Milli'],['uefa.nations','UEFA Uluslar Ligi','Milli'],['uefa.euroq','Avrupa Şampiyonası Elemeleri','Milli'],
+ ['fifa.worldq.uefa','Dünya Kupası Elemeleri (Avrupa)','Milli'],['fifa.worldq.conmebol','Dünya Kupası Elemeleri (Güney Amerika)','Milli'],['fifa.worldq.afc','Dünya Kupası Elemeleri (Asya)','Milli'],
+ ['fifa.worldq.caf','Dünya Kupası Elemeleri (Afrika)','Milli'],['fifa.worldq.concacaf','Dünya Kupası Elemeleri (CONCACAF)','Milli'],
+ ['conmebol.america','Copa América','Milli'],['caf.nations','Afrika Uluslar Kupası','Milli'],['afc.asian.cup','AFC Asya Kupası','Milli'],['concacaf.gold','CONCACAF Altın Kupa','Milli'],['concacaf.nations.league','CONCACAF Uluslar Ligi','Milli']
 ];
 var LIG_AD={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; });
 /* Yönetici "görünen ligleri" seçtiyse yalnız onlar listelenir; seçmediyse hepsi. */
