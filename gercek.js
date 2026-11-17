@@ -45,7 +45,42 @@ var LIGLER=[
  ['fifa.worldq.caf','Dünya Kupası Elemeleri (Afrika)','Milli'],['fifa.worldq.concacaf','Dünya Kupası Elemeleri (CONCACAF)','Milli'],
  ['conmebol.america','Copa América','Milli'],['caf.nations','Afrika Uluslar Kupası','Milli'],['afc.asian.cup','AFC Asya Kupası','Milli'],['concacaf.gold','CONCACAF Altın Kupa','Milli'],['concacaf.nations.league','CONCACAF Uluslar Ligi','Milli']
 ];
-var LIG_AD={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; });
+var LIG_AD={}, TSDB_LIG={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; if(l[3]) TSDB_LIG[l[0]]=l[3]; });
+
+/* ---------- VERİ DOSYASI (2026-11-18): veri/<lig>.json - GitHub'daki günlük görevin (.github/arac/veri-topla.js) ürettiği ek veri:
+   kulüp kuruluş tarihi, stadyum, kupalar (Wikidata, kuruluştan bu yana), geçmiş sezonlar (ESPN arşivi), oyuncu fotoğrafları (Wikimedia
+   Commons, yazar + lisans), ESPN'de olmayan liglerin maçları (TheSportsDB). Uygulama yalnızca bu dosyayı okur. ---------- */
+var VD={};
+function veriAl(slug, taze){
+  var c=VD[slug]||(VD[slug]={t:0});
+  if(c.p && !taze) return c.p;
+  if(c.j && !taze && Date.now()-c.t<10*60000) return Promise.resolve(c.j);
+  c.p=fetch(new URL('veri/'+slug+'.json?t='+Math.floor(Date.now()/60000), location.href).href, {cache:'no-store'})
+    .then(function(r){ return r.ok?r.json():null; }).then(function(j){ c.p=null; if(j){ c.j=j; c.t=Date.now(); } return c.j||null; }, function(){ c.p=null; return c.j||null; });
+  return c.p;
+}
+window.__sbVeri=function(){ var c=VD[A.lig]; return c&&c.j||null; };
+/* TheSportsDB maçı -> ESPN ara biçimi (esAl çıktısıyla aynı alanlar) */
+function tsdbE(m){
+  var bitti=/finish|^ft$|aet|pen|after/i.test(m.d||'') || (m.evG!=null && Date.now()-Date.parse(m.z)>3*3600e3);
+  var ert=/postp|cancel|abandon|susp/i.test(m.d||'');
+  var canli=!bitti && !ert && m.evG!=null;
+  var taraf=function(id, ad, logo, g){ return {id:String(id), name:trAd(ad), full:trAd(ad), logo:logo||'', score:g==null?null:String(g), color:'', alt:''}; };
+  return {rid:'ts'+m.id, lid:'', date:new Date(m.z), state:bitti?'post':(canli?'in':'pre'), sname:ert?(/cancel/i.test(m.d)?'STATUS_CANCELED':'STATUS_POSTPONED'):'', clock:'', period:0, sezon:0, kova:'',
+    h:taraf(m.ev, m.evAd, m.evLogo, m.evG), a:taraf(m.dep, m.depAd, m.depLogo, m.depG), evs:[], stad:m.st||'', not:'', tsdb:true, hafta:m.r};
+}
+function tsdbYukle(slug, k){
+  return veriAl(slug, true).then(function(j){
+    if(!j || !(j.mac||[]).length) throw new Error('Bu lig için maç bulunamadı (veri dosyası henüz hazır değil)');
+    var teams={}, matches={};
+    Object.keys(j.takim||{}).forEach(function(id){ var t=j.takim[id]; teams['t'+id]={id:'t'+id, name:trAd(t.ad), shortName:trAd(t.kisa||t.ad), logo:t.logo||'', color:'', tsdb:id}; });
+    j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; matches['m'+e.rid]=o; });
+    k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:null, tsdb:true};
+    k.t=Date.now(); k.yukleniyor=null;
+    gunluk('lig yüklendi (TheSportsDB)', slug, Object.keys(teams).length+' takım', j.mac.length+' maç');
+    return k.veri;
+  });
+}
 /* Yönetici "görünen ligleri" seçtiyse yalnız onlar listelenir; seçmediyse hepsi. */
 function aktifLigler(){ var a=U&&U.ligler; if(!a||typeof a!=='object') return LIGLER; var f=LIGLER.filter(function(l){ return a[l[0].replace(/\./g,'_')]; }); return f.length?f:LIGLER; }
 function ligAktifMi(slug){ return aktifLigler().some(function(l){ return l[0]===slug; }); }
@@ -190,6 +225,8 @@ function ligYukle(slug, zorla){
   var k=L[slug]||(L[slug]={});
   if(k.yukleniyor) return k.yukleniyor;
   if(k.veri && !zorla && Date.now()-k.t<SEZON_TAZE) return Promise.resolve(k.veri);
+  veriAl(slug);   // ek veri (kupa, kuruluş, fotoğraf) arka planda
+  if(TSDB_LIG[slug]){ k.yukleniyor=tsdbYukle(slug, k).catch(function(e){ k.yukleniyor=null; throw e; }); return k.yukleniyor; }
   k.yukleniyor=Promise.all([
     getJSON(SITE+slug+'/scoreboard'),
     getJSON(SITE+slug+'/teams?limit=200').catch(function(){ return null; }),
@@ -290,6 +327,73 @@ function grupSec(ad){ try{ var o=JSON.parse(localStorage.getItem(GRUP_AK)||'{}')
 /* Sıra numarası iki basamakta kesiliyordu (20 → "2(") ve takım adı uzunluğuna göre farklı boyda yazılıyordu: sabit genişlik ve tek boy. */
 (function(){ try{ var st=document.createElement('style'); st.textContent='#pg-standings .st-row .rank-num{width:auto!important;flex:0 0 auto!important;min-width:2.2ch!important;overflow:visible!important;font-variant-numeric:tabular-nums;letter-spacing:-.03em}'
   +'#pg-standings .st-row .team-name-cell{font-size:.7rem!important}#pg-standings .st-row .t-logo-sm{object-fit:contain}.sb-grup-sec::-webkit-scrollbar{display:none}'; (document.head||document.documentElement).appendChild(st); }catch(e){} })();
+
+
+/* ---------- KUPA DOLABI (2026-11-18, kullanıcı: "1903'te kurulan bu kulüp ve diğerleri kupa dolapları boş"). KÖK SEBEP: Skorbord'un
+   kupa dolabı uygulamada kayıtlı geçmiş sezonlardan hesaplanır; Skorbord'da yalnızca bu sezon vardı. Artık veri dosyasından:
+   · Kuruluş (gün ay yıl) ve stadyum: Wikidata + Vikipedi bilgi kutusu.
+   · Kupalar: Wikidata'da kulübün kazandığı bütün turnuva sezonları - kuruluşundan bu yana, turnuva turnuva.
+   · 2./3., en iyi sıra, sezonlar: ESPN puan durumu arşivi (arşivin başladığı yıldan beri; başlangıç yılı yazılır) + bu sezonun canlı sırası. ---------- */
+var AYLAR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+function kurulusYaz(k){ if(!k||!k.y) return ''; return (k.g?k.g+' ':'')+(k.a?AYLAR[k.a-1]+' ':'')+k.y; }
+function takimVeri(tid){
+  var j=window.__sbVeri(); if(!j) return null; var t=window.D&&D.teams&&D.teams[tid]; if(!t) return null;
+  var k=t.espn||t.tsdb; if(!k) return null;
+  var v=JSON.parse(JSON.stringify((j.takim||{})[k]||{}));
+  // Admin düzeltmesi (Admin › Skorbord kaynağı › Kulüp bilgisi düzeltme): skorbord/duzeltme/<lig>/<takım>
+  try{ var d=YerelVT.uzak('duzeltme/'+A.lig.replace(/\./g,'_')+'/'+k);
+    if(d){ if(d.kur&&d.kur.y) v.kur=d.kur; if(d.stad) v.stad=d.stad; if(d.kap) v.kap=d.kap;
+      (d.kupaEk||[]).forEach(function(x){ if(!x||!x.ad) return; var var_=(v.kupa=v.kupa||[]).filter(function(y){ return y.ad===x.ad; })[0];
+        if(var_){ (x.sz||[]).forEach(function(z){ if(var_.sz.indexOf(z)<0) var_.sz.push(z); }); var_.sz.sort(); } else v.kupa.push({ad:x.ad, sz:(x.sz||[]).slice().sort()}); });
+      if(v.kupa) v.kupa.sort(function(a,b){ return b.sz.length-a.sz.length; }); } }catch(_){}
+  return {j:j, v:v, k:String(k)};
+}
+window.__sbKupaHtml=function(tid){
+  try{
+    var j=window.__sbVeri();
+    if(!j){ var yer='sbKupa_'+tid; veriAl(A.lig).then(function(x){ var el=document.getElementById(yer); if(el&&x) el.outerHTML=window.__sbKupaHtml(tid); }); return '<div id="'+yer+'" class="empty" style="padding:1.2rem;text-align:center">Kupa dolabı hazırlanıyor…</div>'; }
+    var tv=takimVeri(tid), v=(tv&&tv.v)||{}, key=tv?tv.k:'';
+    var e=esc, md=function(n){ return n+'.'; };
+    var h='';
+    // kulüp kimliği
+    var kur=kurulusYaz(v.kur), bilgi=[];
+    if(kur) bilgi.push('<span><small>Kuruluş</small><b>'+e(kur)+'</b></span>');
+    if(v.stad) bilgi.push('<span><small>Stadyum</small><b>'+e(v.stad)+(v.kap?' · '+v.kap.toLocaleString('tr-TR'):'')+'</b></span>');
+    if(bilgi.length) h+='<div class="sb-kulup">'+bilgi.join('')+'</div>';
+    // raf: turnuva turnuva kupalar
+    var kupa=(v.kupa||[]).filter(function(x){ return x.sz&&x.sz.length; }), topKupa=kupa.reduce(function(a,x){ return a+x.sz.length; },0);
+    h+='<div class="ptk-raf">'+(kupa.length?kupa.map(function(x){
+        return '<details class="sb-kupa"><summary><span class="sb-kupa-n">'+x.sz.length+'</span><b>'+e(x.ad)+'</b></summary><div class="sb-kupa-sz">'+x.sz.slice().reverse().map(e).join(' · ')+'</div></details>';
+      }).join(''):'<div style="opacity:.8;font-size:.72rem;padding:.6rem;text-align:center;width:100%;color:#fff">'+(v.wd?'Kayıtlı kupa bulunamadı.':'Bu kulübün kupa bilgisi bulunamadı.')+'</div>')+'</div>';
+    // arşiv: bu ligdeki geçmiş sezonlar + bu sezon
+    var G=j.gecmis||{}, yillar=Object.keys(G).map(Number).sort(function(a,b){ return a-b; }), sz=[];
+    yillar.forEach(function(y){ var r=(G[y].satir||[]).filter(function(x){ return x.t===key; })[0]; if(r) sz.push({ad:G[y].ad, y:y, s:r.s, P:r.P, O:r.O, G:r.G, B:r.B, M:r.M, AG:r.AG, YG:r.YG, n:(G[y].satir||[]).length, grup:r.g, bitti:true}); });
+    try{ var st=calcS(D.teams||{}, D.matches||{}), i=st.findIndex(function(x){ return x.id===tid; }); if(i>=0){ var x=st[i]; var bitti=Object.keys(D.matches||{}).length&&Object.keys(D.matches).every(function(k){ return D.matches[k].played; });
+      sz.push({ad:j.sezonAdi||D.season||'Bu sezon', y:9999, s:i+1, P:x.P, O:x.O, G:x.G, B:x.B, M:x.M, AG:x.AG, YG:x.YG, n:st.length, bitti:bitti, simdi:true}); } }catch(_){}
+    var biten=sz.filter(function(z){ return z.bitti; }), say=function(n){ return biten.filter(function(z){ return z.s===n&&!z.grup; }).length; };
+    var top=sz.reduce(function(a,z){ a.O+=z.O; a.G+=z.G; a.B+=z.B; a.M+=z.M; a.AG+=z.AG; a.YG+=z.YG; return a; },{O:0,G:0,B:0,M:0,AG:0,YG:0});
+    var enIyi=sz.filter(function(z){ return !z.grup; }).reduce(function(a,z){ return a==null||z.s<a?z.s:a; },null), rekor=sz.reduce(function(a,z){ return a==null||z.P>a.P?z:a; },null);
+    var ilkYil=yillar.length?(G[yillar[0]].ad):'';
+    h+='<div class="ptk-ist"><span><b>'+topKupa+'</b>Kupa</span><span><b>'+say(1)+'</b>Lig 1.liği'+(ilkYil?'*':'')+'</span><span><b>'+say(2)+' / '+say(3)+'</b>2. / 3.'+(ilkYil?'*':'')+'</span>'
+      +'<span><b>'+(enIyi?md(enIyi):'—')+'</b>En iyi sıra'+(ilkYil?'*':'')+'</span><span><b>'+sz.length+'</b>Sezon'+(ilkYil?'*':'')+'</span><span><b>'+top.O+'</b>Maç'+(ilkYil?'*':'')+'</span>'
+      +'<span><b>'+top.G+'-'+top.B+'-'+top.M+'</b>G-B-M'+(ilkYil?'*':'')+'</span><span><b>'+top.AG+':'+top.YG+'</b>Gol'+(ilkYil?'*':'')+'</span><span><b>'+(rekor?rekor.P:'—')+'</b>Sezon rekor puan'+(ilkYil?'*':'')+'</span></div>';
+    if(ilkYil) h+='<div style="font-size:.6rem;color:var(--mu);margin:.2rem 0 .5rem">* Bu ligdeki sezonlar, '+e(ilkYil)+' sezonundan bu yana ('+e(j.kaynak==='TheSportsDB'?'TheSportsDB':'ESPN')+' arşivi). Kupa sayısı kuruluştan bu yana bütün turnuvaları kapsar.</div>';
+    h+='<div class="md-section-head" style="margin-top:.7rem">Sezonlar</div>'
+      +sz.slice().reverse().map(function(z){ var sam=z.bitti&&z.s===1&&!z.grup;
+        return '<details class="ptk-sz'+(sam?' sam':'')+'"><summary><span class="ptk-sr">'+md(z.s)+'</span><div style="flex:1;min-width:0"><b>'+e(z.ad)+(sam?' · Şampiyon':'')+(z.grup?' · '+e(z.grup):'')+'</b><small>'
+          +(z.simdi?(z.bitti?'Tamamlandı':'Devam ediyor · şu anki sıra'):'Tamamlandı')+' · '+z.n+' takım · '+z.O+' maç · '+z.G+'G '+z.B+'B '+z.M+'M</small></div><b class="ptk-p">'+z.P+'<small> P</small></b></summary>'
+          +'<div class="ptk-det"><div><small>Gol</small><b>'+z.AG+':'+z.YG+' ('+(z.AG-z.YG>0?'+':'')+(z.AG-z.YG)+')</b></div><div><small>Puan ortalaması</small><b>'+(z.O?(z.P/z.O).toFixed(2):'—')+'</b></div></div></details>';
+      }).join('')
+      +'<div style="font-size:.58rem;color:var(--mu);margin-top:.6rem;line-height:1.5">Kaynak: Wikidata, Vikipedi'+(j.kaynak==='TheSportsDB'?', TheSportsDB':', ESPN')+'. Eksik ya da hatalı bir bilgi görürsen geri bildirimle bildirebilirsin.</div>';
+    return h;
+  }catch(err){ gunluk('kupa dolabı', err&&err.message); return null; }
+};
+(function(){ try{ var st=document.createElement('style'); st.textContent='.sb-kulup{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.6rem}.sb-kulup span{background:var(--s2);border:1px solid var(--br);border-radius:12px;padding:.5rem .65rem;display:flex;flex-direction:column;gap:.15rem;min-width:0}'
+  +'.sb-kulup small{font-size:.6rem;color:var(--mu);font-weight:700;text-transform:uppercase;letter-spacing:.04em}.sb-kulup b{font-size:.78rem;overflow:hidden;text-overflow:ellipsis}'
+  +'.sb-kupa{flex:1 1 140px;min-width:140px;background:rgba(0,0,0,.18);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:.45rem .55rem;color:#fff}.sb-kupa summary{list-style:none;display:flex;align-items:center;gap:.5rem;cursor:pointer}'
+  +'.sb-kupa summary::-webkit-details-marker{display:none}.sb-kupa-n{font-size:1.15rem;font-weight:900;color:#fbbf24;min-width:1.6em;text-align:center}.sb-kupa b{font-size:.72rem;line-height:1.25}.sb-kupa-sz{font-size:.62rem;opacity:.85;margin-top:.35rem;line-height:1.5}'
+  +'.ptk-raf{flex-wrap:wrap}.sb-foto-not{font-size:.55rem;color:var(--mu);text-align:center;margin:-.35rem 0 .5rem;line-height:1.4}.sb-foto-not a{color:inherit}';
+  (document.head||document.documentElement).appendChild(st); }catch(e){} })();
 
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
@@ -455,7 +559,7 @@ function ozetIsle(mid, j){
   YerelVT.yaz('leagues/'+ligKimlik(A.lig)+'/matches/'+mid, m2);
 }
 function ozetIste(mid){
-  var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m||!m.espn) return;
+  var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m||!m.espn||m.tsdb) return;
   if(!m.played&&!m.isLive&&(new Date(m.date+'T'+(m.time||'00:00'))-Date.now())>3*3600*1000) return;   // başlamasına çok var: özet boş
   var c=O[mid]||(O[mid]={t:0});
   if(c.yukleniyor) return;
@@ -467,8 +571,22 @@ function ozetIste(mid){
 /* ---------- takım kadrosu: lig kadro listesi + takımın son maçındaki ilk 11 ---------- */
 var K={};  // takım kimliği -> {t, yukleniyor}
 var DIZILIS={'4-4-2':1,'4-3-3':1,'4-2-3-1':1,'5-3-2':1,'4-3-2-1':1};
+/* ESPN'de olmayan liglerin kadrosu: veri dosyasındaki Wikidata kadrosu (kulübün güncel oyuncuları, mevki, forma no, fotoğraf). */
+var MEVKI_WD=[[/kaleci|goalkeeper/i,'KL'],[/defans|defender|stoper|bek|back/i,'STP'],[/orta|midfield/i,'MOS'],[/forvet|forward|striker|kanat|wing/i,'SF']];
+function tsdbKadro(slug, tid){
+  var v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(!t||!t.tsdb) return;
+  var c=K[slug+tid]||(K[slug+tid]={t:0}); if(c.yukleniyor||(c.t&&Date.now()-c.t<SEZON_TAZE)) return; c.yukleniyor=true;
+  veriAl(slug).then(function(j){
+    c.t=Date.now(); var l=(j&&j.kadro&&j.kadro[t.tsdb])||[]; if(!l.length||L[slug].veri!==v) return;
+    var say={}, kod=function(m){ for(var i=0;i<MEVKI_WD.length;i++) if(MEVKI_WD[i][0].test(m||'')) return mevkiKod(MEVKI_WD[i][1]==='KL'?'G':MEVKI_WD[i][1]==='STP'?'CD':MEVKI_WD[i][1]==='MOS'?'CM':'F', say); return ''; };
+    var sira=l.map(function(a){ var o={name:a.ad, position:kod(a.mevki)}; if(a.no) o.number=a.no; if(a.yas) o.age=a.yas; if(a.uyruk) o.nat=trAd(a.uyruk);
+      if(a.foto&&a.foto.f){ o.photo=a.foto.f; o.photoCredit=(a.foto.y?a.foto.y+' · ':'')+(a.foto.l||'')+' · Wikimedia Commons'; o.photoSource=a.foto.u||''; } return o; });
+    var t2=JSON.parse(JSON.stringify(v.teams[tid])); t2.squad={starting:[], bench:sira}; v.teams[tid]=t2;
+    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2);
+  }).then(function(){ c.yukleniyor=false; }, function(){ c.yukleniyor=false; });
+}
 function kadroIste(tid){
-  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(!t||!t.espn) return;
+  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(t&&t.tsdb) return tsdbKadro(slug, tid); if(!t||!t.espn) return;
   var c=K[slug+tid]||(K[slug+tid]={t:0});
   if(c.yukleniyor || (c.t && Date.now()-c.t<SEZON_TAZE)) return;
   c.yukleniyor=true;
@@ -476,7 +594,8 @@ function kadroIste(tid){
     .sort(function(x,y){ return (x.date+x.time)<(y.date+y.time)?1:-1; })[0];
   Promise.all([
     getJSON(SITE+slug+'/teams/'+t.espn+'/roster').catch(function(){ return null; }),
-    son?getJSON(SITE+'all/summary?event='+son.espn).catch(function(){ return null; }):Promise.resolve(null)
+    son?getJSON(SITE+'all/summary?event='+son.espn).catch(function(){ return null; }):Promise.resolve(null),
+    veriAl(slug)
   ]).then(function(r){
     c.t=Date.now();
     if(L[slug].veri!==v) return;
@@ -485,6 +604,7 @@ function kadroIste(tid){
       var o={name:a.displayName||a.fullName||'?', position:mevkiKod(a.position&&a.position.abbreviation, say)};
       if(a.jersey) o.number=+a.jersey||a.jersey;
       if(a.headshot&&a.headshot.href) o.photo=a.headshot.href;
+      else { var vf=(VD[slug]&&VD[slug].j&&VD[slug].j.foto||{})[String(a.id)]; if(vf&&vf.f){ o.photo=vf.f; o.photoCredit=(vf.y?vf.y+' · ':'')+(vf.l||'')+' · Wikimedia Commons'; o.photoSource=vf.u||''; } }
       if(a.age) o.age=a.age;
       if(a.citizenship) o.nat=trAd(a.citizenship);
       hepsi[o.name]=o; sira.push(o);
@@ -518,6 +638,7 @@ function hizli(){
   var mid=acikMac(); if(mid) ozetIste(mid);
   if(!ligCanli()||hMesgul){ zH=setTimeout(hizli, ligCanli()?HIZLI:15000); return; }
   hMesgul=true;
+  if(TSDB_LIG[A.lig]){ veriAl(A.lig, true).then(function(j){ if(j&&j.mac) ligeIsle(j.mac.map(tsdbE)); }).then(function(){ hMesgul=false; zH=setTimeout(hizli, 60000); }); return; }
   getJSON(SITE+A.lig+'/scoreboard').then(function(j){ ligeIsle(((j&&j.events)||[]).map(function(ev){ return esAl(ev,''); })); }, function(){})
     .then(function(){ hMesgul=false; zH=setTimeout(hizli, HIZLI); });
 }

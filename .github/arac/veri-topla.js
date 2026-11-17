@@ -18,7 +18,7 @@ const OZET = [];
 
 async function al(u, o){
   o = o || {};
-  for(let i = 0; i < 5; i++){
+  for(let i = 0; i < (o.deneme || 5); i++){
     try{
       const r = await fetch(u, { headers: Object.assign({ 'User-Agent': UA, 'Accept': o.accept || 'application/json' }, o.h || {}), signal: AbortSignal.timeout(o.sure || 45000) });
       if(r.status === 429 || r.status >= 500){ await bek((o.bekle || 3000) * (i + 1)); continue; }
@@ -31,7 +31,7 @@ async function al(u, o){
 let _spSon = 0;
 async function sparql(q){
   const g = Date.now() - _spSon; if(g < 700) await bek(700 - g); _spSon = Date.now();
-  const j = await al(WD_SP + '?format=json&query=' + encodeURIComponent(q), { accept: 'application/sparql-results+json', sure: 90000, bekle: 8000 });
+  const j = await al(WD_SP + '?format=json&query=' + encodeURIComponent(q), { accept: 'application/sparql-results+json', sure: 60000, bekle: 5000, deneme: 3 });
   return (j && j.results && j.results.bindings) || [];
 }
 const v = (b, k) => b[k] ? b[k].value : '';
@@ -227,7 +227,8 @@ async function oyuncuFoto(kadro, wdKulup){
   // ESPN numarası Wikidata'da yoksa: kulübün (şimdiki ve eski) oyuncuları arasında ad eşleşmesi
   for(const [tid, liste] of Object.entries(kadro)){
     const c = wdKulup[tid]; const eksik = liste.filter(a => !sonuc[a.id]); if(!c || !eksik.length) continue;
-    const b = await sparql('SELECT ?p ?img ?ad WHERE { ?p wdt:P54 wd:' + c + ' ; wdt:P18 ?img . { ?p rdfs:label ?ad } UNION { ?p skos:altLabel ?ad } FILTER(lang(?ad) IN ("en","tr","de","es","it","fr","pt","nl")) }');
+    // Yalnızca 1980 sonrası doğumlular (kulübün bütün tarihindeki binlerce oyuncu sorguyu ağırlaştırıyordu)
+    const b = await sparql('SELECT ?p ?img ?ad WHERE { ?p wdt:P54 wd:' + c + ' ; wdt:P18 ?img ; wdt:P569 ?dog . FILTER(YEAR(?dog) >= 1980) { ?p rdfs:label ?ad } UNION { ?p skos:altLabel ?ad } FILTER(lang(?ad) IN ("en","tr")) }');
     const ad = {}, soyad = {};
     b.forEach(x => { const n = norm(v(x, 'ad')); const f = decodeURIComponent(v(x, 'img').split('/').pop()); if(!ad[n]) ad[n] = f; const s = n.split(' '); if(s.length > 1){ const k = s[0][0] + ' ' + s[s.length - 1]; (soyad[k] = soyad[k] || new Set()).add(f); } });
     eksik.forEach(a => { const n = norm(a.ad); if(ad[n]){ sonuc[a.id] = ad[n]; return; } const s = n.split(' '); if(s.length > 1){ const k = s[0][0] + ' ' + s[s.length - 1]; const f = soyad[k]; if(f && f.size === 1) sonuc[a.id] = [...f][0]; } });
@@ -246,35 +247,70 @@ async function oyuncuFoto(kadro, wdKulup){
   return o;
 }
 
+
+// ESPN'de olmayan ligler için kadro: Wikidata'da kulübün güncel (bitiş tarihi olmayan) oyuncuları, 1985 sonrası doğumlu
+async function wdKadro(takim){
+  const o = {}, dosyalar = new Set();
+  for(const [id, t] of Object.entries(takim)){
+    if(!t.wd) continue;
+    const b = await sparql('SELECT ?p ?ad ?mev ?no ?img ?dog ?uy WHERE { ?p p:P54 ?st . ?st ps:P54 wd:' + t.wd + ' . FILTER NOT EXISTS { ?st pq:P582 ?bit } ?p wdt:P106 wd:Q937857 ; wdt:P569 ?dog . FILTER(YEAR(?dog) >= 1985) '
+      + 'OPTIONAL { ?st pq:P1618 ?no } OPTIONAL { ?p wdt:P18 ?img } OPTIONAL { ?p wdt:P413 ?m . ?m rdfs:label ?mev FILTER(lang(?mev)="tr") } OPTIONAL { ?p wdt:P27 ?u . ?u rdfs:label ?uy FILTER(lang(?uy)="tr") } '
+      + '?p rdfs:label ?ad FILTER(lang(?ad) IN ("tr","en")) }');
+    const g = {};
+    b.forEach(x => { const p = qid(v(x, 'p')); const k = g[p] || (g[p] = { ad: '', mevki: '', no: 0, yas: 0, uyruk: '', img: '' });
+      if(!k.ad || /^tr$/.test((x.ad || {})['xml:lang'] || '')) k.ad = v(x, 'ad'); if(v(x, 'mev') && !k.mevki) k.mevki = v(x, 'mev'); if(v(x, 'no')) k.no = +v(x, 'no') || 0;
+      if(v(x, 'img') && !k.img) k.img = decodeURIComponent(v(x, 'img').split('/').pop()); if(v(x, 'uy') && !k.uyruk) k.uyruk = v(x, 'uy');
+      const d = new Date(v(x, 'dog')); if(!isNaN(d)) k.yas = Math.floor((Date.now() - d) / 315576e5); });
+    o[id] = Object.values(g).filter(k => k.ad).sort((a, b) => (a.no || 99) - (b.no || 99));
+    o[id].forEach(k => { if(k.img) dosyalar.add(k.img); });
+  }
+  const bilgi = await commonsBilgi([...dosyalar]);
+  Object.values(o).forEach(l => l.forEach(k => { if(k.img){ const f = bilgi[k.img.replace(/_/g, ' ')] || bilgi[k.img]; if(f) k.foto = f; } delete k.img; }));
+  return o;
+}
+async function commonsBilgi(dosyalar){
+  const bilgi = {};
+  for(const p of parca(dosyalar, 40)){
+    const j = await al(COMMONS + '?action=query&format=json&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=240&iiextmetadatafilter=Artist|LicenseShortName&titles=' + encodeURIComponent(p.map(f => 'File:' + f).join('|')));
+    const pg = (j && j.query && j.query.pages) || {};
+    Object.values(pg).forEach(x => { const ii = x.imageinfo && x.imageinfo[0]; if(!ii) return; const em = ii.extmetadata || {};
+      const yazar = String((em.Artist && em.Artist.value) || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      bilgi[String(x.title || '').replace(/^File:/, '')] = { f: ii.thumburl || ii.url, y: yazar, l: (em.LicenseShortName && em.LicenseShortName.value) || '', u: ii.descriptionurl || '' }; });
+    await bek(300);
+  }
+  return bilgi;
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   if(HIZLI && !L.tsdb) return;
-  const t0 = Date.now();
-  const temel = L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski);
+  const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
+  const temel = L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); });
-  let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0;
+  let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
   if(!HIZLI){
     const wd = await eslestir(temel.takim, L.obek === 'Milli', eski);
     const eskiKulup = {}; Object.values((eski && eski.takim) || {}).forEach(t => { if(t.wd) eskiKulup[t.wd] = t; });
-    const bilgi = await kulupBilgi(Object.values(wd), eskiKulup);
+    ad('eşleşme'); const bilgi = await kulupBilgi(Object.values(wd), eskiKulup); ad('kulüp');
     Object.keys(takim).forEach(id => { const c = wd[id]; takim[id].wd = c || null; const k = c && bilgi[c];
       if(k){ if(k.kur) takim[id].kur = k.kur; if(k.stad) takim[id].stad = k.stad; if(k.kap) takim[id].kap = k.kap; if(k.kupa) takim[id].kupa = k.kupa; if(k.ad) takim[id].wdAd = k.ad; } });
     if(!L.tsdb && Date.now() - fotoT > 6 * 864e5){
       const kadro = await espnKadrolar(L, temel.takim);
       const wdK = {}; Object.keys(takim).forEach(id => { wdK[id] = takim[id].wd; });
-      const yeni = await oyuncuFoto(kadro, wdK);
+      ad('kadro'); const yeni = await oyuncuFoto(kadro, wdK); ad('foto');
       // ESPN'in kendi fotoğrafı olan oyuncular için Commons fotoğrafı tutulmaz (uygulama önce ESPN'inkini kullanır)
       const espnVar = {}; Object.values(kadro).forEach(l => l.forEach(a => { if(a.foto) espnVar[a.id] = 1; }));
       foto = {}; Object.entries(yeni).forEach(([id, k]) => { if(!espnVar[id]) foto[id] = k; });
       fotoT = Date.now();
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
+    if(L.tsdb && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
   } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   const cikti = { lig: L.slug, ad: L.ad, kaynak: temel.kaynak || 'ESPN', yil: temel.yil, sezonAdi: temel.sezonAdi, takim, gecmis: temel.gecmis, foto, fotoT };
   if(temel.mac) cikti.mac = temel.mac;
+  if(kadroDosya){ cikti.kadro = kadroDosya; cikti.kadroT = kadroT; }
   const yaz = JSON.stringify(cikti);
   const ayni = eski && JSON.stringify(Object.assign({}, eski, { t: 0 })) === JSON.stringify(Object.assign({}, cikti, { t: 0 }));
   if(!ayni){ cikti.t = Date.now(); fs.writeFileSync(dosya, JSON.stringify(cikti)); }

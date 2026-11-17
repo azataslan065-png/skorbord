@@ -163,3 +163,9 @@ def sahaKelime(s):
     return s
 for _y in ('index.html', 'gercek.js', 'ortak/ortak.js'):
     isle(_y, [('saha kelimesi', sahaKelime)])
+
+# Kupa dolabı ve oyuncu fotoğrafı kaynağı (bkz. gercek.js KUPA DOLABI, veri dosyası).
+isle('index.html', [
+  ('kupa dolabı', lambda s: s if 'window.__sbKupaHtml' in s else s.replace("function ptKupaDolabiHtml(tid){", "function ptKupaDolabiHtml(tid){\n  if(window.__sbKupaHtml){ var _sbK=window.__sbKupaHtml(tid); if(_sbK!=null) return _sbK; }   /* Skorbord: veri dosyasından (gercek.js) */", 1)),
+  ('foto kaynağı', lambda s: s if 'sb-foto-not' in s else s.replace("""      ${p.photo?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/>`:""", """      ${p.photo&&p.photoCredit?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/><div class="sb-foto-not">Fotoğraf: ${p.photoSource?`<a href="${escAttr(p.photoSource)}" target="_blank" rel="noopener">`:''}${escHtml(p.photoCredit)}${p.photoSource?'</a>':''}</div>`:p.photo?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/>`:""", 1)),
+])
