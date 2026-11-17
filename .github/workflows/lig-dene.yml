@@ -1,0 +1,22 @@
+# Skorbord lig teşhisi: uygulamadaki ligler ESPN'de yükleniyor mu, ESPN'de hangi ligler var. Rapor "rapor" dalına yazılır.
+name: Lig dene
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/lig-dene.yml, .github/arac/lig-dene.js]
+permissions:
+  contents: write
+jobs:
+  dene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node .github/arac/lig-dene.js > rapor.txt 2>&1 || true
+      - name: Rapor dalina yaz
+        run: |
+          mkdir /tmp/r && cp rapor.txt ligler.json /tmp/r/ 2>/dev/null; cd /tmp/r
+          git init -q && git checkout -q -b rapor && git config user.name github-actions && git config user.email actions@github.com
+          git add -A && git commit -qm "Lig teshis $(date -u +%FT%TZ)" && git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" rapor
