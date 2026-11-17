@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-17-B'
+SB_BUILD = '2026-11-18-A'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -134,3 +134,32 @@ isle('index.html', [('saha adı 2', sahaYok2)])
 def kopruAdi(s): return re.sub(r'\bSahaApp\b', 'SkorbordApp', s)
 isle('index.html', [('köprü adı', kopruAdi)])
 isle('ortak/ortak.js', [('köprü adı', kopruAdi)])
+
+# ── "SAHA" KELİMESİ HİÇ YOK (2026-11-17, kullanıcı: "tekrar gözden geçir; SAHA ismini taşıyan herhangi bir ifade olmasın" - ekranda "Kadro & Saha").
+#    Yalnızca kullanıcıya görünen metinler değişir; kod adları (saha-ikon, SahaIkon, sahaVeri...) olduğu gibi kalır.
+#    Futbol terimleri karşılıklarıyla: ceza sahası → ceza alanı, orta saha → orta alan, yarı saha → yarı alan, iç saha → ev, sahaya çıktı → oyuna girdi.
+SAHA_METIN = [
+  ("Kadro & Saha", "Kadro & Diziliş"),
+  ("Saha ortasındaki", "Orta alandaki"),
+  ("Top ve oyuncu konumları, Saha uygulamasındaki canlı maçtan birebir ve anlık olarak aktarılır.", "Top ve oyuncu konumları canlı maçtan anlık olarak aktarılır."),
+  ("'Sahaya dönüldüğünde'", "'Oyun yeniden başlarken'"),
+  ("Henüz sahada oynanmış/oynanmakta olan maç yok", "Henüz oynanmış ya da oynanmakta olan maç yok"),
+  ("kenardan sahaya adım attı", "kenardan oyuna girdi"),
+  ("sahaya çıktı", "oyuna girdi"),
+  ("sahayı terk etti", "oyundan çıktı"),
+  ("(sahada gösterilemiyor)", "(dizilişte gösterilemiyor)"),
+  ("taze güç istedi: ${ad} sahada", "taze güç istedi: ${ad} oyunda"),
+  ("top oyundayken sahada en çok bulunduğu", "top oyundayken en çok bulunduğu"),
+  ("cumle=hn+' sahasında '+an+' karşısında '", "cumle=hn+' evinde '+an+' karşısında '"),
+  ("'Kenardan hamle: '+tk+' sahaya '+ad+' isimli oyuncuyu sürd", "'Kenardan hamle: '+tk+' oyuna '+ad+' isimli oyuncuyu sürd"),
+  ("İç saha puanı", "Ev puanı"), ("<small>İç saha</small>", "<small>Ev</small>"), ("(iç saha)", "(ev)"), ("İç sahada", "Evinde"), ("İç Saha", "Ev"),
+]
+def sahaKelime(s):
+    for a, b in SAHA_METIN: s = s.replace(a, b)
+    # ceza / yarı sahası → alanı (ekler aynı: sahasında → alanında, sahasına → alanına, sahasının → alanının)
+    s = re.sub(r"\b([Cc]eza|[Yy]arı) sahas", r"\1 alan", s)
+    s = re.sub(r"\b([Yy]arı|[Oo]rta) saha(da|ya|yı)?\b", lambda m: m.group(1) + ' alan' + {'da':'da','ya':'a','yı':'ı'}.get(m.group(2) or '', ''), s)
+    s = re.sub(r"\bOrta Saha\b", "Orta Alan", s)
+    return s
+for _y in ('index.html', 'gercek.js', 'ortak/ortak.js'):
+    isle(_y, [('saha kelimesi', sahaKelime)])

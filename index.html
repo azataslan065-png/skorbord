@@ -173,7 +173,7 @@ Object.defineProperty(S,'length',{configurable:true,get:function(){return bizim(
 </script>
 <meta charset="UTF-8"/>
 <link rel="preload" href="ortak/saha-ikon.ttf?v=48919b70" as="font" type="font/ttf" crossorigin>
-<script src="ortak/ortak.js?v=3f4a4b65"></script>
+<script src="ortak/ortak.js?v=66767a86"></script>
 <style id="sahaIkonStil">@font-face{font-family:"SahaIkon";src:url("ortak/saha-ikon.ttf?v=48919b70") format("truetype");font-display:block}saha-ik{font-family:"SahaIkon"!important;font-style:normal!important;font-weight:400!important;font-variant:normal;text-transform:none;letter-spacing:0;line-height:1;display:inline-block;vertical-align:-.1em;text-decoration:none;text-shadow:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}</style>
 <script id="sahaIkonBetik">/* SAHA İKONLARI (2026-10-20-B, kullanıcı: "üç dosyadaki emoji ile sunulan ikonların hepsini kaldırın, yerine kendi
    tasarladığınız ikonları koyun"). Emojiler kaynakta özel kullanım alanı karakterlerine (U+E900-E9FF) çevrildi; her biri
@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-17-B';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-18-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -10298,7 +10298,7 @@ function renderStandings(){
     <div class="st-head-row"><span style="display:flex;align-items:center;gap:.5rem;min-width:0"><span class="st-head-title">${D.leagueName||'Lig'}</span><span class="st-head-badge">${D.season||''}</span></span></div>
     <div class="st-filter-row">
       <button class="st-filter-btn ${_stVenueFilter==='all'?'active':''}" onclick="setStandingsVenue('all')">Genel</button>
-      <button class="st-filter-btn ${_stVenueFilter==='home'?'active':''}" onclick="setStandingsVenue('home')">İç Saha</button>
+      <button class="st-filter-btn ${_stVenueFilter==='home'?'active':''}" onclick="setStandingsVenue('home')">Ev</button>
       <button class="st-filter-btn ${_stVenueFilter==='away'?'active':''}" onclick="setStandingsVenue('away')">Deplasman</button>
     </div>
     ${(()=>{
@@ -12424,7 +12424,7 @@ function renderSaha(){
     </div>
   </div>`;
   if(!maclar.length){
-    html+='<div style="text-align:center;color:var(--mu);padding:2.5rem;font-size:.82rem">Henüz sahada oynanmış/oynanmakta olan maç yok</div>';
+    html+='<div style="text-align:center;color:var(--mu);padding:2.5rem;font-size:.82rem">Henüz oynanmış ya da oynanmakta olan maç yok</div>';
     el.innerHTML=html;
     return;
   }
@@ -12951,8 +12951,8 @@ html+=`<div id="st_goals" style="display:${_statTab==='goals'?'':'none'}">${rend
     // Saha yüksekliği hat sayısına göre dinamik: hat sayısı arttığında saha da uzar,
     // böylece her hat için her zaman yeterli dikey alan garanti edilir (sabit oran yerine).
     const pitchH=Math.max(620,lines.length*190);
-    // Ceza sahası ve kale sahası derinlikleri, Fikstür sekmesindeki GERÇEK saha çizgilerinin
-    // oranlarından hesaplanır (orta çizgiye kadar olan yarı sahanın %28.2'si ceza sahası,
+    // Ceza alanı ve kale sahası derinlikleri, Fikstür sekmesindeki GERÇEK saha çizgilerinin
+    // oranlarından hesaplanır (orta çizgiye kadar olan yarı sahanın %28.2'si ceza alanı,
     // %11.3'ü kale sahası derinliği) - böylece Haftanın 11'in sahası, Fikstürdeki kadro
     // sahasıyla aynı gerçekçi oranlara sahip olur.
     const penBoxDepth=Math.round((pitchH-16)*0.282);
@@ -13214,7 +13214,7 @@ html+=`<div id="st_homeaway" style="display:${_statTab==='homeaway'?'':'none'}">
   const MEVKI_GRUP={
     hepsi:{ad:'Tümü',mevkiler:null},
     def:{ad:'Defans',mevkiler:['STP1','STP2','SĞB','SLB']},
-    orta:{ad:'Orta Saha',mevkiler:['GÖ','DOS','MOS','OOS','SĞO','SLO','SĞK','SLK']},
+    orta:{ad:'Orta Alan',mevkiler:['GÖ','DOS','MOS','OOS','SĞO','SLO','SĞK','SLK']},
     for:{ad:'Forvet',mevkiler:['SF','GF','SLA','SĞA']}
   };
   if(!window._puanMevki)window._puanMevki='hepsi';
@@ -13834,7 +13834,7 @@ function renderMdOnRapor(id, m, h, a){
           return '<span class="or-' + r + '" title="' + e((x.homeGoals || 0) + '-' + (x.awayGoals || 0) + ' ' + (rk.name || '')) + '">' + r + '</span>'; }).join('') : '<small>Maç yok</small>') + '</div>'
       + '<div class="or-ist"><span><b>' + (sr ? sr.n + '.' : '—') + '</b>Sıra</span><span><b>' + (sr ? sr.r.P : 0) + '</b>Puan</span><span><b>' + p5 + '/' + (s5.length * 3) + '</b>Son 5</span>'
       + '<span><b>' + (sr ? ((sr.r.AG - sr.r.YG > 0 ? '+' : '') + (sr.r.AG - sr.r.YG)) : '0') + '</b>Averaj</span></div>'
-      + '<div class="or-yer">' + (ev ? 'İç sahada' : 'Deplasmanda') + ': <b>' + yS.G + 'G ' + yS.B + 'B ' + yS.M + 'M</b></div>'
+      + '<div class="or-yer">' + (ev ? 'Evinde' : 'Deplasmanda') + ': <b>' + yS.G + 'G ' + yS.B + 'B ' + yS.M + 'M</b></div>'
       + (golcu.length ? '<div class="or-golcu">' + golcu.map(function(g){ return '<span> ' + e(g) + ' <b>' + gol[g] + '</b></span>'; }).join('') + '</div>' : '')
       + '</div>';
   };
@@ -14206,11 +14206,11 @@ function renderSahaPitch(m,h,a){
             <line x1="150" y1="4" x2="150" y2="186" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <circle cx="150" cy="95" r="27" fill="none" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <circle cx="150" cy="95" r="2" fill="#eaffea" fill-opacity=".85"/>
-            <!-- ev sahibi ceza sahası (sol) -->
+            <!-- ev sahibi ceza alanı (sol) -->
             <rect x="4" y="45" width="54" height="100" fill="none" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <rect x="4" y="70" width="20" height="50" fill="none" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <rect x="-3" y="80" width="7" height="30" fill="#eaffea" fill-opacity=".9"/>
-            <!-- deplasman ceza sahası (sağ) -->
+            <!-- deplasman ceza alanı (sağ) -->
             <rect x="242" y="45" width="54" height="100" fill="none" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <rect x="276" y="70" width="20" height="50" fill="none" stroke="#eaffea" stroke-opacity=".85" stroke-width="1.6"/>
             <rect x="296" y="80" width="7" height="30" fill="#eaffea" fill-opacity=".9"/>
@@ -14242,7 +14242,7 @@ function renderSahaPitch(m,h,a){
             <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>
           </div>
         </div>
-        <div style="font-size:.58rem;color:var(--mu);margin-top:.4rem;line-height:1.45">Top ve oyuncu konumları, Saha uygulamasındaki canlı maçtan birebir ve anlık olarak aktarılır.</div>
+        <div style="font-size:.58rem;color:var(--mu);margin-top:.4rem;line-height:1.45">Top ve oyuncu konumları canlı maçtan anlık olarak aktarılır.</div>
       </div>`;
   }catch(e){ try{DiagSil('renderSahaPitch',e);}catch(_e){self.__ds&&self.__ds(13469,_e)} return ''; }
 }
@@ -14493,7 +14493,7 @@ function ptMacOzetHtml(id,m,h,a){
     var soy=function(ad){return String(ad||'').trim().split(/\s+/).pop();};
     var cumle;
     if(hg===ag)cumle=hn+' ile '+an+' '+hg+'-'+ag+' berabere kaldı.';
-    else if(hg>ag)cumle=hn+' sahasında '+an+' karşısında '+hg+'-'+ag+' kazandı.';
+    else if(hg>ag)cumle=hn+' evinde '+an+' karşısında '+hg+'-'+ag+' kazandı.';
     else cumle=an+' deplasmanda '+hn+' karşısında '+ag+'-'+hg+' kazandı.';
     var gol=ev.filter(function(e){return e&&(e.type==='goal'||e.type==='pen_goal'||e.type==='og');})
       .sort(function(x,y){return (x.min||0)-(y.min||0);});
@@ -15542,12 +15542,12 @@ function renderMdKadro(id,m,h,a){
     const lines=FORMATIONS_KADRO[formationId]||FORMATIONS_KADRO['4-4-2'];
     // GENEL ÇÖZÜM: Formasyonun istediği hat sayısı (3 ile 6 arasında değişebilir,
     // örn Baklava/Diamond 6 hat, WM 5 hat, klasik 4-4-2 4 hat) ile gerçek pozisyon
-    // gruplarımız (sadece 4: KL/DEF/MID/FWD) arasındaki farkı YÖNETMEK için, orta saha
+    // gruplarımız (sadece 4: KL/DEF/MID/FWD) arasındaki farkı YÖNETMEK için, orta alan
     // ve forvet grupları gerektiğinde formasyonun istediği sayıda alt-hatta bölünür.
     // Bu sayede HERHANGİ bir formasyon seçilirse seçilsin (oyuncu pozisyonları o formasyona
     // tam uymasa bile) sistem ASLA hata vermez, mevcut oyuncuları mantıklı şekilde dağıtır.
     const groups=[GK];
-    const midLineCount=lines.length-3; // GK + DEF + FWD dışında kalan ara hat sayısı (orta saha hatları)
+    const midLineCount=lines.length-3; // GK + DEF + FWD dışında kalan ara hat sayısı (orta alan hatları)
     if(midLineCount<=0){
       groups.push(DEF);
       groups.push(MID.concat(FWD));
@@ -15556,8 +15556,8 @@ function renderMdKadro(id,m,h,a){
       groups.push(MID);
     }else{
       groups.push(DEF);
-      // Orta sahayı, formasyonun istediği ara hat sayısı kadar parçaya böl (örn Diamond'da
-      // DM/CM-CM/AM şeklinde 3 ayrı orta saha hattı gibi davranır).
+      // Orta alanı, formasyonun istediği ara hat sayısı kadar parçaya böl (örn Diamond'da
+      // DM/CM-CM/AM şeklinde 3 ayrı orta alan hattı gibi davranır).
       // Ara hatlar dizilişin istediği sayılarla bölünür (4-2-3-1: 2+3, 4-3-2-1: 3+2);
       // eşit bölme 4-2-3-1'i ters (3+2) çiziyordu. Sayı tutmazsa eşit bölmeye düşülür.
       const ara=lines.slice(2,lines.length-1), aTop=ara.reduce((x,y)=>x+y,0);
@@ -15818,7 +15818,7 @@ function ptIsiVar(m){ return !!(m&&m.sahaIsi&&m.sahaIsi.home&&m.sahaIsi.away); }
    sayfalı: Kadro ⟷ Isı haritası ⟷ Gol haritası. Veri yoksa sayfada nedeni yazar. */
 function ptKayVar(m){ return !!(m&&(m.played||m.sahaMode||ptIsiVar(m))); }
 function ptIsiBas(m){ return ptKayVar(m)?'<div class="isi-kay" onscroll="ptIsiKaydirildi(this)"><div class="isi-say">':''; }
-/* ŞUT HARİTASI (2026-10-18-B, kullanıcı örnek görseli: perspektif yarı saha, kale üstte, şutun atıldığı yer forma numarasıyla, varsa
+/* ŞUT HARİTASI (2026-10-18-B, kullanıcı örnek görseli: perspektif yarı alan, kale üstte, şutun atıldığı yer forma numarasıyla, varsa
    asist numarası ve pas çizgisi, okla kaleye; altta Hepsi / Gol / İsabetli / İsabetsiz / Engellenen filtreleri, renkli çizgiler ve
    sayfa noktaları). Veri: SAHA'nın yazdığı m.sahaSutlar {home:[…], away:[…]} (d: kale çizgisine uzaklık m, l: hücum yönüne göre
    yan m, n: forma no, s: sonuç, an/ad2/al: asist no ve pas konumu, ed/el: topun gittiği yer). Bu veriden önce oynanmış maçlarda
@@ -15891,7 +15891,7 @@ function ptSutSayfa(m,h,a){
   if(!window._ptSut[mid]) window._ptSut[mid]={tk:'home',f:'hepsi',i:0};
   return '<div class="isi-say"><div class="sh-kart" id="shk-'+escHtml(mid)+'">'+ptSutKartIc(mid)+'</div></div>';
 }
-function _ptSutPj(d,l){   // yarı saha (d 0..52.5, l -34..34) → perspektif ekran
+function _ptSutPj(d,l){   // yarı alan (d 0..52.5, l -34..34) → perspektif ekran
   var t=Math.max(-0.02,Math.min(1,d/52.5)), tp=t*1.32/(1+0.32*t);
   var y=34+tp*196, w=262+(380-262)*tp, x=200+(Math.max(-36,Math.min(36,l))/34)*w/2;
   return [x,y];
@@ -15972,7 +15972,7 @@ function ptIsiSon(m,h,a){
   var I=m.sahaIsi, kart=function(t,veri,renk){ return '<div class="isi-kart"><div class="isi-bas"><span style="background:'+renk+'"></span><b>'+escHtml(t.name||'?')+'</b><small>hücum yönü →</small></div>'
     +'<img class="isi-img" alt="Isı haritası" src="'+ptIsiGorsel(m.id||(h.id+'_'+a.id)+'_'+String(veri).length, veri, I.w||24, I.h||16)+'"></div>'; };
   return '</div><div class="isi-say">'+kart(h,I.home,'#ef4444')+kart(a,I.away,'#3b82f6')
-    +'<div class="isi-not">Takımın top oyundayken sahada en çok bulunduğu bölgeler · kırmızı = yoğun</div></div>'
+    +'<div class="isi-not">Takımın top oyundayken en çok bulunduğu bölgeler · kırmızı = yoğun</div></div>'
     +ptSutSayfa(m,h,a)+'</div>'
     +'<div class="isi-nokta"><i class="on"></i><i></i><i></i><span>Kaydır: ⟷ Kadro / Isı / Şut haritası</span></div>';
 }
@@ -18893,20 +18893,20 @@ function renderMdIstatistik(id,m,h,a){
 /* KONUMLU ANLATIM (2026-10-11-A, kullanıcı: "Skorbord fikstür bölümü için daha fazla olasılık ve doğru pozisyon anlatımı").
    SAHA artık olayın sahadaki yerini gönderiyor: e.k = [x, z] (olayın takımının hücum yönüne göre; x -1 kendi kale çizgisi ..
    +1 rakip kale çizgisi, z -1 sol .. +1 sağ kanat). Konumu olan faul, kart, ofsayt, korner, taç, penaltı ve gol olayları
-   bu bilgiyle anlatılır ("sağ kanatta", "ceza sahası yayının önünde", "kendi yarı sahasında"); her türün birçok kalıbı var.
+   bu bilgiyle anlatılır ("sağ kanatta", "ceza alanı yayının önünde", "kendi yarı alanında"); her türün birçok kalıbı var.
    Seçim yine belirlenimci: aynı olay her açılışta aynı cümleyi verir. Konumu olmayan (eski) olaylar eski kalıplarla anlatılır. */
 function ptKonumBolge(x,z){
   var az=Math.abs(z);
   if(x>=0.9&&az<0.27) return 'altıpasın içinde';
-  if(x>=0.68&&az<0.6) return 'ceza sahasının içinde';
-  if(x>=0.56&&az<0.45) return 'ceza sahası yayının önünde';
-  if(x>=0.6) return 'ceza sahasının kenarında';
-  if(x>=0.3) return 'rakip yarı sahada';
+  if(x>=0.68&&az<0.6) return 'ceza alanının içinde';
+  if(x>=0.56&&az<0.45) return 'ceza alanı yayının önünde';
+  if(x>=0.6) return 'ceza alanının kenarında';
+  if(x>=0.3) return 'rakip yarı alanda';
   if(Math.abs(x)<0.12&&az<0.35) return 'orta yuvarlağın çevresinde';
-  if(x>=-0.05) return 'orta sahada';
-  if(x>=-0.35) return 'kendi yarı sahasında';
-  if(x>=-0.68||az>=0.6) return 'kendi yarı sahasının derinliklerinde';
-  return 'kendi ceza sahasında';
+  if(x>=-0.05) return 'orta alanda';
+  if(x>=-0.35) return 'kendi yarı alanında';
+  if(x>=-0.68||az>=0.6) return 'kendi yarı alanının derinliklerinde';
+  return 'kendi ceza alanında';
 }
 function ptKonumKanat(z){ return z>0.5?'sağ kanatta':(z<-0.5?'sol kanatta':(z>0.2?'sağ iç koridorda':(z<-0.2?'sol iç koridorda':'merkezde'))); }
 /* ANLATIM SEKMESİ EK KALIPLARI (2026-10-16-D, kullanıcı: "spiker ve yorumcu için daha fazla anlatım kelimesi ekle, buna
@@ -18924,19 +18924,19 @@ function _ptAnlatimEk(e,c){
     pen_goal:[ n+': penaltıda '+ad+' kaleciyi ters köşeye yatırdı.', ad+' penaltı vuruşunu köşeye yerleştirdi; '+tk+' sevinçli.',
       'Penaltı golü: '+ad+' sorumluluğu aldı ve hata yapmadı.' ],
     post:[ n+': '+ad+' vuruşunda top direkte patladı.', ad+' golü santimetrelerle kaçırdı; direk '+rk+' lehine çalıştı.' ],
-    pen_awarded:[ n+': ceza sahasındaki temas sonrası '+tk+' penaltı kazandı.', rk+' savunmacısının müdahalesi penaltıyla sonuçlandı.' ],
+    pen_awarded:[ n+': ceza alanındaki temas sonrası '+tk+' penaltı kazandı.', rk+' savunmacısının müdahalesi penaltıyla sonuçlandı.' ],
     pen_miss:[ n+': '+ad+' penaltıda kaleciyi geçemedi.', 'Penaltı kullanılamadı: '+ad+' vuruşunda hedefi bulamadı.' ],
     og:[ n+': '+ad+' kendi kalesine gol attı; '+rk+' skora ortak oldu.', 'Kendi kalesine gol: '+ad+' topu uzaklaştıramadı, top ağlarda.' ],
     yellow:[ n+': '+ad+' sarı kart gördü.', 'Sarı kart kaydı: '+ad+' ('+tk+').', ad+' uyarı aldı; '+tk+' bir oyuncusunu kart sınırında bıraktı.',
       'Hakemin kart gösterdiği isim '+ad+'; müdahale gereğinden sertti.' ],
     red:[ n+': '+ad+' doğrudan kırmızı kartla oyun dışı.', tk+' sayıca eksik düştü: '+ad+' kırmızı kart gördü.' ],
     yellow2red:[ n+': '+ad+' ikinci sarı karttan oyun dışı.', ad+' ikinci uyarıyı da aldı; '+tk+' maça bir eksikle devam ediyor.' ],
-    sub:[ n+': '+tk+' cephesinde değişiklik, oyuna '+ad+' dahil edildi.', 'Kenardan hamle: '+tk+' sahaya '+ad+' isimli oyuncuyu sürdü.',
+    sub:[ n+': '+tk+' cephesinde değişiklik, oyuna '+ad+' dahil edildi.', 'Kenardan hamle: '+tk+' oyuna '+ad+' isimli oyuncuyu sürdü.',
       tk+' taze kan arayışında; '+ad+' oyunda.' ],
     foul:[ n+': '+ad+' faul yaptı, oyun durdu.', ad+' rakibini kural dışı durdurdu; '+rk+' serbest vuruş kazandı.',
       'Faul kaydı: '+ad+' ('+tk+').' ],
     offside:[ n+': '+tk+' atağı ofsaytla bitti; '+ad+' ofsayta düştü.', 'Ofsayt kararı: '+ad+' savunmanın önünde yakalanamadı.' ],
-    corner:[ n+': '+tk+' köşe vuruşu kullanacak.', tk+' bir korner daha kazandı; ceza sahası kalabalıklaştı.' ],
+    corner:[ n+': '+tk+' köşe vuruşu kullanacak.', tk+' bir korner daha kazandı; ceza alanı kalabalıklaştı.' ],
     throwin:[ n+': taç atışı '+tk+' tarafına.', 'Top kenardan dışarı çıktı, oyun '+tk+' tacıyla devam ediyor.' ]
   };
   return L[e.type]||[];
@@ -18957,7 +18957,7 @@ function ptAnlatimKonumlu(e,durum){
       ad+" "+kn+" topu kaptırmamak için faule başvurdu; hakem oyunu durdurdu.",
       b.charAt(0).toLocaleUpperCase('tr')+b.slice(1)+" sert bir müdahale: "+ad+" faul yaptı."+(tehlike?" "+rakip+" tehlikeli bir bölgede serbest vuruş kazandı.":''),
       dk+". dakikada "+rakip+" "+bR+" serbest vuruş kazandı; faulü yapan oyuncu "+ad+"."+(tehlike?" Kale bu mesafeden doğrudan tehdit altında.":''),
-      ad+" "+kn+" geç kaldı, hakem faul düdüğünü çaldı."+(tehlike?" Top ceza sahasına yakın bir noktadan kullanılacak.":''),
+      ad+" "+kn+" geç kaldı, hakem faul düdüğünü çaldı."+(tehlike?" Top ceza alanına yakın bir noktadan kullanılacak.":''),
       "Hakem "+b+" yaşanan ikili mücadelede faul kararı verdi: "+ad+" kurala aykırı müdahale etti."
     ]);
   }
@@ -18993,7 +18993,7 @@ function ptAnlatimKonumlu(e,durum){
       dk+". dakikada "+takim+" "+kose+" taraftan korner kazandı.",
       takim+" "+kose+" kanattan gelişen atakta topu kornere çıkarttırdı.",
       rakip+" savunması topu "+kose+" köşeye uzaklaştırdı; korner hakkı "+takim+" tarafında.",
-      takim+" için "+kose+" köşe bayrağından bir korner daha; ceza sahasında hareketlilik var.",
+      takim+" için "+kose+" köşe bayrağından bir korner daha; ceza alanında hareketlilik var.",
       kose.charAt(0).toLocaleUpperCase('tr')+kose.slice(1)+" taraftaki baskı korneri getirdi: "+takim+" duran topla gol arayacak."
     ]);
   }
@@ -19008,7 +19008,7 @@ function ptAnlatimKonumlu(e,durum){
     return sec([
       dk+". dakikada "+takim+" "+kn+" gelişen atakta penaltı kazandı!",
       "Hakem "+b+" yaşanan temasın ardından beyaz noktayı gösterdi; "+takim+" penaltı kullanacak.",
-      ad+" "+kn+" ceza sahasına girdi ve düşürüldü: penaltı!"
+      ad+" "+kn+" ceza alanına girdi ve düşürüldü: penaltı!"
     ]);
   }
   if((tip==='goal'||tip==='og')&&!(e.detay&&e.detay.bolge)){
@@ -19090,12 +19090,12 @@ function _ptAnlatimTemel(e,durum){
     sertMudahale:kw(['sert bir müdahalede bulundu','faul yaptı','rakibini düşürdü',
                      'geç müdahale etti','kurallara aykırı bir hareket yaptı']),
     uyarildi:kw(['sarı kart gördü','sarı kartla cezalandırıldı','uyarı aldı','sarı kartla uyarıldı','kart gördü','hakemden ihtar aldı']),
-    oyunDisi:kw(['oyundan atıldı','sahayı terk etti','oyun dışı kaldı','kırmızı kartla çıktı']),
+    oyunDisi:kw(['oyundan atıldı','oyundan çıktı','oyun dışı kaldı','kırmızı kartla çıktı']),
     firsat:kw(['önemli bir fırsat yakaladı','skoru değiştirme şansı buldu',
                'öne geçme fırsatı elde etti','beklediği fırsatı yakaladı']),
     kaciriyor:kw(['fileleri bulamadı','skoru değiştiremedi','fırsatı değerlendiremedi',
                   'topu dışarı gönderdi','kaleciyi geçemedi','hedefi tutturamadı']),
-    girdi:kw(['oyuna girdi','sahaya çıktı','oyuna dahil oldu','forma giydi','oyundaki yerini aldı','kenardan sahaya adım attı']),
+    girdi:kw(['oyuna girdi','oyuna girdi','oyuna dahil oldu','forma giydi','oyundaki yerini aldı','kenardan oyuna girdi']),
     ciktiKenar:kw(['kenara geldi','oyundan çıktı','yerini bıraktı','dinlenmeye çekildi']),
     savunmaGecti:kw(['aşarak','geçerek','arasından sıyrılarak','arkasına sarkarak']),
     zorlasti:kw(['işler zorlaştı','planlar değişti','durum güçleşti','maçın seyri değişebilir'])
@@ -19116,8 +19116,8 @@ function _ptAnlatimTemel(e,durum){
     ilkCeyrek:['İlk çeyrekte','Oyun henüz oturmamışken','Karşılaşmanın erken bölümünde','İlk yarının açılış dakikalarında'],
     ilkYari:['İlk yarının ortalarında','Oyunun dengelendiği anlarda','Devre ilerlerken','Tempo yükselirken'],
     ilkYariSonu:['İlk yarı biterken','Devre arasına girilirken','Soyunma odası yolunda','İlk 45 tamamlanmak üzereyken'],
-    ikinciBaslangic:['İkinci yarının hemen başında','Devre arası sonrası','Sahaya dönüldüğünde','İkinci yarı açılırken'],
-    ikinciYari:['İkinci yarıda','Oyun yeniden hızlanırken','Mücadelenin bu bölümünde','Saha ortasındaki çekişme sürerken'],
+    ikinciBaslangic:['İkinci yarının hemen başında','Devre arası sonrası','Oyun yeniden başlarken','İkinci yarı açılırken'],
+    ikinciYari:['İkinci yarıda','Oyun yeniden hızlanırken','Mücadelenin bu bölümünde','Orta alandaki çekişme sürerken'],
     sonCeyrek:['Son çeyreğe girilirken','Maç kritik bir noktadayken','Yorgunluk hissedilmeye başlarken','Final bölümüne yaklaşırken'],
     final:['Maçın son bölümünde','Bitiş düdüğüne az kala','Son dakikalarda','Zaman daralırken'],
     uzatma:['Uzatma dakikalarında','Hakemin eklediği sürede','Maçın son saniyelerinde','Uzatmalarda']
@@ -19133,14 +19133,14 @@ function _ptAnlatimTemel(e,durum){
     else if(durum.oncekiFark===-1)baglam='Skor eşitlendi.';
     else if(durum.oncekiFark<-1)baglam=`${takim} farkı ${Math.abs(durum.oncekiFark)-1}'e indirdi.`;
     else baglam=`${takim} farkı ${durum.oncekiFark+1}'e çıkardı.`;
-    /* GERÇEK AYRINTI (2026-10-05-C, kullanıcı: "Messi ceza sahası dışından gol attığında anlatım bunu farklı
+    /* GERÇEK AYRINTI (2026-10-05-C, kullanıcı: "Messi ceza alanı dışından gol attığında anlatım bunu farklı
        yorumluyor, olayları rastgele yazıyor"): SAHA artık golün nereden/nasıl atıldığını (e.detay: bölge, mesafe,
        vuruş türü, duran top, direkten içeri) gönderiyor. Ayrıntı varsa cümle YALNIZCA ondan kurulur; "savunmayı
        geçerek" gibi olayda olmayan şeyler eklenmez. Ayrıntısız eski kayıtlar aşağıdaki genel kalıplarla anlatılır. */
     const dt=(!pen&&e.detay&&typeof e.detay==='object')?e.detay:null;
     if(dt&&dt.bolge){
       const mes=Number(dt.mesafe)||0;
-      const yer=dt.bolge==='disari'?(mes>=25?`${mes} metreden`:'ceza sahası dışından'):dt.bolge==='altipas'?'altıpasın içinden':(dt.aci==='dar'?'dar açıdan':'ceza sahası içinden');
+      const yer=dt.bolge==='disari'?(mes>=25?`${mes} metreden`:'ceza alanı dışından'):dt.bolge==='altipas'?'altıpasın içinden':(dt.aci==='dar'?'dar açıdan':'ceza alanı içinden');
       const asistAd=e.player2||'';
       const nasil=dt.vurus==='kafa'?'kafa vuruşuyla':dt.vurus==='vole'?'voleyle':(dt.bolge==='disari'?'sert bir şutla':'');
       const kaynak=dt.duran==='korner'?' Gol korner organizasyonundan geldi.':dt.duran==='serbest'?'':dt.duran==='tac'?' Atak bir taç atışıyla başlamıştı.':'';
@@ -19177,7 +19177,7 @@ function _ptAnlatimTemel(e,durum){
   // DİREK (2026-10-05-C): SAHA'dan gelen gerçek "top direkten döndü" olayı - şutun konumuyla.
   if(e.type==='post'){
     const dt=e.detay||{}, mes=Number(dt.mesafe)||0;
-    const yer=dt.bolge==='disari'?(mes>=25?`${mes} metreden`:'ceza sahası dışından'):dt.bolge==='altipas'?'yakın mesafeden':dt.bolge==='ceza'?'ceza sahası içinden':'';
+    const yer=dt.bolge==='disari'?(mes>=25?`${mes} metreden`:'ceza alanı dışından'):dt.bolge==='altipas'?'yakın mesafeden':dt.bolge==='ceza'?'ceza alanı içinden':'';
     const nasil=dt.vurus==='kafa'?'kafa vuruşu':dt.duran==='serbest'?'serbest vuruşu':'şutu';
     return sec([
       `${evreSoz} ${ad}${yer?' '+yer:''} denedi; ${nasil} direkten döndü! ${takim} golü kıl payı kaçırdı.`,
@@ -19190,9 +19190,9 @@ function _ptAnlatimTemel(e,durum){
     return sec([
       `${evreSoz} hakem penaltı noktasını gösterdi! ${takim} ${K.firsat}.`,
       `${dk}. dakikada ${takim} lehine penaltı kararı çıktı. ${rakip} savunması itiraz ediyor.`,
-      `${evreSoz} ceza sahasında yaşanan pozisyonun ardından hakem penaltıya hükmetti.`,
+      `${evreSoz} ceza alanında yaşanan pozisyonun ardından hakem penaltıya hükmetti.`,
       `Hakem tereddüt etmeden beyaz noktayı gösterdi. ${takim} için altın fırsat.`,
-      `Ceza sahasındaki mücadelenin ardından karar penaltı: ${takim} öne geçebilir.`
+      `Ceza alanındaki mücadelenin ardından karar penaltı: ${takim} öne geçebilir.`
     ]);
   }
   if(e.type==='pen_miss'){
@@ -19249,7 +19249,7 @@ function _ptAnlatimTemel(e,durum){
       `${evreSoz} ${takim} kadrosuna dokundu: ${cikan?cikan+' '+K.ciktiKenar+', ':''}${ad} ${K.girdi}.`,
       `${dk}. dakikada ${ad} oyuna girdi${cikan?', yerini aldığı isim '+cikan:''}.`,
       `${evreSoz} teknik heyet bir değişiklik yaptı: ${ad} ${K.girdi}${cikan?', '+cikan+' '+K.ciktiKenar:''}.`,
-      `${takim} taze güç istedi: ${ad} sahada${cikan?', '+cikan+' kenarda':''}.`,
+      `${takim} taze güç istedi: ${ad} oyunda${cikan?', '+cikan+' kenarda':''}.`,
       `Kenardan işaret geldi; ${ad} ${K.girdi}${cikan?', yerini aldığı isim '+cikan:''}.`
     ]);
   }
@@ -20214,7 +20214,7 @@ var SAHA_SABLON_MEVKI = ['KL','SLB','STP1','STP2','SĞB','SLK','DOS','OOS','SĞK
 var SAHA_SABLON_NO    = [1,3,4,5,2,11,6,8,7,9,10,12,13,14,15,16,17,18];
 var SAHA_NO_TERCIH = {'KL':1,'SĞB':2,'SLB':3,'STP1':4,'STP2':5,'DOS':6,'SĞK':7,'OOS':8,'GÖ':8,'SF':9,'GF':10,'SLK':11,'SĞA':7,'SLA':11,'MOS':8,'SĞO':7,'SLO':11};
 // SLA/SĞA (sol/sağ açık - kanat forvet) 2026-09-27-N: yıldız oyuncular çoğunlukla bu mevkiyle kayıtlı.
-// 2026-09-27-O: bütün eFootball mevkileri (MOS merkez orta saha, SĞO/SLO sağ/sol orta saha dahil).
+// 2026-09-27-O: bütün eFootball mevkileri (MOS merkez orta alan, SĞO/SLO sağ/sol orta alan dahil).
 var SAHA_GECERLI_MEVKI = ['KL','SĞB','SLB','STP1','STP2','GÖ','DOS','MOS','OOS','SĞO','SLO','SĞK','SLK','SF','GF','SLA','SĞA'];
 function sahaAdAnahtar(ad){ return String(ad||'').trim().toLocaleLowerCase('tr'); }
 // Anahtarları sıralı JSON - Firebase nesneleri alfabetik sırayla döndürdüğü için düz
@@ -20361,7 +20361,7 @@ function sahaSquadKur(kadro, havuz, eski, uid, diz){
 var SAHA_TABLO_DIZILIS = ['4-4-2','5-3-2','4-3-3','4-2-3-1','4-3-2-1'];
 /* DİZİLİŞ SLOTLARI (2026-09-27-E, sürükle-bırak kadro): kadro.ilk11 dizisinin SIRASI
    artık sahadaki YERDİR - 0 kaleci, 1-10 saha.html DIZILISLER koordinatlarıyla aynı sıra
-   (defans soldan sağa, orta saha soldan sağa, forvet). Kullanıcı bir oyuncuyu sol beke
+   (defans soldan sağa, orta alan soldan sağa, forvet). Kullanıcı bir oyuncuyu sol beke
    sürüklediyse puan durumunda da sol bek (SLB) olarak görünür - oyuncunun kendi mevkisi
    değil, OYNADIĞI YER yazılır. Kod sırası DIZILISLER ile birebir aynı olmalı. */
 // Kadronun hangi dizilişle yerleştiği: kayıttaki diziliş, geçersizse 4-4-2.
@@ -20433,7 +20433,7 @@ function ptSahaCanliBaslat(){
       çizim bunu kullanmıyor, kodlardan tahmin ediyordu.
    ÇÖZÜM: Kadro kaydında 'yer' varsa oyuncu tam o yere (SAHA uygulamasındaki sahayla aynı
    hat ve sıra) çizilir; yoksa hat içinde mevkinin sol/sağ bilgisine göre sıralanır.
-   Rakip yarı sahada sıra aynalanır. SAHA_HATLAR ve PT_SAHA_SLOT, saha.html'deki
+   Rakip yarı alanda sıra aynalanır. SAHA_HATLAR ve PT_SAHA_SLOT, saha.html'deki
    DIZILISLER/SAHA_SLOT ile birebir aynı sırada olmalı. */
 const PT_SAHA_HATLAR={
   '4-4-2':[[0],[1,2,3,4],[5,6,7,8],[9,10]],
@@ -20523,7 +20523,7 @@ window.switchTdTab=function(tab){_tdTab=tab;renderTeamDetailContent();};
    Varsayılan rakip: sıradaki maçın rakibi, yoksa lider (ya da ikinci). Puan sırası Skorbord'un kendi hesabıyla (calcS). */
 /* GOL HARİTASI (2026-10-12-B, onaylanan öneri 9). SAHA maçlarında her olayın sahadaki yeri kaydediliyor (e.k = [x, z]:
    x -1 kendi kale çizgisi .. +1 rakip kale çizgisi, z -1 sol .. +1 sağ, olayın takımının hücum yönüne göre). Takım detayında
-   "Gol Haritası": takımın attığı ve yediği gollerin yeri yarı saha üzerinde; oyuncu sayfasında oyuncunun golleri.
+   "Gol Haritası": takımın attığı ve yediği gollerin yeri yarı alan üzerinde; oyuncu sayfasında oyuncunun golleri.
    Konum bilgisi olmayan (SAHA dışında girilen) goller haritada çizilmez, altta sayıları yazılır. */
 /* (2026-10-18-D) KÖK SEBEP ("takım ve oyuncu detayındaki gol haritası çalışmıyor"): SAHA golün konumu olarak topun GOL ANINDAKİ yerini
    yazıyordu; top o an kale çizgisinde olduğu için bütün goller kale ağzında üst üste çiziliyordu. SAHA artık şutun atıldığı yeri yazar;
@@ -20593,7 +20593,7 @@ function ptGolHaritasiSvg(L,renk){
 })();
 function _ptGolOzet(L,konumsuz){
   const kutu=L.filter(g=>!g.pen&&g.x>=1-16.5/52.5&&Math.abs(g.z)<=20.16/34).length, pen=L.filter(g=>g.pen).length, dis=L.length-kutu-pen;
-  return '<div class="gh-oz"><span><b>'+kutu+'</b> ceza sahası içi</span><span><b>'+dis+'</b> ceza sahası dışı</span><span><b>'+pen+'</b> penaltı</span></div>'
+  return '<div class="gh-oz"><span><b>'+kutu+'</b> ceza alanı içi</span><span><b>'+dis+'</b> ceza alanı dışı</span><span><b>'+pen+'</b> penaltı</span></div>'
     +(konumsuz?'<div class="gh-not">'+konumsuz+' golün şut yeri kaydı yok.</div>':'');
 }
 function renderTdGolHaritasi(tid){
@@ -20646,7 +20646,7 @@ function renderTdKarsilastir(tid){
     ['Galibiyet',A.r.G||0,B.r.G||0,true],['Beraberlik',A.r.B||0,B.r.B||0,null],['Mağlubiyet',A.r.M||0,B.r.M||0,false],
     ['Attığı gol',A.r.AG||0,B.r.AG||0,true],['Yediği gol',A.r.YG||0,B.r.YG||0,false],['Averaj',A.r.AV||0,B.r.AV||0,true],
     ['Maç başı gol',+ort(A.r.AG||0,A.O),+ort(B.r.AG||0,B.O),true],['Maç başı yenilen',+ort(A.r.YG||0,A.O),+ort(B.r.YG||0,B.O),false],
-    ['Gol yemediği maç',A.temiz,B.temiz,true],['İç saha puanı',A.ic,B.ic,true],['Deplasman puanı',A.dis,B.dis,true],
+    ['Gol yemediği maç',A.temiz,B.temiz,true],['Ev puanı',A.ic,B.ic,true],['Deplasman puanı',A.dis,B.dis,true],
     ['Sarı kart',A.sari,B.sari,false],['Kırmızı kart',A.kirmizi,B.kirmizi,false]];
   const logo=function(t){return t.logo?'<img src="'+t.logo+'" onload="try{_processLogoImg(this)}catch(_e){}" onerror="this.style.display=\'none\'">':'<span></span>';};
   const formH=function(f){return f.length?f.map(function(x){return '<span class="form-badge fb-'+(x==='G'?'w':(x==='B'?'d':'l'))+'">'+x+'</span>';}).join(''):'<span style="color:var(--mu)">—</span>';};
@@ -20777,7 +20777,7 @@ function ptKupaDolabiHtml(tid){
         +(z.bitti?'Tamamlandı':'Devam ediyor · şu anki sıra')+' · '+z.takimSay+' takım · '+z.O+' maç · '+z.G+'G '+z.B+'B '+z.M+'M</small></div><b class="ptk-p">'+z.P+'<small> P</small></b></summary>'
         +'<div class="ptk-det">'
           +'<div><small>Gol</small><b>'+z.AG+':'+z.YG+' ('+(z.AG-z.YG>0?'+':'')+(z.AG-z.YG)+')</b></div>'
-          +'<div><small>İç saha</small><b>'+z.ic.G+'G '+z.ic.B+'B '+z.ic.M+'M</b></div>'
+          +'<div><small>Ev</small><b>'+z.ic.G+'G '+z.ic.B+'B '+z.ic.M+'M</b></div>'
           +'<div><small>Deplasman</small><b>'+z.dis.G+'G '+z.dis.B+'B '+z.dis.M+'M</b></div>'
           +'<div><small>Gol kralı</small><b>'+(z.golKral?e(z.golKral[0])+' ('+z.golKral[1]+')':'—')+'</b></div>'
           +'<div><small>Asist lideri</small><b>'+(z.asistKral?e(z.asistKral[0])+' ('+z.asistKral[1]+')':'—')+'</b></div>'
@@ -20833,7 +20833,7 @@ function ptKupaYukle(tid){
         var sonuc=ben>rak||(ben===rak&&pw===(ev?'home':'away'))?'G':(ben<rak||(ben===rak&&pw&&pw!==(ev?'home':'away'))?'M':'B');
         z.O++; z.AG+=ben; z.YG+=rak; z[sonuc]++; (ev?z.ic:z.dis)[sonuc]++; if(rak===0) z.temiz++;
         sg=sonuc==='G'?sg+1:0; sy=sonuc!=='M'?sy+1:0; z.serG=Math.max(z.serG,sg); z.serY=Math.max(z.serY,sy);
-        var ra=((sz.teams[ev?m.awayId:m.homeId])||{}).name||'Rakip', metin=ben+'-'+rak+' '+ra+(ev?' (iç saha)':' (deplasman)');
+        var ra=((sz.teams[ev?m.awayId:m.homeId])||{}).name||'Rakip', metin=ben+'-'+rak+' '+ra+(ev?' (ev)':' (deplasman)');
         if(ben>rak&&(!enF||ben-rak>enF.f)) enF={f:ben-rak,metin:metin};
         if(ben>rak&&(!V.rekor.fark||ben-rak>V.rekor.fark.f)) V.rekor.fark={f:ben-rak,metin:metin,sezon:sz.ad};
         if(rak>ben&&(!V.rekor.agir||rak-ben>V.rekor.agir.f)) V.rekor.agir={f:rak-ben,metin:metin,sezon:sz.ad};
@@ -20945,7 +20945,7 @@ function renderTeamDetailContent(){
     </div>
     <div class="td-tabs">
       <button class="td-tab${_tdTab==='info'?' active':''}" onclick="switchTdTab('info')"> Bilgi</button>
-      <button class="td-tab${_tdTab==='squad'?' active':''}" onclick="switchTdTab('squad')"> Kadro & Saha</button>
+      <button class="td-tab${_tdTab==='squad'?' active':''}" onclick="switchTdTab('squad')"> Kadro & Diziliş</button>
       <button class="td-tab${_tdTab==='players'?' active':''}" onclick="switchTdTab('players')"> Oyuncular</button>
       <button class="td-tab${_tdTab==='matches'?' active':''}" onclick="switchTdTab('matches')"> Maçlar</button>
       <button class="td-tab${_tdTab==='fanwall'?' active':''}" onclick="switchTdTab('fanwall')"> Taraftar Duvarı</button>
@@ -21099,7 +21099,7 @@ window.postFanWallMessage=function(tid){
 function renderTdPlayers(tid,t){
   const sq=t.squad||{};
   const POS_ORDER=['KL','STP1','STP2','SĞB','SLB','GÖ','DOS','MOS','OOS','SĞO','SLO','SĞK','SLK','SLA','SĞA','SF','GF'];
-  const POS_NAMES={'KL':'Kaleci','STP1':'Stoper','STP2':'Stoper','SĞB':'Sağ Bek','SLB':'Sol Bek','GÖ':'Ön Libero','DOS':'Def. Orta Saha','OOS':'Of. Orta Saha','SĞK':'Sağ Kanat','SLK':'Sol Kanat','MOS':'Merkez Orta Saha','SĞO':'Sağ Orta Saha','SLO':'Sol Orta Saha','SLA':'Sol Açık','SĞA':'Sağ Açık','SF':'Santrfor','GF':'Golcü Forvet'};
+  const POS_NAMES={'KL':'Kaleci','STP1':'Stoper','STP2':'Stoper','SĞB':'Sağ Bek','SLB':'Sol Bek','GÖ':'Ön Libero','DOS':'Def. Orta Alan','OOS':'Of. Orta Alan','SĞK':'Sağ Kanat','SLK':'Sol Kanat','MOS':'Merkez Orta Alan','SĞO':'Sağ Orta Alan','SLO':'Sol Orta Alan','SLA':'Sol Açık','SĞA':'Sağ Açık','SF':'Santrfor','GF':'Golcü Forvet'};
   const PC={'KL':'#f59e0b','STP1':'#60a5fa','STP2':'#60a5fa','SĞB':'#60a5fa','SLB':'#60a5fa','GÖ':'#34d399','DOS':'#34d399','OOS':'#34d399','MOS':'#34d399','SĞO':'#34d399','SLO':'#34d399','SĞK':'#a78bfa','SLK':'#a78bfa','SF':'#f87171','GF':'#f87171','SLA':'#f87171','SĞA':'#f87171'};
 
   const allPlayers=[
@@ -21297,7 +21297,7 @@ function renderTdSquad(tid,t){
   function placePlayersOnLines(){
     const lines=formation.lines; // örn [1,4,4,2] veya [1,4,1,2,1,2] (Diamond, 6 hat)
     // GENEL ÇÖZÜM: groupByLine ile aynı mantık - formasyonun istediği ara hat sayısına
-    // göre orta saha grubu otomatik bölünür, hiçbir formasyon (3 ile 6 hat arası) hata
+    // göre orta alan grubu otomatik bölünür, hiçbir formasyon (3 ile 6 hat arası) hata
     // vermeden render edilir.
     const groups=[GK];
     const midLineCount=lines.length-3;
@@ -21397,7 +21397,7 @@ function renderTdSquad(tid,t){
     </div>`;
   }).join(''):'<div style="font-size:.74rem;color:var(--mu);padding:.4rem 0">Yedek oyuncu yok</div>';
 
-  const unassignedHtml=UNASSIGNED.length?`<div style="font-size:.68rem;color:var(--mu);margin:.5rem 0;padding:.5rem;background:var(--s2);border-radius:9px"> Pozisyonu atanmamış: ${UNASSIGNED.map(p=>p.name).join(', ')} (sahada gösterilemiyor)</div>`:'';
+  const unassignedHtml=UNASSIGNED.length?`<div style="font-size:.68rem;color:var(--mu);margin:.5rem 0;padding:.5rem;background:var(--s2);border-radius:9px"> Pozisyonu atanmamış: ${UNASSIGNED.map(p=>p.name).join(', ')} (dizilişte gösterilemiyor)</div>`:'';
 
   return `<div class="formation-picker">${formationBtns}</div>${formationHint}
     <div class="pitch-wrap">
@@ -21422,7 +21422,7 @@ window.showPlayerDetail=function(teamId,section,idx){
   const p=t.squad[section]&&t.squad[section][idx];
   if(!p||!p.name)return;
   const PC={'KL':'#f59e0b','STP1':'#60a5fa','STP2':'#60a5fa','SĞB':'#60a5fa','SLB':'#60a5fa','GÖ':'#34d399','DOS':'#34d399','OOS':'#34d399','MOS':'#34d399','SĞO':'#34d399','SLO':'#34d399','SĞK':'#a78bfa','SLK':'#a78bfa','SF':'#f87171','GF':'#f87171','SLA':'#f87171','SĞA':'#f87171'};
-  const POS_NAMES={'KL':'Kaleci','STP1':'Stoper','STP2':'Stoper','SĞB':'Sağ Bek','SLB':'Sol Bek','GÖ':'Ön Libero','DOS':'Defansif Orta Saha','OOS':'Ofansif Orta Saha','SĞK':'Sağ Kanat','SLK':'Sol Kanat','MOS':'Merkez Orta Saha','SĞO':'Sağ Orta Saha','SLO':'Sol Orta Saha','SLA':'Sol Açık','SĞA':'Sağ Açık','SF':'Santrfor','GF':'Golcü Forvet'};
+  const POS_NAMES={'KL':'Kaleci','STP1':'Stoper','STP2':'Stoper','SĞB':'Sağ Bek','SLB':'Sol Bek','GÖ':'Ön Libero','DOS':'Defansif Orta Alan','OOS':'Ofansif Orta Alan','SĞK':'Sağ Kanat','SLK':'Sol Kanat','MOS':'Merkez Orta Alan','SĞO':'Sağ Orta Alan','SLO':'Sol Orta Alan','SLA':'Sol Açık','SĞA':'Sağ Açık','SF':'Santrfor','GF':'Golcü Forvet'};
   const c=PC[p.position]||'var(--br)';
 
   // İstatistikleri hesapla (bu oyuncunun bu takımla oynadığı maçlardaki gol/asist/kart)
@@ -40211,6 +40211,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=9f1d5b3f"></script>
+<script src="gercek.js?v=3e866ab7"></script>
 </body>
 </html>

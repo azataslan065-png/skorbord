@@ -1290,7 +1290,7 @@ var SahaSes = (function(){
   function heyecanBul(metin, rol){
     var m = String(metin || ''), k = m.toLocaleLowerCase('tr-TR');
     if(rol !== 'yorumcu' && /(^|[^a-zçğıöşü])(go+l+(?![a-zçğıöşü])|golü (buldu|attı)|ağlar|file havaland|kırmızı|penaltı!|penaltı kararı|beyaz noktayı gösterdi|kendi kalesine gol|maç sona eriyor|son düdük)/.test(k)) return 2;
-    if(/!/.test(m) || /(şut|kafa|direk|kurtar|tehlike|çalım|ceza sahas|kaçtı|son anda|inanılmaz|müthiş|penaltı|nefes)/.test(k)) return 1;
+    if(/!/.test(m) || /(şut|kafa|direk|kurtar|tehlike|çalım|ceza alan|kaçtı|son anda|inanılmaz|müthiş|penaltı|nefes)/.test(k)) return 1;
     return 0;
   }
   /* OKUNUŞ (2026-10-31-F, kullanıcı: "spiker stadyum ismini doğru telaffuz etmiyor"). KÖK SEBEP: ses birimlerini çıkaran motor (espeak)
