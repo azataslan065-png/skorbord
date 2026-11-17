@@ -304,7 +304,7 @@ async function ligIsle(L){
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
   const temel = L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
-  Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); });
+  Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
   if(!HIZLI){
     const wd = await eslestir(temel.takim, L.obek === 'Milli', eski);
