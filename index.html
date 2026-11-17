@@ -7209,7 +7209,7 @@ function ptOrtakTvUygula(){
    atlama riski taşırdı. */
 function ptLoginKaynakCiz(){
   try{
-    var k=document.getElementById('ptLoginKaynak'); if(!k)return; try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */ try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */ try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */
+    var k=document.getElementById('ptLoginKaynak'); if(!k)return; try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */
     var su=ptVeriKaynagi()||'klasik';
     k.innerHTML=[].map(function(o){
       var sec=(su===o[0]);
@@ -7356,7 +7356,7 @@ function ptKaynakSayilari(){
 // ── SEÇİM EKRANI ────────────────────────────────────────────────────────────────────
 // Girişten sonra BİR KEZ açılır. Sonraki girişlerde açılmaz; kullanıcı Sezonlar
 // bölümünden istediği zaman değiştirebilir (kullanıcı talebi).
-function ptKaynakEkraniAc(degistirmeMi){ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */
+function ptKaynakEkraniAc(degistirmeMi){ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */
   var scr = document.getElementById('kaynakScreen');
   if(!scr) return false;
   var say = ptKaynakSayilari();
@@ -35956,7 +35956,7 @@ window.openSeasonMenu=function(){
       <span style="color:var(--mu)">›</span>
     </button>
     <!-- VERİ KAYNAĞI (MADDE 1): kullanıcı seçimini her zaman buradan değiştirebilir. -->
-    <button onclick="ptKaynakEkraniAc(true)" style="display:none!important;display:none!important;display:none!important;width:100%;display:flex;align-items:center;gap:.6rem;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:.65rem .8rem;cursor:pointer;font-family:var(--font-family,'Outfit'),sans-serif">
+    <button onclick="ptKaynakEkraniAc(true)" style="display:none!important;width:100%;display:flex;align-items:center;gap:.6rem;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:.65rem .8rem;cursor:pointer;font-family:var(--font-family,'Outfit'),sans-serif">
       <span style="font-size:1.1rem"></span>
       <div style="flex:1;text-align:left">
         <div style="font-size:.82rem;font-weight:800;color:var(--tx)">Veri Kaynağı</div>
@@ -36363,7 +36363,7 @@ function ptSahaKariyerYukle(ad, hedefId){
   firebase.database().ref('kullanicilar/'+vid).once('value').then(function(sn){ var e2=document.getElementById(hedefId); if(e2) e2.innerHTML=ptSahaKariyerHtml(sn.val()); })
     .catch(function(){ var e2=document.getElementById(hedefId); if(e2) e2.innerHTML=''; });
 }
-window.ptSahaKariyerAc=function(ad){ if(true) return;   /* Skorbord: SAHA kariyeri yok */ if(true) return;   /* Skorbord: SAHA kariyeri yok */ if(true) return;   /* Skorbord: SAHA kariyeri yok */
+window.ptSahaKariyerAc=function(ad){ if(true) return;   /* Skorbord: SAHA kariyeri yok */
   try{
     if(!ad) return;
     var el=document.getElementById('ptSahaKariyerOv');

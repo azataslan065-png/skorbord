@@ -57,7 +57,7 @@ for _y in ('index.html', 'ortak/ortak.js', 'gercek.js', 'yerel-vt.js'):
     isle(_y, [('ad', adDegis)])
 
 # APK geri tuşu: Skorbord köprüsü "SkorbordApp" adındadır; geri tuşunu uygulama yönetir, sayfa geçmiş tamponu kurmaz.
-isle('index.html', [('geri tuşu', degis("if(window.SahaApp)return;   // (2026-11-07) APK", "if(window.SahaApp||window.SkorbordApp)return;   // (2026-11-07) APK"))])
+isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return;   // (2026-11-07) APK", "if(window.SkorbordApp)return;   // (2026-11-07) APK"))])
 
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
@@ -115,7 +115,7 @@ def sahaYok(s):
       ("${ptVeriKaynagi()==='saha'?'SAHA uygulaması üzerinden':ptVeriKaynagi()==='klasik'?'SAHA olmadan':'Seçilmedi'}", "Varsayılan"),
     ]
     for a, b in D:
-        if a in s: s = s.replace(a, b)
+        if a in s and b not in s: s = s.replace(a, b)   # tekrar çalıştırmada ikinci kez eklenmesin
     # seçim ekranı kartları (SAHA ile / SAHA olmadan)
     s = re.sub(r"\['saha',\s+'<i class=\"saha-logo-i buyuk\"></i>', 'SAHA uygulaması üzerinden devam et',\s+'Yalnızca SAHA uygulamasında[^']*',\s+say\.saha\],\s+\['klasik', '[^']*', 'SAHA uygulaması olmadan devam et',\s+'SAHA verileri gizlenir;[^']*',\s+say\.klasik\]", "", s)
     # teşhis menüsü: SAHA oyun modülleri
