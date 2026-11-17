@@ -96,7 +96,6 @@ public class Ana extends Activity {
         if (Build.VERSION.SDK_INT >= 26) w.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         Kopru k = new Kopru();
         w.addJavascriptInterface(k, "SkorbordApp");
-        w.addJavascriptInterface(k, "SahaApp");   // ortak.js'deki güncelleme sistemi uygulamayı bu adla tanır (kabuk, guncellemeDenetle, guncellemeAyar, siteYukle)
         w.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return disari(r.getUrl()); }
             @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) { return ver(r); }

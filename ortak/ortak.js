@@ -514,12 +514,12 @@ var SahaKimlik = (function(){
 var SahaGoogle = (function(){
   var _bek = null, _apkBek = null;            // _bek: bağlanmayı bekleyen Google kimliği · _apkBek: tarayıcıdan dönüş bekleyen söz
   function destek(){ try{ return !!(window.firebase && firebase.auth && firebase.auth.GoogleAuthProvider); }catch(e){ return false; } }
-  function apkMi(){ try{ return !!(window.SahaApp && typeof SahaApp.googleGiris === 'function'); }catch(e){ return false; } }
+  function apkMi(){ try{ return !!(window.SkorbordApp && typeof SkorbordApp.googleGiris === 'function'); }catch(e){ return false; } }
   /* (2026-11-15-G) KÖK SEBEP (kullanıcı: "Google düğmesine basınca yükleniyor ekranı çıkıyor, ardından uygulamadan atıyor"): telefondaki uygulama
      eski sürümdü (yerel kısım 2026-11-15-D; sayfa sessizce F'ye güncellendi ama Google köprüsü yeni uygulama dosyasında). Köprü olmayınca tarayıcı yolu
      (popup) seçildi; uygulama içinde popup ayrı bir pencerede kimlik sayfasını açtı (karanlık "yükleniyor" ekranı), Google sayfası dış tarayıcıya
      atıldı ve uygulamadan çıkıldı. Artık uygulama içindeyse ve köprü yoksa popup hiç denenmez; yeni sürüm güncellemesi açılır. */
-  function eskiUygulamaMi(){ try{ return !apkMi() && (!!window.SahaApp || /; wv\)/.test(navigator.userAgent || '')); }catch(e){ return false; } }
+  function eskiUygulamaMi(){ try{ return !apkMi() && (!!window.SkorbordApp || /; wv\)/.test(navigator.userAgent || '')); }catch(e){ return false; } }
   var _yetim = null;   // uygulama, sayfa yeniden yüklendikten sonra dönen Google belgesi (bekleyen söz kaybolmuşsa)
   function kod(e){ return String((e && e.code) || (e && e.message) || e || 'bilinmeyen'); }
   function iz(baslik, ek){ try{ var ad = /admin/.test(location.pathname) ? 'admin' : (/saha/.test(location.pathname) ? 'saha' : 'puan');
@@ -545,12 +545,12 @@ var SahaGoogle = (function(){
     if(!destek()) return Promise.reject({ code:'google/sdk-yok' });
     var ga = gecici();
     if(_yetim){ var y = _yetim; _yetim = null; return ga.signInWithCredential(y).then(function(s){ return { kimlik:y, sonuc:s }; }); }
-    if(eskiUygulamaMi()){ iz('eski uygulama', {}); try{ if(window.SahaApp && SahaApp.guncellemeDenetle) setTimeout(function(){ SahaApp.guncellemeDenetle(); }, 1200); }catch(e){} return Promise.reject({ code:'google/eski-uygulama' }); }
+    if(eskiUygulamaMi()){ iz('eski uygulama', {}); try{ if(window.SkorbordApp && SkorbordApp.guncellemeDenetle) setTimeout(function(){ SkorbordApp.guncellemeDenetle(); }, 1200); }catch(e){} return Promise.reject({ code:'google/eski-uygulama' }); }
     if(apkMi()){
       return new Promise(function(res, rej){
         if(_apkBek){ try{ _apkBek.rej({ code:'google/yinelendi' }); }catch(e){} clearTimeout(_apkBek.z); }
         _apkBek = { res:res, rej:rej, z:setTimeout(function(){ _apkBek = null; rej({ code:'google/zaman-asimi' }); }, 300000) };
-        try{ SahaApp.googleGiris(mod || 'giris'); }catch(e){ _apkBek = null; rej({ code:'google/kopru' }); }
+        try{ SkorbordApp.googleGiris(mod || 'giris'); }catch(e){ _apkBek = null; rej({ code:'google/kopru' }); }
       }).then(function(k){ return ga.signInWithCredential(k).then(function(s){ return { kimlik:k, sonuc:s }; }); });
     }
     return ga.signInWithPopup(saglayici()).then(function(s){
@@ -844,7 +844,7 @@ var SahaGuncelleme = (function(){
   }
   /* (2026-11-07) Uygulamada (APK) sayfa uygulamanın içinde gelir (bkz. android Sayfa.java): yeni sürüm sayfayı yenileyerek değil, uygulama
      güncellenerek alınır. Sunucudaki sürüme uygulama kendisi bakar; "Güncelle" uygulamanın güncelleme ekranını açar. */
-  function apkGomulu(){ try{ return !!(window.SahaApp && typeof SahaApp.kabuk === 'function' && SahaApp.kabuk() >= 3); }catch(e){ return false; } }
+  function apkGomulu(){ try{ return !!(window.SkorbordApp && typeof SkorbordApp.kabuk === 'function' && SkorbordApp.kabuk() >= 3); }catch(e){ return false; } }
   /* SESSİZ GÜNCELLEME (2026-11-14-E, kullanıcı: "zorunlu güncelleme kapalıyken en son sürüm kullanılacak, açıkken zorunlu olacak"). 11-13-J'de
      anahtar kapalıyken kullanıcının ESKİ sürümde kalmasını sağlamıştım - yanlış anlamıştım. Doğrusu: kapalıyken güncelleme ekranı çıkmaz ama
      kullanıcı kendiliğinden en son sürümü kullanır. Sunucuda yeni sürüm görülünce sayfa uygun anda (maç sürmüyorsa, yazı yazılmıyorsa)
@@ -853,21 +853,21 @@ var SahaGuncelleme = (function(){
     try{
       clearTimeout(_sessizZ); _sessizZ = 0;
       if(!_minBilindi || _minYonetici || !_sessizHedef || karsilastir(window.APP_BUILD, _sessizHedef) >= 0) return;
-      var apk = apkGomulu(); if(apk && !(window.SahaApp && typeof SahaApp.siteYukle === 'function')) return;
+      var apk = apkGomulu(); if(apk && !(window.SkorbordApp && typeof SkorbordApp.siteYukle === 'function')) return;
       var bekle = false; try{ bekle = !!(_o.ertele && _o.ertele()); }catch(e){}
       try{ var ae = document.activeElement; if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) bekle = true; }catch(e){}
       if(bekle){ _sessizZ = setTimeout(sessizDene, 15000); return; }
       var an = 'sg-sessiz-' + _sessizHedef, son = 0; try{ son = Number(sessionStorage.getItem(an)) || 0; }catch(e){}
       if(Date.now() - son < 180000) return;                                   // az önce denendi (önbellek eskiyi verdiyse döngü olmasın)
       try{ sessionStorage.setItem(an, String(Date.now())); }catch(e){}
-      if(apk){ try{ SahaApp.siteYukle(); }catch(e){} return; }
+      if(apk){ try{ SkorbordApp.siteYukle(); }catch(e){} return; }
       guncelle();
     }catch(e){}
   }
   function sunucuIzle(dosya){
     if(!dosya || !window.fetch) return;
     var _apk = apkGomulu();
-    if(_apk && !(window.SahaApp && typeof SahaApp.siteYukle === 'function')) return;
+    if(_apk && !(window.SkorbordApp && typeof SkorbordApp.siteYukle === 'function')) return;
     var bak = function(){
       try{
         if(document.hidden) return;
@@ -892,7 +892,7 @@ var SahaGuncelleme = (function(){
     try{ if(/\/test\//.test(location.pathname)) ad += ' Test'; }catch(e){} return ad; }
   function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
   function guncelle(){
-    if(apkGomulu()){ try{ SahaApp.guncellemeDenetle(); }catch(e){} setTimeout(function(){ try{ var d = document.getElementById('sgGuncelleDug'), e2 = document.getElementById('sgBantDug');
+    if(apkGomulu()){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} setTimeout(function(){ try{ var d = document.getElementById('sgGuncelleDug'), e2 = document.getElementById('sgBantDug');
       if(d){ d.disabled = false; d.textContent = 'Güncelle'; } if(e2){ e2.disabled = false; e2.textContent = 'Güncelle'; } }catch(e){} }, 2500); return; }
     try{ var b = document.getElementById('sgGuncelleDug'); if(b){ b.disabled = true; b.textContent = 'Güncelleniyor…'; } }catch(e){}
     try{ if(_min) sessionStorage.setItem('sg-denendi-' + _min.build, String(Date.now())); }catch(e){}
@@ -972,7 +972,7 @@ var SahaGuncelleme = (function(){
         refFn('globalConfig/minSurum').on('value', function(sn){
           var v = sn.val(); var b = v ? (typeof v === 'string' ? v : v.build) : null;
           _minYonetici = b ? { build:String(b), mesaj:(v && v.mesaj) || '' } : null; _minBilindi = true; hedefHesapla(); goster(); sessizDene();
-          try{ if(window.SahaApp && typeof SahaApp.guncellemeAyar === 'function') SahaApp.guncellemeAyar(!!b); }catch(e){}
+          try{ if(window.SkorbordApp && typeof SkorbordApp.guncellemeAyar === 'function') SkorbordApp.guncellemeAyar(!!b); }catch(e){}
         }, function(){ deneme++; if(deneme <= 40) setTimeout(kur, Math.min(15000, 1500 * deneme)); });
       }catch(e){ deneme++; if(deneme <= 40) setTimeout(kur, Math.min(15000, 1500 * deneme)); }
     };

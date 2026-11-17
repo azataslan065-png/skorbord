@@ -173,7 +173,7 @@ Object.defineProperty(S,'length',{configurable:true,get:function(){return bizim(
 </script>
 <meta charset="UTF-8"/>
 <link rel="preload" href="ortak/saha-ikon.ttf?v=48919b70" as="font" type="font/ttf" crossorigin>
-<script src="ortak/ortak.js?v=103f61d5"></script>
+<script src="ortak/ortak.js?v=3f4a4b65"></script>
 <style id="sahaIkonStil">@font-face{font-family:"SahaIkon";src:url("ortak/saha-ikon.ttf?v=48919b70") format("truetype");font-display:block}saha-ik{font-family:"SahaIkon"!important;font-style:normal!important;font-weight:400!important;font-variant:normal;text-transform:none;letter-spacing:0;line-height:1;display:inline-block;vertical-align:-.1em;text-decoration:none;text-shadow:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}</style>
 <script id="sahaIkonBetik">/* SAHA İKONLARI (2026-10-20-B, kullanıcı: "üç dosyadaki emoji ile sunulan ikonların hepsini kaldırın, yerine kendi
    tasarladığınız ikonları koyun"). Emojiler kaynakta özel kullanım alanı karakterlerine (U+E900-E9FF) çevrildi; her biri
@@ -1034,7 +1034,7 @@ body.ticker-on{--ticker-h:38px}
    fotoğrafını değiştirince otomatik değişsin"). Skorbord'da SAHA'yı temsil eden yerler (veri kaynağı seçimi, giriş ekranındaki
    kaynak düğmesi, oyuncu kartındaki SAHA bilgileri, SAHA kariyeri) genel top simgesi yerine SAHA'nın kendi logosunu gösterir.
    Kaynak: sahaGorunum/logo (admin kapak fotoğrafından üretir), yoksa saha-icon-192.png. Bkz. ptSahaLogoDinle. */
-:root{--saha-logo:url("saha-icon-192.png")}
+:root{--saha-logo:url("app-icon-192.png")}
 .saha-logo-i{display:inline-block;width:1.15em;height:1.15em;border-radius:.34em;vertical-align:-.2em;flex-shrink:0;background:var(--saha-logo) center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 .saha-logo-i.buyuk{width:46px;height:46px;border-radius:14px;vertical-align:middle;box-shadow:0 4px 12px rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.18)}
 /* ONUR LİSTESİ (2026-10-26-B) */
@@ -3396,12 +3396,12 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-17-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SahaApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SahaApp&&typeof SahaApp.kabuk!=='function'&&typeof SahaApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SahaApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-17-B';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
    ses tuşlarıyla ayarlanan ses ile uygulamadaki çubuk hep aynıdır; iç ses kısık kalıp "tuşla açtım, ses yok" durumu olmaz. Tarayıcıda eski davranış sürer. */
-window.__appSesVar=function(){ try{ return !!(window.SahaApp&&typeof SahaApp.sesAyarla==='function'); }catch(e){ return false; } };
+window.__appSesVar=function(){ try{ return !!(window.SkorbordApp&&typeof SkorbordApp.sesAyarla==='function'); }catch(e){ return false; } };
 /* (2026-11-08-E, kullanıcı: "ses açılıp kısılırken aniden maksimum seviyeye çıkıyor veya tam tersi oluyor"). KÖK SEBEPLER (benim önceki sürümümdeki
    hatalar): (1) ses çubuğu OYNATICININ sessiz durumunu da gösteriyordu: sessizdeyken çubuk 0, cihaz sesi ise örn. %60 idi; ses düğmesine basılınca
    çubuk 0'dan %70'e "fırlıyordu". Sesi 0'a çekince oynatıcı da sessize alınıyor, ses tuşuyla açılınca oynatıcı sessiz kaldığı için çubuk 0'da
@@ -3411,9 +3411,9 @@ window.__appSesVar=function(){ try{ return !!(window.SahaApp&&typeof SahaApp.ses
    sessiz düğmesi cihaz sesini 0'a alır / eski değerine döndürür; artır/azalt cihazın kendi tek adımıdır (ses tuşuyla aynı); sürükleme sırasında
    ve bırakıldıktan 0,8 sn sonrasına kadar dışarıdan gelen değer çubuğa yazılmaz. */
 window.__appSesSon=-1; window.__appSesOnce=60; window.__appSesSurT=0;
-window.__appSesAl=function(){ try{ var y=SahaApp.sesAl(); if(y>=0)window.__appSesSon=y; }catch(e){} return window.__appSesSon<0?50:window.__appSesSon; };
-window.__appSesAyarla=function(p){ try{ var y=SahaApp.sesAyarla(Math.round(p)); if(y>=0){ window.__appSesSon=y; if(y>0)window.__appSesOnce=y; } return y; }catch(e){ return p; } };
-window.__appSesAdim=function(yon){ try{ if(typeof SahaApp.sesAdim==='function'){ var y=SahaApp.sesAdim(yon); if(y>=0){ window.__appSesSon=y; if(y>0)window.__appSesOnce=y; } return y; } }catch(e){} return __appSesAyarla(__appSesAl()+(yon>0?7:-7)); };
+window.__appSesAl=function(){ try{ var y=SkorbordApp.sesAl(); if(y>=0)window.__appSesSon=y; }catch(e){} return window.__appSesSon<0?50:window.__appSesSon; };
+window.__appSesAyarla=function(p){ try{ var y=SkorbordApp.sesAyarla(Math.round(p)); if(y>=0){ window.__appSesSon=y; if(y>0)window.__appSesOnce=y; } return y; }catch(e){ return p; } };
+window.__appSesAdim=function(yon){ try{ if(typeof SkorbordApp.sesAdim==='function'){ var y=SkorbordApp.sesAdim(yon); if(y>=0){ window.__appSesSon=y; if(y>0)window.__appSesOnce=y; } return y; } }catch(e){} return __appSesAyarla(__appSesAl()+(yon>0?7:-7)); };
 window.__appSesSessiz=function(){ var c=__appSesAl(); if(c>0){ window.__appSesOnce=c; return __appSesAyarla(0); } return __appSesAyarla(window.__appSesOnce>0?window.__appSesOnce:50); };
 window.__appSesSuruyor=function(){ return Date.now()<window.__appSesSurT; };
 window.__appSesBagla=function(el){ if(!el||el._appSes)return; el._appSes=1; var f=function(){ window.__appSesSurT=Date.now()+60000; }, b=function(){ window.__appSesSurT=Date.now()+800; };
@@ -7070,9 +7070,7 @@ var _visitorsListenerId=null;
    yamalamak, birini atlayıp ayrımın sessizce delinmesi demekti.
    ══════════════════════════════════════════════════════════════════════════════════════ */
 var _leaguesMetaHam = {};        // suzulmemis tam liste - secim ekrani sayilari icin
-function ptVeriKaynagi(){
-  try{ return localStorage.getItem('pt_veriKaynagi') || ''; }catch(e){ return ''; }
-}
+function ptVeriKaynagi(){ return 'klasik'; }   /* Skorbord: SAHA veri kaynağı yok */
 function ptVeriKaynagiYaz(k){
   try{ localStorage.setItem('pt_veriKaynagi', k); }catch(e){ DiagSil('ptVeriKaynagiYaz', e); }
 }
@@ -7211,9 +7209,9 @@ function ptOrtakTvUygula(){
    atlama riski taşırdı. */
 function ptLoginKaynakCiz(){
   try{
-    var k=document.getElementById('ptLoginKaynak'); if(!k)return;
+    var k=document.getElementById('ptLoginKaynak'); if(!k)return; try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */ try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */ try{ k.parentNode.style.display='none'; }catch(_){} return;   /* Skorbord: seçici yok */
     var su=ptVeriKaynagi()||'klasik';
-    k.innerHTML=[['klasik',' SAHA dışı'],['saha','<i class="saha-logo-i"></i> SAHA']].map(function(o){
+    k.innerHTML=[].map(function(o){
       var sec=(su===o[0]);
       return '<button type="button" onclick="ptLoginKaynakSec(\''+o[0]+'\')" '
         +'style="flex:1;padding:.45rem .3rem;border-radius:10px;cursor:pointer;font-family:inherit;'
@@ -7251,7 +7249,7 @@ function ptKaynakGecisYap(k){
       sessionStorage.setItem('pt_kaynakGecisAd', _userName);
     }
   }catch(e){self.__ds&&self.__ds(6524,e)}
-  try{ showToast(' ' + (k==='saha'?'SAHA':'SAHA dışı') + ' tarafına geçiliyor…'); }catch(e){self.__ds&&self.__ds(6525,e)}
+  try{ showToast(' ' + 'Veri kaynağı' + ' değişiyor…'); }catch(e){self.__ds&&self.__ds(6525,e)}
   setTimeout(function(){ location.reload(); }, 450);
 }
 /* Açılışta bilet varsa doğrudan içeri gir - şifre tekrar sorulmaz, çünkü kullanıcı
@@ -7358,7 +7356,7 @@ function ptKaynakSayilari(){
 // ── SEÇİM EKRANI ────────────────────────────────────────────────────────────────────
 // Girişten sonra BİR KEZ açılır. Sonraki girişlerde açılmaz; kullanıcı Sezonlar
 // bölümünden istediği zaman değiştirebilir (kullanıcı talebi).
-function ptKaynakEkraniAc(degistirmeMi){
+function ptKaynakEkraniAc(degistirmeMi){ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */ if(true) return;   /* Skorbord: veri kaynağı seçimi yok */
   var scr = document.getElementById('kaynakScreen');
   if(!scr) return false;
   var say = ptKaynakSayilari();
@@ -7366,12 +7364,7 @@ function ptKaynakEkraniAc(degistirmeMi){
   var kutu = document.getElementById('kaynakGrid');
   if(kutu){
     kutu.innerHTML = [
-      ['saha',   '<i class="saha-logo-i buyuk"></i>', 'SAHA uygulaması üzerinden devam et',
-       'Yalnızca SAHA uygulamasında oynanan sezonları ve takımları görürsün.',
-       say.saha],
-      ['klasik', '', 'SAHA uygulaması olmadan devam et',
-       'SAHA verileri gizlenir; elle girilen ve diğer oyunlardan gelen sezonlar görünür.',
-       say.klasik]
+      
     ].map(function(o){
       return '<div class="kaynak-kart' + (secili === o[0] ? ' secili' : '') + '" onclick="ptKaynakSec(\'' + o[0] + '\')">'
         + '<div class="kaynak-ikon">' + o[1] + '</div>'
@@ -7441,8 +7434,8 @@ window.ptKaynakGeri = function(){
 function ptKaynakBosUyar(k){
   try{
     showToast(k === 'saha'
-      ? ' SAHA kaynağında henüz sezon yok - tüm sezonlar gösteriliyor'
-      : ' SAHA dışı kaynakta henüz sezon yok - tüm sezonlar gösteriliyor', 'er');
+      ? ' Bu kaynakta henüz sezon yok - tüm sezonlar gösteriliyor'
+      : ' Bu kaynakta henüz sezon yok - tüm sezonlar gösteriliyor', 'er');
   }catch(e){self.__ds&&self.__ds(6703,e)}
 }
 
@@ -13860,7 +13853,7 @@ function renderMdOnRapor(id, m, h, a){
         + '<button class="or-link" onclick="switchMdTab(\'karsi\')">Bütün karşılaşmalar ›</button>'
       : '<div class="or-not">Bu sezon henüz karşılaşmadılar.</div>')
     + '</div>'
-    + (eks ? '<div class="or-kart">' + eks + (sahaCeza ? '<div class="or-bas" style="margin-top:.6rem">SAHA cezaları</div>' + sahaCeza : '') + '</div>'
+    + (eks ? '<div class="or-kart">' + eks + (sahaCeza ? '<div class="or-bas" style="margin-top:.6rem">Cezalar</div>' + sahaCeza : '') + '</div>'
         : sahaCeza ? '<div class="or-kart"><div class="or-bas">Eksikler</div>' + sahaCeza + '</div>'
         : '<div class="or-kart"><div class="or-bas">Eksikler</div><div class="or-not">İki takımda da bilinen eksik yok.</div></div>')
     + '</div>';
@@ -15763,7 +15756,7 @@ function renderMdKadro(id,m,h,a){
         </div>
       </div>
       ${ptEksiklerBlogu(h,a)}
-      ${!m.played?`<div style="margin-top:.7rem;padding:.6rem .7rem;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:.66rem;color:var(--mu);text-align:center"><b style="color:#a78bfa"> Olası Kadro / İlk 11 Tahmini</b><br/>${ptVeriKaynagi()==='saha'?'Kadroyu ve dizilişi takımın kullanıcısı SAHA uygulamasından belirler; maça kadar değişebilir.':'Admin son güncellediği kadroyu gösterir, maça kadar değişebilir.'}</div>`:''}
+      ${!m.played?`<div style="margin-top:.7rem;padding:.6rem .7rem;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:.66rem;color:var(--mu);text-align:center"><b style="color:#a78bfa"> Olası Kadro / İlk 11 Tahmini</b><br/>${ptVeriKaynagi()==='saha'?'Kadro ve diziliş maçtan önce açıklanır; maça kadar değişebilir.':'Admin son güncellediği kadroyu gösterir, maça kadar değişebilir.'}</div>`:''}
     </div>`;
   }else{
     // YATAY MOD: Ev sahibi SOLDA, Deplasman SAĞDA. Yedekler: Ev sağda, Deplasman solda (sabit kural korunur).
@@ -15807,7 +15800,7 @@ function renderMdKadro(id,m,h,a){
         </div>
       </div>
       ${ptEksiklerBlogu(h,a)}
-      ${!m.played?`<div style="margin-top:.7rem;padding:.6rem .7rem;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:.66rem;color:var(--mu);text-align:center"><b style="color:#a78bfa"> Olası Kadro / İlk 11 Tahmini</b><br/>${ptVeriKaynagi()==='saha'?'Kadroyu ve dizilişi takımın kullanıcısı SAHA uygulamasından belirler; maça kadar değişebilir.':'Admin son güncellediği kadroyu gösterir, maça kadar değişebilir.'}</div>`:''}
+      ${!m.played?`<div style="margin-top:.7rem;padding:.6rem .7rem;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:.66rem;color:var(--mu);text-align:center"><b style="color:#a78bfa"> Olası Kadro / İlk 11 Tahmini</b><br/>${ptVeriKaynagi()==='saha'?'Kadro ve diziliş maçtan önce açıklanır; maça kadar değişebilir.':'Admin son güncellediği kadroyu gösterir, maça kadar değişebilir.'}</div>`:''}
     </div>`;
   }
 }
@@ -15969,12 +15962,12 @@ function ptMacGolSayfa(m,h,a){
   var kart=function(t,l,renk){ return '<div class="isi-kart"><div class="isi-bas"><span style="background:'+renk+'"></span><b>'+escHtml(t.name||'?')+'</b><small>'+l.length+' gol · kale üstte</small></div>'
     +ptGolHaritasiSvg(l,renk==='#ef4444'?'#ffffff':'#9ec5ff')+(l.length?'<div class="isi-not" style="margin-top:.3rem">'+l.map(function(g){ return escHtml(g.ad)+' '+g.dk+"'"+(g.pen?' (P)':''); }).join(' · ')+'</div>':'')+'</div>'; };
   return '<div class="isi-say">'+kart(h,L.home,'#ef4444')+kart(a,L.away,'#3b82f6')
-    +'<div class="isi-not">'+(kz?kz+' golün konum bilgisi yok (SAHA dışında girilmiş) · ':'')+'Noktaya dokununca golü atan ve dakika görünür · sarı: penaltı</div></div>';
+    +'<div class="isi-not">'+(kz?kz+' golün konum bilgisi yok · ':'')+'Noktaya dokununca golü atan ve dakika görünür · sarı: penaltı</div></div>';
 }
 function ptIsiSon(m,h,a){
   if(!ptKayVar(m)) return '';
   if(!ptIsiVar(m)) return '</div><div class="isi-say"><div class="isi-kart" style="padding:1.2rem .8rem;text-align:center"><div style="font-size:1.6rem"></div><b style="font-size:.78rem">Isı haritası yok</b>'
-    +'<div class="isi-not" style="margin-top:.35rem;line-height:1.5">Isı haritası yalnızca SAHA oyununda oynanıp bitirilen lig maçlarında oluşur. Bu maç SAHA dışında girilmiş ya da bu özellikten önce oynanmış.</div></div></div>'
+    +'<div class="isi-not" style="margin-top:.35rem;line-height:1.5">Bu maç için ısı haritası verisi yok.</div></div></div>'
     +ptSutSayfa(m,h,a)+'</div><div class="isi-nokta"><i class="on"></i><i></i><i></i><span>Kaydır: ⟷ Kadro / Isı / Şut haritası</span></div>';
   var I=m.sahaIsi, kart=function(t,veri,renk){ return '<div class="isi-kart"><div class="isi-bas"><span style="background:'+renk+'"></span><b>'+escHtml(t.name||'?')+'</b><small>hücum yönü →</small></div>'
     +'<img class="isi-img" alt="Isı haritası" src="'+ptIsiGorsel(m.id||(h.id+'_'+a.id)+'_'+String(veri).length, veri, I.w||24, I.h||16)+'"></div>'; };
@@ -18650,7 +18643,7 @@ function ptSahaMacKartHtml(v){
     var _hf=Number(v.hafta)||(v.matchId&&D.matches&&D.matches[v.matchId]?Number(D.matches[v.matchId].week)||0:0);
     var tur=v.tur==='lig'?(_hf?' '+_hf+'. Hafta maçı':' Lig maçı'):(({arkadas:' Arkadaş maçı',ai:' Yapay zekâ maçı'}[v.tur])||' Maç');
     var gl=function(l){return (l||[]).map(function(g){return '<div> '+e(g)+'</div>';}).join('');};
-    return '<div class="pt-sm-kart"><div class="pt-sm-ust">'+tur+' · SAHA</div>'
+    return '<div class="pt-sm-kart"><div class="pt-sm-ust">'+tur+'</div>'
       +'<div class="pt-sm-skor"><b>'+e(v.ev)+'</b><span>'+(Number(v.evSkor)||0)+' - '+(Number(v.depSkor)||0)+'</span><b>'+e(v.dep)+'</b></div>'   // (2026-10-17-F) kartta rozet yok (bkz. ptPaylasanTakimRozet)
       +((v.evSahip||v.depSahip)?'<div class="pt-sm-sahip"><span>'+(v.evSahip?' '+e(v.evSahip):'')+'</span><span>'+(v.depSahip?' '+e(v.depSahip):'')+'</span></div>':'')
       +((v.evGol&&v.evGol.length)||(v.depGol&&v.depGol.length)?'<div class="pt-sm-gol"><div>'+gl(v.evGol)+'</div><div style="text-align:right">'+gl(v.depGol)+'</div></div>':'')
@@ -18760,7 +18753,7 @@ function renderOne(c,isReply,repliesByParent){
       <div style="max-width:84%;${c.pinned?'outline:1.5px solid var(--ac);border-radius:14px':''}">
         ${c.pinned?'<div style="font-size:max(9px,.64rem);color:var(--tx);font-weight:800;margin-bottom:.2rem;text-align:'+align+'"> Sabitlenmiş</div>':''}
         <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.15rem;${isMine?'flex-direction:row-reverse':''}">
-          <span ${(!isDev&&!_kim.hesap)?`onclick="event.stopPropagation();ptSahaKariyerAc(this.dataset.u)" data-u="${escAttr(c.user||'')}" title="SAHA kariyeri"`:''} style="font-size:.68rem;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;cursor:${(!isDev&&!_kim.hesap)?'pointer':'default'};color:${_kim.hesap?'var(--tx)':(isDev?'#d4af37':'var(--ac3)')}">${sohbetKimlikHtml(_kim)}${isDev?'':ptPaylasanTakimRozet(c,_kim)}${isDev?'':userBadgeHtml(c.user)}</span>
+          <span ${(!isDev&&!_kim.hesap)?`onclick="event.stopPropagation();ptSahaKariyerAc(this.dataset.u)" data-u="${escAttr(c.user||'')}"`:''} style="font-size:.68rem;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;cursor:${(!isDev&&!_kim.hesap)?'pointer':'default'};color:${_kim.hesap?'var(--tx)':(isDev?'#d4af37':'var(--ac3)')}">${sohbetKimlikHtml(_kim)}${isDev?'':ptPaylasanTakimRozet(c,_kim)}${isDev?'':userBadgeHtml(c.user)}</span>
           ${_kim.dev?'<span style="font-size:max(9.5px,.62rem);background:rgba(0,0,0,.45);color:#fde68a;padding:.1rem .35rem;border-radius:7px;font-weight:800">DEV</span>':''}
           <span class="msg-time-toggle" data-ts="${c.ts}" data-msg-id="${c.id}" data-expanded="${_expandedTimeMsgId===c.id?'1':'0'}" onclick="event.stopPropagation();toggleMsgTimeDisplay(this)" style="font-size:max(9.5px,.64rem);color:var(--mu);cursor:pointer;display:inline-flex;align-items:center;min-height:28px;padding:0 .2rem">${_expandedTimeMsgId===c.id?formatFullElapsed(c.ts):formatSmartTime(c.ts)}</span>
         </div>
@@ -20108,7 +20101,7 @@ window.DeviceBack=(function(){
       return true;
     }
     // 5) Ana sayfa: çıkış onayı göster. Tamponu geri koy.
-    if(window.SahaApp) return false;   // (2026-11-07) uygulamada çıkış onayını uygulama gösterir
+    if(window.SkorbordApp) return false;   // (2026-11-07) uygulamada çıkış onayını uygulama gösterir
     showExitConfirm(); return true;
   }
   /* UYGULAMA GERİ TUŞU (2026-11-07, kullanıcı: "telefonun kendi geri tuşları daha stabil çalışsın"). APK'da geri tuşu tarayıcı geçmişine
@@ -20119,7 +20112,7 @@ window.DeviceBack=(function(){
   return {
     arm:function(){
       if(armed)return;
-      if(window.SahaApp||window.SkorbordApp)return;   // (2026-11-07) APK: geri tuşunu uygulama yönetir (window.__appGeri)
+      if(window.SkorbordApp||window.SkorbordApp)return;   // (2026-11-07) APK: geri tuşunu uygulama yönetir (window.__appGeri)
       armed=true;
       // KESİN TEŞHİS (loglarla): popstate DIŞINDA pushState çalışıyor, popstate İÇİNDE yok sayılıyor.
       // Çözüm iki katmanlı: (1) Başlangıçta DERİN bir tampon havuzu (10 adet) koyarız - popstate
@@ -20601,7 +20594,7 @@ function ptGolHaritasiSvg(L,renk){
 function _ptGolOzet(L,konumsuz){
   const kutu=L.filter(g=>!g.pen&&g.x>=1-16.5/52.5&&Math.abs(g.z)<=20.16/34).length, pen=L.filter(g=>g.pen).length, dis=L.length-kutu-pen;
   return '<div class="gh-oz"><span><b>'+kutu+'</b> ceza sahası içi</span><span><b>'+dis+'</b> ceza sahası dışı</span><span><b>'+pen+'</b> penaltı</span></div>'
-    +(konumsuz?'<div class="gh-not">'+konumsuz+' golün şut yeri kaydı yok (SAHA dışında girilmiş ya da şut kaydından önce oynanmış).</div>':'');
+    +(konumsuz?'<div class="gh-not">'+konumsuz+' golün şut yeri kaydı yok.</div>':'');
 }
 function renderTdGolHaritasi(tid){
   const A=_ptGolListe((e,t)=>t===tid), Y=_ptGolListe((e,t,rk)=>rk===tid);
@@ -21389,7 +21382,7 @@ function renderTdSquad(tid,t){
   // İpucu düğme satırının DIŞINDA (önceden aynı esnek satırdaydı ve düğmeleri dev boyuta şişiriyordu).
   const formationHint=(ptVeriKaynagi()==='saha'
     ?`<div style="font-size:.62rem;color:var(--mu);margin:-.35rem 0 .55rem">${window._ptBenimSahaTakim===tid
-        ?' Seçtiğin diziliş takımına kaydedilir (SAHA ve fikstür)'
+        ?' Seçtiğin diziliş takımına kaydedilir'
         :' Önizleme - takımın dizilişini yalnızca takımın kullanıcısı değiştirebilir'}${_tdFormation!==(t.formation||'4-4-2')?' · kayıtlı: <b>'+(t.formation||'4-4-2')+'</b>':''}</div>`
     :'');
 
@@ -21567,7 +21560,7 @@ window.showPlayerDetail=function(teamId,section,idx){
       <div style="font-size:.68rem;color:var(--mu);margin-top:.3rem">${t.name} ${section==='bench'?'· Yedek Kadro':'· İlk 11'}</div>
     </div>
     ${cardWarning}
-    ${p.havuzId?'<div id="ptSahaOyuncu" class="pso-kutu"><div class="pso-yuk"><i class="saha-logo-i"></i> SAHA bilgileri yükleniyor…</div></div>':''}
+    ${p.havuzId?'<div id="ptSahaOyuncu" class="pso-kutu"><div class="pso-yuk">Oyuncu bilgileri yükleniyor…</div></div>':''}
     ${puanGecmisiHtml}
     ${ptOyuncuGolHaritasi(teamId,p.name)}
     ${statusHistoryHtml}
@@ -21621,7 +21614,7 @@ function ptSahaOyuncuHtml(o, sahipAd){
           +(ek?'<text x="'+X(i)+'" y="'+(H-3)+'" font-size="9" text-anchor="middle">'+ek+'</text>':'');}).join('')+'</svg>';
   }
   var hucre=function(et,v,renk){return '<div class="pso-h"><b'+(renk?' style="color:'+renk+'"':'')+'>'+v+'</b><small>'+et+'</small></div>';};
-  return '<div class="pso-bas"><i class="saha-logo-i"></i> SAHA <span>'+e(String(o.mevki||'').replace(/[0-9]/g,''))+' · güç '+Math.round(o.guc||0)+(fn?' · #'+fn:'')+(kap?' · <b class="pt-kap">K</b>':'')+'</span></div>'
+  return '<div class="pso-bas"><span>'+e(String(o.mevki||'').replace(/[0-9]/g,''))+' · güç '+Math.round(o.guc||0)+(fn?' · #'+fn:'')+(kap?' · <b class="pt-kap">K</b>':'')+'</span></div>'
     +'<div class="pso-ust">'
       +'<div><small>Sahibi</small><b>'+(sahipAd?' '+e(sahipAd):(o.sahip?'—':'Sahipsiz'))+'</b></div>'
       +'<div><small>Değeri</small><b>'+(deger?deger+' SL':(o.fiyat?o.fiyat+' SL':'—'))+'</b>'+(o.alisFiyat?'<em style="color:'+(fark>=0?'#86efac':'#fecaca')+'">'+(fark>=0?'+':'')+fark+' (alış '+o.alisFiyat+')</em>':'')+'</div>'
@@ -21631,7 +21624,7 @@ function ptSahaOyuncuHtml(o, sahipAd){
     +(Number(o.sariSay)>0?'<div class="pso-not"> Sarı kart sayacı: '+o.sariSay+'</div>':'')
     +'<div class="pso-ist">'+hucre('Maç',L.length)+hucre('Ort. puan',ort!=null?ort.toFixed(1):'—',ort!=null?(ort>=7?'#22c55e':(ort>=5.5?'#eab308':'#ef4444')):'')+hucre('En iyi',enIyi!=null?enIyi:'—')
       +hucre('Gol',G,'#4ade80')+hucre('Asist',A,'#60a5fa')+hucre('Kart',S+K?(S+' '+K+''):'0')+'</div>'
-    +(gr?'<div class="pso-gr"><small>Son '+son.length+' SAHA maçı · puan</small>'+gr+'</div>':'<div class="pso-not">Puan grafiği için en az 2 SAHA maçı gerekiyor.</div>');
+    +(gr?'<div class="pso-gr"><small>Son '+son.length+' maç · puan</small>'+gr+'</div>':'<div class="pso-not">Puan grafiği için en az 2 maç gerekiyor.</div>');
 }
 
 window.setFormation=function(fid){
@@ -29835,7 +29828,7 @@ try{
       try{
         var _zz=window._ptTbSaat;
         if(_zz&&_zz.akiyor&&(mm.isLive||mm._realIsLive)&&Date.now()-_zz.alinma>10000&&window.DiagCore)
-          DiagCore.kaydet('pt_embed','ag','SAHA tabelası güncellenmiyor',{yas:Math.round((Date.now()-_zz.alinma)/1000)+'sn',
+          DiagCore.kaydet('pt_embed','ag','Skor tabelası güncellenmiyor',{yas:Math.round((Date.now()-_zz.alinma)/1000)+'sn',
             mac:kid,anlami:'TV\'deki skorbord saati donmuş; oyuncunun cihazı canlı veri yazmıyor olabilir.'});
       }catch(e){self.__ds&&self.__ds(29005,e)}
       var t = ptTabelaSaatMetni(mm.tabela);
@@ -32531,10 +32524,10 @@ function ptpUstBarParcalari(){
   }
   /* UYGULAMADA PENCERE İÇİNDE PENCERE (2026-11-07, kullanıcı: "TV sekmesinde APK için pencere içinde pencere modu çalışmıyor"). KÖK SEBEP:
      düğme tarayıcının video PiP'ini çağırıyordu; uygulamanın sayfa motoru bunu desteklemez, gömülü YouTube oynatıcısında ise hiç yoktur.
-     Uygulamada artık uygulamanın kendisi küçük pencereye geçer (SahaApp.pip); geçerken yayın tam ekran düzenine alınır ve düğmeler gizlenir,
+     Uygulamada artık uygulamanın kendisi küçük pencereye geçer (SkorbordApp.pip); geçerken yayın tam ekran düzenine alınır ve düğmeler gizlenir,
      pencere büyütülünce önceki düzene dönülür. Yayın oynarken uygulamadan çıkılırsa kendiliğinden küçük pencereye geçilebilsin diye
      oynatma durumu uygulamaya bildirilir; küçük pencere kapatılınca yayın duraklatılır. */
-  function _appPipVar(){ try{ return !!(window.SahaApp&&typeof SahaApp.pip==='function'); }catch(e){ return false; } }
+  function _appPipVar(){ try{ return !!(window.SkorbordApp&&typeof SkorbordApp.pip==='function'); }catch(e){ return false; } }
   window.__appPipDurum=function(ac){
     try{
       document.body.classList.toggle('app-pip',!!ac);
@@ -32552,10 +32545,10 @@ function ptpUstBarParcalari(){
   window.__appPipKapandi=function(){ try{ document.body.classList.remove('app-pip'); if(S&&S.video&&!S.video.paused)S.video.pause(); window.__appPipDurum(false); }catch(e){} };
   if(_appPipVar()){ var _pipSon=null; setInterval(function(){ try{
     var u=!!(S&&S.root&&document.body.contains(S.root)&&S.video&&!S.video.paused);
-    if(u!==_pipSon){ _pipSon=u; if(SahaApp.pipHazir)SahaApp.pipHazir(u); } }catch(e){} },1000); }
+    if(u!==_pipSon){ _pipSon=u; if(SkorbordApp.pipHazir)SkorbordApp.pipHazir(u); } }catch(e){} },1000); }
   function togglePip(){
     if(!S)return;
-    if(_appPipVar()){ try{ if(SahaApp.pip())return; }catch(e){} showToastMsg('Bu cihaz küçük pencereyi desteklemiyor'); return; }
+    if(_appPipVar()){ try{ if(SkorbordApp.pip())return; }catch(e){} showToastMsg('Bu cihaz küçük pencereyi desteklemiyor'); return; }
     try{
       if(document.pictureInPictureElement)document.exitPictureInPicture();
       else if(S.video.requestPictureInPicture)S.video.requestPictureInPicture();
@@ -35963,11 +35956,11 @@ window.openSeasonMenu=function(){
       <span style="color:var(--mu)">›</span>
     </button>
     <!-- VERİ KAYNAĞI (MADDE 1): kullanıcı seçimini her zaman buradan değiştirebilir. -->
-    <button onclick="ptKaynakEkraniAc(true)" style="width:100%;display:flex;align-items:center;gap:.6rem;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:.65rem .8rem;cursor:pointer;font-family:var(--font-family,'Outfit'),sans-serif">
+    <button onclick="ptKaynakEkraniAc(true)" style="display:none!important;display:none!important;display:none!important;width:100%;display:flex;align-items:center;gap:.6rem;background:var(--s2);border:1.5px solid var(--br);border-radius:12px;padding:.65rem .8rem;cursor:pointer;font-family:var(--font-family,'Outfit'),sans-serif">
       <span style="font-size:1.1rem"></span>
       <div style="flex:1;text-align:left">
         <div style="font-size:.82rem;font-weight:800;color:var(--tx)">Veri Kaynağı</div>
-        <div style="font-size:.64rem;color:var(--mu)">${ptVeriKaynagi()==='saha'?'SAHA uygulaması üzerinden':ptVeriKaynagi()==='klasik'?'SAHA olmadan':'Seçilmedi'}${window._ptKaynakBosDustu?' · bu kaynakta sezon yok, hepsi gösteriliyor':''} - değiştir</div>
+        <div style="font-size:.64rem;color:var(--mu)">Varsayılan${window._ptKaynakBosDustu?' · bu kaynakta sezon yok, hepsi gösteriliyor':''} - değiştir</div>
       </div>
       <span style="color:var(--mu)">›</span>
     </button>
@@ -36351,12 +36344,12 @@ window.openMyProfile=function(){
    "Profilim" ekranında; başka bir kullanıcınınkini sohbette adına dokunarak görürsün. */
 var PT_BASARIM_IKON={ilkGalibiyet:'',ilkLig:'',kaleSaglam:'',hatTrick:'',farkAt:'',golYagmuru:'',seri3:'',yenilmez5:'',galibiyet10:'',mac25:'',gol50:''};
 function ptSahaKariyerHtml(k){
-  if(!k||!k.durum) return '<div class="pt-sk bos">Bu kullanıcının SAHA hesabı yok.</div>';
+  if(!k||!k.durum) return '<div class="pt-sk bos">Bu kullanıcının kariyer bilgisi yok.</div>';
   var M=Object.keys(k.macGecmisi||{}).map(function(a){return k.macGecmisi[a];}).filter(function(x){return x&&x.ts;});
   var G=M.filter(function(x){return x.ben>x.rak;}).length, B=M.filter(function(x){return x.ben===x.rak;}).length, gol=M.reduce(function(t,x){return t+(Number(x.ben)||0);},0);
   var bas=Object.keys(k.basarim||{}), sz=Object.keys(k.sezonOdul||{}).map(function(a){return k.sezonOdul[a];}).filter(Boolean);
   var takim=k.takimId&&D.teams&&D.teams[k.takimId]?D.teams[k.takimId].name:'';
-  return '<div class="pt-sk"><div class="pt-sk-bas"><i class="saha-logo-i"></i> SAHA kariyeri'+(takim?' · '+escHtml(takim):'')+'</div>'
+  return '<div class="pt-sk"><div class="pt-sk-bas">Kariyer'+(takim?' · '+escHtml(takim):'')+'</div>'
     +'<div class="pt-sk-ist"><span><b>'+M.length+'</b>Maç</span><span><b>'+G+'-'+B+'-'+(M.length-G-B)+'</b>G-B-M</span><span><b>'+(M.length?Math.round(G/M.length*100):0)+'%</b>Galibiyet</span><span><b>'+gol+'</b>Gol</span></div>'
     +(bas.length?'<div class="pt-sk-bs" title="Başarımlar">'+bas.map(function(b){return '<span>'+(PT_BASARIM_IKON[b]||'')+'</span>';}).join('')+'<small>'+bas.length+' başarım</small></div>':'')
     +(sz.length?'<div class="pt-sk-sz">'+sz.map(function(x){return ' '+escHtml(x.lig||'Sezon')+' ödülü';}).join('<br>')+'</div>':'')
@@ -36366,11 +36359,11 @@ function ptSahaKariyerHtml(k){
 function ptSahaKariyerYukle(ad, hedefId){
   var el=document.getElementById(hedefId); if(!el||!ad) return;
   var vid='v_'+String(ad).replace(/İ/g,'i').replace(/I/g,'ı').toLowerCase().replace(/[^a-z0-9çğıöşü]/g,'_');
-  el.innerHTML='<div class="pt-sk bos">SAHA kariyeri yükleniyor…</div>';
+  el.innerHTML='<div class="pt-sk bos">Kariyer yükleniyor…</div>';
   firebase.database().ref('kullanicilar/'+vid).once('value').then(function(sn){ var e2=document.getElementById(hedefId); if(e2) e2.innerHTML=ptSahaKariyerHtml(sn.val()); })
     .catch(function(){ var e2=document.getElementById(hedefId); if(e2) e2.innerHTML=''; });
 }
-window.ptSahaKariyerAc=function(ad){
+window.ptSahaKariyerAc=function(ad){ if(true) return;   /* Skorbord: SAHA kariyeri yok */ if(true) return;   /* Skorbord: SAHA kariyeri yok */ if(true) return;   /* Skorbord: SAHA kariyeri yok */
   try{
     if(!ad) return;
     var el=document.getElementById('ptSahaKariyerOv');
@@ -37571,7 +37564,7 @@ window.voteMvp=function(matchId,player){
 
   var APP='pt';                 // 'pt' (Skorbord) | 'adm' (Admin Paneli)
   var APP_LABEL='Skorbord';
-  var MODULES=[{"id": "saha_oyun", "label": " SAHA — Genel (hepsi)", "desc": "Yakalanmamış ve sessizce yutulan hatalar, yerel kayıt. Açılınca TÜM SAHA modülleri açılır.", "fns": []}, {"id": "saha_oynanis", "label": " SAHA — Oynanış & Kurallar", "desc": "Oyun döngüsü, fizik, duran toplar, faul/ofsayt, yapay zekâ, saat ve uzatma", "fns": []}, {"id": "saha_ag", "label": " SAHA — Bağlantı & Kayıt", "desc": "Firebase bağlantısı, canlı maç yazımı, maç sonucu, giriş, hesap, mağaza, takım seçimi", "fns": []}, {"id": "saha_izle", "label": " SAHA — Canlı İzleme (TV)", "desc": "İzleyici ekranı: yayın verisinin gelişi ve gecikmesi, oyuncu/top eşlemesi, tabela", "fns": []}, {"id": "saha_grafik", "label": " SAHA — Grafik & Performans", "desc": "Kare hızı, uzun kareler, WebGL bağlamı, bellek, stadyum ekranları, tekrar", "fns": []}, {"id": "saha_kol", "label": " SAHA — Konsol Kolu & Girdi", "desc": "Kol bağlanma/kopma, tuş ataması, dokunmatik kontroller", "fns": []}, {"id": "saha_ses", "label": " SAHA — Ses", "desc": "Ses motoru durumu, askıda kalan ses, izleyici ses kilidi", "fns": []}, {"id": "pt_nav", "label": " Gezinme & Sekmeler", "desc": "Sekme geçişleri, alt menü, arama, sayfa açma/kapama", "fns": ["switchTab", "renderTab", "switchTabById", "openSheet", "closeSheet", "renderMainNav", "toggleSearch", "doSearch", "jumpToRefereeRow", "openSeasonMenu", "openPastSeasons", "openLeagueSwitcher", "selectLeagueFromSwitcher", "openSettings", "openMyProfile", "withHScrollPreserved", "openVideoScreen", "renderVideoScreenList", "filterVideoScreenList", "filterVideoScreenCategory", "toggleVideoScreenReorder", "moveVideoScreenItem", "getVideoScreenOrder", "saveVideoScreenOrder", "ptVideoSuzgec"]}, {"id": "pt_player", "label": " TV & Video Oynatıcı", "desc": "Kanal/video açma, kanal ilerletme, ekran modu, sarma, ses, hız, altyazı, tam ekran", "fns": ["openVideoWatch", "updateVideoLinkBadge", "buildVideoEmbedHtml", "isEmbeddableVideoUrl", "buildExternalWatchCardHtml", "buildExternalWatchLoadingHtml", "buildGenericIframeEmbedHtml", "openExternalVideoLink", "togglePtVideoFullscreen", "mount", "destroy", "attachSource", "jump", "playlist", "switchSourceInPlace", "toggleFullscreen", "cycleFit", "toggleDikeyYatay", "applyVisual", "togglePlay", "seekBy", "setSpeed", "setVolume", "toggleMute", "goLive", "openPanel", "openChannelListOverlay", "renderChannelListOverlay", "buildChannelRows", "jumpToChannelByIndex", "confirmChannelBuf", "chBoxInitDrag", "bolumeAtla", "ptKayanBaslikTazele"]}, {"id": "pt_remote", "label": " Kumanda (Uzaktan Kontrol)", "desc": "İki cihazlı kumanda ekranı, oturum eşleşmesi, komut gönderme/alma, kumanda taşıma", "fns": ["openRemoteControllerScreen", "renderRemoteControllerScreen", "remoteCtrlKey", "remoteCtrlAction", "remoteCtrlSetFit", "remoteCtrlToggleFullscreen", "remoteCtrlSettingsNav", "remoteCtrlSend", "remoteCtrlSendSlider", "remoteCtrlLiveSeek", "remoteCtrlJumpTo", "remoteCtrlSearchInput", "remoteCtrlSetListMode", "remoteCtrlSeek", "remoteCtrlSeekTyped", "remoteCtrlInitDrag", "closeRemoteControllerScreen", "sendRemoteCommand", "startRemoteHeartbeat", "stopRemoteHeartbeat", "takeoverAsRemoteController", "checkForOtherRemoteSession", "ptMacKartlariOne", "ptKumandaKanallari", "remoteCtrlPlaylist"]}, {"id": "pt_standings", "label": " Puan Durumu", "desc": "Puan durumu çizimi, hafta/saha filtresi, simülatör, PDF", "fns": ["renderStandings", "setStandingsWeek", "setStandingsVenue", "adaptStandingsColumnScale", "applyStandingsAlign", "applyStandingsGap", "applyStandingsColumnScale", "printStandingsPdf", "openStandingsSimulator", "setSimScore", "exitStandingsSimulator", "viewPastSeasonStandings", "renderSimModeBar", "getSimMergedMatches", "openScenarioScreen", "renderScenarioSheet", "toggleScenarioTeam", "scenarioSelectAll", "isStandingsPanelVisible", "scheduleStandingsAdaptAndDiagnose"]}, {"id": "pt_fixture", "label": " Fikstür & Sonuçlar", "desc": "Fikstür/sonuç listeleri, hafta seçici, tarih filtresi", "fns": ["renderFixture", "renderResults", "setResultsWeek", "setResultsQuickFilter", "openResultsWeekPicker", "openWeekPicker", "renderDateStrip", "setDateFilter", "openDatePickerSheet", "getWeekList", "setSearchFilter", "highlightMatch", "toggleMatchReminder", "isMatchReminderSet", "getMatchReminders", "shareMatch"]}, {"id": "pt_matchdetail", "label": " Maç Detayı", "desc": "Maç detay ekranı ve tüm sekmeleri (anlatım, kadro, istatistik)", "fns": ["showMatchDetail", "renderMatchDetailContent", "switchMdTab", "renderMdAnlatim", "renderMdAnlati", "ptAnlatimCumlesi", "ptAnlatiSatir", "ptEksiklerBlogu", "renderMdDetay", "renderMdIstatistik", "renderMdKadro", "renderMdKarne", "renderMdKarsi", "toggleMdLiveTable", "showArchivedMatchDetailFull", "showPastLeagueMatchDetailFull", "renderMvpSection", "voteMvp", "voteBestMatch", "submitScorePrediction", "renderScorePredictionHtml", "setKarneFilter", "renderSquad", "selSqTeam"]}, {"id": "pt_teamdetail", "label": " Takım Detayı", "desc": "Takım sayfası, kadro, taraftar duvarı, kupa vitrini", "fns": ["showTeamDetail", "renderTeamDetailContent", "switchTdTab", "renderTdFanWall", "renderTdInfo", "renderTdPlayers", "renderTdSquad", "postFanWallMessage", "deleteFanWallMessage", "saveFanWallEdit", "openTdChampViewer", "getClubTrophies", "clubTrophyCaseHtml", "startTeamDetailDirectListener", "stopTeamDetailDirectListener", "showPlayerDetail", "renderTdMatches", "ptOyuncuPuani", "ptPuanRozeti"]}, {"id": "pt_stats", "label": " İstatistikler & Karşılaştırma", "desc": "İstatistik sekmesi, oyuncu/takım karşılaştırma, analiz, form", "fns": ["renderStats", "showStatTab", "openStatCategoryView", "renderCompare", "setCmp", "setCmpMode", "setCmpPlayer", "setCmpTeamFilter", "renderPlayerCompare", "getPlayerCompareStats", "renderAnalysis", "renderForm", "playerRadarSvg", "openCmpPickerPopup", "openCmpTeamFilterPicker", "selectCmpFromPopup", "filterCmpPopupRows", "getAllPlayersForCompare", "getAllPlayersFlat"]}, {"id": "pt_fantasy", "label": " Fantezi Takım", "desc": "Fantezi kadro kurma, oyuncu seçimi, puanlama", "fns": ["renderFantasy", "toggleFantasyPlayer", "saveFantasyTeam", "resetFantasyTeam", "calcFantasyPoints", "openFantasyPicker", "renderFantasyPickerContent", "setFormation"]}, {"id": "pt_live", "label": " Canlı Alt Şerit", "desc": "Canlı skor şeridi, gol kutlaması, sesli anlatım, olay sesleri", "fns": ["renderLiveTicker", "scrollToLive", "toggleLiveTicker", "toggleLiveTable", "checkFavTeamLiveStart", "showFavTeamLiveBanner", "showGoalCelebration", "announceEvent", "playEventSound", "checkLiveVoiceAnnouncements", "checkFavTeamGoalCelebration", "checkFavTeamMatchEnded", "getPrimaryLiveMatch", "previewEventSound", "testVoiceAnnouncer", "toggleVoiceAnnouncer", "setTickerAnimForContent", "applyTickerSpeed", "checkStaleLiveMatches"]}, {"id": "pt_chat", "label": " Sohbet", "desc": "Sohbet ekranı, mesaj gönderme, tepkiler, yanıtlar, yazıyor göstergesi", "fns": ["openChatScreen", "renderChatScreen", "renderChatComments", "ptChatSuz", "ptChatAra", "renderOne", "sendChatMessage", "sendGeneralChatMessage", "sendComment", "toggleReaction", "setReplyTarget", "clearReplyTarget", "jumpToChatMessage", "handleChatBubbleClick", "deleteComment", "togglePinComment", "saveEditedComment", "markMessagesSeenByMe", "loadOlderChatMessages", "loadPastSeasonComments", "openChatMatchPicker", "selectChatMatchTag", "broadcastTyping", "applyTypingIndicatorToDOM", "updateChatUnreadBadge", "markChatAsRead", "showReactorListPopup", "showSeenByPopup"]}, {"id": "pt_notifications", "label": " Bildirimler", "desc": "Bildirim merkezi, tercihler, hatırlatıcılar, kilometre taşları", "fns": ["addNotification", "openNotificationCenter", "renderNotifListItems", "updateNotifUnreadBadge", "checkMilestones", "checkUpcomingMatchReminder", "checkSubscribedMatchEvents", "toggleNotifyPref", "toggleNotifTypePref", "openNotifManage", "clearNotificationHistory", "checkWeeklySummaryNotification", "getNotifPrefs", "getNotificationHistory", "filterNotificationList", "showInAppNotifBanner", "checkTeamNotifyBroadcast", "checkDevReplyNotify", "checkPollResultBroadcast", "checkPremiumCodeNotifications", "checkFavTeamFanWallPosts", "isQuietHoursActive", "saveQuietHours", "toggleQuietHours"]}, {"id": "pt_premium", "label": " Premium & Mağaza", "desc": "Premium erişim, kod kullanma, puan mağazası, deneme süreleri", "fns": ["hasPremiumAccess", "requestPremiumAccess", "sendPremiumAccessRequest", "requestGenericPremiumAccess", "redeemPremiumCode", "redeemGenericPremiumCode", "openPremiumCodeRedeem", "openGenericPremiumCodeRedeem", "buyPremiumWithPoints", "openPointsShop", "revalidateAllPremiumAccessNow", "revalidateFontFamilyAccess", "revalidateReactionPackAccess", "startFontTrial", "startReactionPackTrial", "startPaletteTrial", "endFontTrial", "endReactionPackTrial", "endPaletteTrial", "isEmojiLockedForViewer", "isFontPremium", "isReactionPackPremium", "getPremiumPointsPrice", "getActivePremiumCodes", "cleanupTrialChatArtifacts", "refreshPremiumScreensLive", "updateLivePremiumCountdowns", "getLoyaltyLevel"]}, {"id": "pt_theme", "label": " Tema & Görünüm", "desc": "Tema/palet/yazı tipi uygulama, kart stili, otomatik karanlık mod", "fns": ["applyTheme", "setPalette", "applyBgTheme", "applyFontFamily", "setFontFamily", "applyCardStyle", "applyNumberSize", "buildTheme", "setReactionPack", "applyAutoDarkModeIfNeeded", "toggleAutoDarkMode", "saveAutoDarkHours", "applySparkleLayer", "applyStatColors", "openFontGroupPopup", "openPaletteGroupPopup", "openReactionPackGroupPopup", "selectCustomThemeFromGroup", "selectPaletteFromGroup", "getFontCssAndEnsureLoaded", "loadGoogleFontIfNeeded", "toggleBgPaletteSync", "suggestPaletteForColor", "renderTeamColorThemeSuggestion", "applySuggestedTeamTheme"]}, {"id": "pt_login", "label": " Giriş Ekranı", "desc": "Giriş akışı, lig seçici, şifre alanı, mod seçimi, giriş ekranı teması ve düzeni", "fns": ["applyLoginScreenTheme", "applyLoginLayoutBlock", "populateLoginLeagueSel", "onLoginLeagueChange", "showLoginPasswordField", "renderModeOptions", "selectMode", "backToModeScreen", "backToLogin", "toggleLoginUpdates", "cancelRememberedAutoLogin", "openForgotPasswordForm", "renderTempPasswordHint", "doEnter", "doEnterAfterPasswordCheck", "loadProfileAndEnter", "getHashLeagueId", "handleHash"]}, {"id": "pt_auth", "label": " Giriş & Profil", "desc": "Giriş akışı, şifre işlemleri, profil kaydı, oturum takibi", "fns": ["doLogoutPt", "saveNewPassword", "openPasswordManager", "registerVisitor", "startPresenceTracking", "setVisitorOnline", "setVisitorOffline", "syncProfileToFirebase", "saveSettName", "saveSettFavTeam", "previewProfileAvatar", "handleAvatarUpload"]}, {"id": "pt_media", "label": " Medya & Yükleme", "desc": "Fotoğraf/video/GIF yükleme, video kırpma, Supabase aktarımı", "fns": ["uploadImageToSupabase", "uploadVideoToSupabase", "processAndUploadCommentVideo", "trimVideoClientSide", "requestPtTrimWakeLock", "releasePtTrimWakeLock", "openVideoTrimmer", "updateTrimRangeHint", "confirmVideoTrim", "cancelVideoTrim", "searchGifs", "searchGifsDebounced", "openGifPicker", "renderGifFilterChips", "buildGifQuery", "toggleGifFilter", "selectGif", "handleCommentPhoto", "handleCommentVideo", "triggerCommentPhoto", "openVideoMenu", "promptVideoLink", "setVideoLink", "parseVideoUrl", "renderCommentMedia", "renderCommentVideo", "playPtLazyVideo", "openImagePreviewOv", "openImageViewerFullscreen", "updateUploadProgressUI", "_supabaseXhrUpload", "_processLogoImg", "getUrlHostname", "isKnownVideoHost", "isEmbeddableVideoUrl", "buildVideoEmbedHtml"]}, {"id": "pt_cards", "label": " Kart Oluşturma & Paylaşım", "desc": "Maç/profil/sezon kartı üretimi ve paylaşımı", "fns": ["generateMatchSummaryCard", "downloadMyProfileCard", "downloadSeasonSummaryCard", "downloadFavTeamSummaryCard", "downloadSeasonWrapCard", "shareCardImage", "renderStandingsPreviewCard", "confirmDownloadMatchCard", "confirmDownloadMyProfileCard", "confirmDownloadSeasonCard", "confirmDownloadFavTeamCard", "shareAppLink"]}, {"id": "pt_data", "label": " Veri & Bağlantı", "desc": "Firebase dinleyicileri, lig yükleme, önbellek, senkronizasyon", "fns": ["listenToLeague", "startMatchesDirectListener", "stopMatchesDirectListener", "startChatDirectListener", "stopChatDirectListener", "clearLocalCache", "getEffectiveMatches", "getAllCommentsFlat", "getVersions", "init", "ptRenderPlanla"]}, {"id": "pt_feedback", "label": " Geri Bildirim & Şikayet", "desc": "Geri bildirim formu, içerik şikayeti", "fns": ["openFeedbackForm", "submitFeedback", "handleFeedbackPhoto", "handleFeedbackVideo", "renderFeedbackMediaPreview", "reportContent"]}, {"id": "pt_maintenance", "label": " Bakım Modu", "desc": "Bakım ekranı, zamanlanmış bakım geçişleri, izinli kullanıcılar", "fns": ["isMaintenanceCurrentlyActive", "showMaintenanceScreen", "hideMaintenanceScreen", "checkMaintenanceScheduleTransition", "isUserAllowedDuringMaintenance", "returnToLoginFromMaintenance", "scheduleMaintenanceBoundaryCheck"]}, {"id": "pt_polls", "label": " Anketler & Tahminler", "desc": "Anket oylama, MVP/maç oylaması, skor tahmini", "fns": ["votePoll", "pollNotificationHtml", "savePersonalNote", "renderPersonalNoteSection", "categorizeNote"]}, {"id": "pt_embed", "label": " Gömülü Yayın (YouTube vb.)", "desc": "Gömülü kaynakların oynatıcı içinde çalışması: durum akışı, ses/hız/sarma komutları, kanal geçişi", "fns": ["ptpGomuluMedya", "buildVideoEmbedHtml", "ptIsDirectMediaUrl", "ptExtractVideoUrl", "ptIsPlayerOnlyUrl", "ptpGomuluKenarKirp", "ptpGomuluIcKatman", "ptpKenarBuyutmeOrani", "ptpMerkezMaske", "ptpDurumDegisti", "ptfSegmentler", "ptfAralikDurumu", "ptfAralikCoz", "ptpYayinBindirmeGuncelle", "ptTabelaSaatMetni"]}, {"id": "pt_rcx", "label": " Kumanda Gövdesi & Yerleşimi", "desc": "İki kumandanın ortak gövdesi, kanal listesi/kategori süzgeci, sürükleme ve konum kalıcılığı", "fns": ["rcxGovde", "buildChannelCats", "chPosUygula", "ptpChIlerlemeBaslat", "ptpChSeekBagla", "ptpChAyarKaydiriciBagla", "remoteCtrlProgressBaslat", "remoteCtrlSendSlider", "remoteCtrlResetPos", "ptpChKonumSifirla"]}, {"id": "pt_orient", "label": " Ekran Yönü & Tam Ekran", "desc": "Dikey/yatay çevirme, cihaz yön kilidi, tam ekrana giriş/çıkış, küçük pencere (PiP)", "fns": ["cihazYatayaKilitle", "toggleDikeyYatay", "cssIleDondur", "toggleFullscreen", "togglePip", "enterFullscreenProgrammatic"]}, {"id": "pt_storage", "label": " Yerel Kayıt & Tercihler", "desc": "localStorage okuma/yazma: tercihler, kumanda konumu, görülen sürüm, önbellek anahtarları", "fns": ["pref", "setPref", "prefs", "rcPosYaz", "rcPosOku", "chPosYaz", "chPosOku", "surumRozetiHtml"]}, {"id": "pt_a11y", "label": " Okunabilirlik & Kontrast", "desc": "Tema renklerinin okunabilirlik denetimi: soluk metin, bağlantı ve vurgu üzeri yazı renkleri", "fns": ["ptKontrastOrani", "ptZeminUstuYaziRengi", "ptOkunurYap", "applyTheme"]}, {"id": "pt_gecis", "label": " Geçiş & Oynatıcı Gösterim Teşhisi", "desc": "Bölümler ve videolar arası geçişler, geçiş örtüsü, yükleniyor göstergesi ve platform oynatıcısının beklenmedik görünmesi", "fns": ["ptpGecisOrtusuAc", "ptpFreezeCapture", "ptpFreezeRelease", "ptpSonrakiyeGec", "ptpSonrakiVarsaGec", "ptpAralikUygula", "ptpAralikBekcisiBaslat", "ptpGomuluBaslatmaBekcisi", "ptpYedekHazirla", "ptpYedegeGec", "ptpYedekTemizle", "ptpToplamAralikDurumu", "ptpAralikKonumEsle"]}, {"id": "pt_kisisel", "label": " Favoriler & İzleme Geçmişi", "desc": "Favori işaretleme, izleme geçmişi kaydı, kişisel süzgeçler ve bunların cihazlar arası eşitlenmesi", "fns": ["ptFavListesi", "ptFavYaz", "ptFavMi", "ptFavToggle", "ptGecmisListesi", "ptGecmiseEkle", "ptGecmisTemizle", "syncProfileToFirebase", "applySyncedPrefsAndCheckChanged", "ptVideoGorunumDegis"]}, {"id": "pt_ui", "label": " Yerleşim, Sıkışma & Titreme", "desc": "Yazı kesilmesi/sıkışması, okunamayacak küçük yazı, sayfa yatay taşması, küçük dokunma hedefi, ekran titremesi ve içerik zıplaması", "fns": []}, {"id": "pt_silent", "label": " Sessizce Yutulan Hatalar", "desc": "Kodun görmezden geldiği (boş yakalama bloğuna düşen) hataların tamamı - hangi fonksiyonda, hangi sebeple", "fns": []}];
+  var MODULES=[{"id": "pt_nav", "label": " Gezinme & Sekmeler", "desc": "Sekme geçişleri, alt menü, arama, sayfa açma/kapama", "fns": ["switchTab", "renderTab", "switchTabById", "openSheet", "closeSheet", "renderMainNav", "toggleSearch", "doSearch", "jumpToRefereeRow", "openSeasonMenu", "openPastSeasons", "openLeagueSwitcher", "selectLeagueFromSwitcher", "openSettings", "openMyProfile", "withHScrollPreserved", "openVideoScreen", "renderVideoScreenList", "filterVideoScreenList", "filterVideoScreenCategory", "toggleVideoScreenReorder", "moveVideoScreenItem", "getVideoScreenOrder", "saveVideoScreenOrder", "ptVideoSuzgec"]}, {"id": "pt_player", "label": " TV & Video Oynatıcı", "desc": "Kanal/video açma, kanal ilerletme, ekran modu, sarma, ses, hız, altyazı, tam ekran", "fns": ["openVideoWatch", "updateVideoLinkBadge", "buildVideoEmbedHtml", "isEmbeddableVideoUrl", "buildExternalWatchCardHtml", "buildExternalWatchLoadingHtml", "buildGenericIframeEmbedHtml", "openExternalVideoLink", "togglePtVideoFullscreen", "mount", "destroy", "attachSource", "jump", "playlist", "switchSourceInPlace", "toggleFullscreen", "cycleFit", "toggleDikeyYatay", "applyVisual", "togglePlay", "seekBy", "setSpeed", "setVolume", "toggleMute", "goLive", "openPanel", "openChannelListOverlay", "renderChannelListOverlay", "buildChannelRows", "jumpToChannelByIndex", "confirmChannelBuf", "chBoxInitDrag", "bolumeAtla", "ptKayanBaslikTazele"]}, {"id": "pt_remote", "label": " Kumanda (Uzaktan Kontrol)", "desc": "İki cihazlı kumanda ekranı, oturum eşleşmesi, komut gönderme/alma, kumanda taşıma", "fns": ["openRemoteControllerScreen", "renderRemoteControllerScreen", "remoteCtrlKey", "remoteCtrlAction", "remoteCtrlSetFit", "remoteCtrlToggleFullscreen", "remoteCtrlSettingsNav", "remoteCtrlSend", "remoteCtrlSendSlider", "remoteCtrlLiveSeek", "remoteCtrlJumpTo", "remoteCtrlSearchInput", "remoteCtrlSetListMode", "remoteCtrlSeek", "remoteCtrlSeekTyped", "remoteCtrlInitDrag", "closeRemoteControllerScreen", "sendRemoteCommand", "startRemoteHeartbeat", "stopRemoteHeartbeat", "takeoverAsRemoteController", "checkForOtherRemoteSession", "ptMacKartlariOne", "ptKumandaKanallari", "remoteCtrlPlaylist"]}, {"id": "pt_standings", "label": " Puan Durumu", "desc": "Puan durumu çizimi, hafta/saha filtresi, simülatör, PDF", "fns": ["renderStandings", "setStandingsWeek", "setStandingsVenue", "adaptStandingsColumnScale", "applyStandingsAlign", "applyStandingsGap", "applyStandingsColumnScale", "printStandingsPdf", "openStandingsSimulator", "setSimScore", "exitStandingsSimulator", "viewPastSeasonStandings", "renderSimModeBar", "getSimMergedMatches", "openScenarioScreen", "renderScenarioSheet", "toggleScenarioTeam", "scenarioSelectAll", "isStandingsPanelVisible", "scheduleStandingsAdaptAndDiagnose"]}, {"id": "pt_fixture", "label": " Fikstür & Sonuçlar", "desc": "Fikstür/sonuç listeleri, hafta seçici, tarih filtresi", "fns": ["renderFixture", "renderResults", "setResultsWeek", "setResultsQuickFilter", "openResultsWeekPicker", "openWeekPicker", "renderDateStrip", "setDateFilter", "openDatePickerSheet", "getWeekList", "setSearchFilter", "highlightMatch", "toggleMatchReminder", "isMatchReminderSet", "getMatchReminders", "shareMatch"]}, {"id": "pt_matchdetail", "label": " Maç Detayı", "desc": "Maç detay ekranı ve tüm sekmeleri (anlatım, kadro, istatistik)", "fns": ["showMatchDetail", "renderMatchDetailContent", "switchMdTab", "renderMdAnlatim", "renderMdAnlati", "ptAnlatimCumlesi", "ptAnlatiSatir", "ptEksiklerBlogu", "renderMdDetay", "renderMdIstatistik", "renderMdKadro", "renderMdKarne", "renderMdKarsi", "toggleMdLiveTable", "showArchivedMatchDetailFull", "showPastLeagueMatchDetailFull", "renderMvpSection", "voteMvp", "voteBestMatch", "submitScorePrediction", "renderScorePredictionHtml", "setKarneFilter", "renderSquad", "selSqTeam"]}, {"id": "pt_teamdetail", "label": " Takım Detayı", "desc": "Takım sayfası, kadro, taraftar duvarı, kupa vitrini", "fns": ["showTeamDetail", "renderTeamDetailContent", "switchTdTab", "renderTdFanWall", "renderTdInfo", "renderTdPlayers", "renderTdSquad", "postFanWallMessage", "deleteFanWallMessage", "saveFanWallEdit", "openTdChampViewer", "getClubTrophies", "clubTrophyCaseHtml", "startTeamDetailDirectListener", "stopTeamDetailDirectListener", "showPlayerDetail", "renderTdMatches", "ptOyuncuPuani", "ptPuanRozeti"]}, {"id": "pt_stats", "label": " İstatistikler & Karşılaştırma", "desc": "İstatistik sekmesi, oyuncu/takım karşılaştırma, analiz, form", "fns": ["renderStats", "showStatTab", "openStatCategoryView", "renderCompare", "setCmp", "setCmpMode", "setCmpPlayer", "setCmpTeamFilter", "renderPlayerCompare", "getPlayerCompareStats", "renderAnalysis", "renderForm", "playerRadarSvg", "openCmpPickerPopup", "openCmpTeamFilterPicker", "selectCmpFromPopup", "filterCmpPopupRows", "getAllPlayersForCompare", "getAllPlayersFlat"]}, {"id": "pt_fantasy", "label": " Fantezi Takım", "desc": "Fantezi kadro kurma, oyuncu seçimi, puanlama", "fns": ["renderFantasy", "toggleFantasyPlayer", "saveFantasyTeam", "resetFantasyTeam", "calcFantasyPoints", "openFantasyPicker", "renderFantasyPickerContent", "setFormation"]}, {"id": "pt_live", "label": " Canlı Alt Şerit", "desc": "Canlı skor şeridi, gol kutlaması, sesli anlatım, olay sesleri", "fns": ["renderLiveTicker", "scrollToLive", "toggleLiveTicker", "toggleLiveTable", "checkFavTeamLiveStart", "showFavTeamLiveBanner", "showGoalCelebration", "announceEvent", "playEventSound", "checkLiveVoiceAnnouncements", "checkFavTeamGoalCelebration", "checkFavTeamMatchEnded", "getPrimaryLiveMatch", "previewEventSound", "testVoiceAnnouncer", "toggleVoiceAnnouncer", "setTickerAnimForContent", "applyTickerSpeed", "checkStaleLiveMatches"]}, {"id": "pt_chat", "label": " Sohbet", "desc": "Sohbet ekranı, mesaj gönderme, tepkiler, yanıtlar, yazıyor göstergesi", "fns": ["openChatScreen", "renderChatScreen", "renderChatComments", "ptChatSuz", "ptChatAra", "renderOne", "sendChatMessage", "sendGeneralChatMessage", "sendComment", "toggleReaction", "setReplyTarget", "clearReplyTarget", "jumpToChatMessage", "handleChatBubbleClick", "deleteComment", "togglePinComment", "saveEditedComment", "markMessagesSeenByMe", "loadOlderChatMessages", "loadPastSeasonComments", "openChatMatchPicker", "selectChatMatchTag", "broadcastTyping", "applyTypingIndicatorToDOM", "updateChatUnreadBadge", "markChatAsRead", "showReactorListPopup", "showSeenByPopup"]}, {"id": "pt_notifications", "label": " Bildirimler", "desc": "Bildirim merkezi, tercihler, hatırlatıcılar, kilometre taşları", "fns": ["addNotification", "openNotificationCenter", "renderNotifListItems", "updateNotifUnreadBadge", "checkMilestones", "checkUpcomingMatchReminder", "checkSubscribedMatchEvents", "toggleNotifyPref", "toggleNotifTypePref", "openNotifManage", "clearNotificationHistory", "checkWeeklySummaryNotification", "getNotifPrefs", "getNotificationHistory", "filterNotificationList", "showInAppNotifBanner", "checkTeamNotifyBroadcast", "checkDevReplyNotify", "checkPollResultBroadcast", "checkPremiumCodeNotifications", "checkFavTeamFanWallPosts", "isQuietHoursActive", "saveQuietHours", "toggleQuietHours"]}, {"id": "pt_premium", "label": " Premium & Mağaza", "desc": "Premium erişim, kod kullanma, puan mağazası, deneme süreleri", "fns": ["hasPremiumAccess", "requestPremiumAccess", "sendPremiumAccessRequest", "requestGenericPremiumAccess", "redeemPremiumCode", "redeemGenericPremiumCode", "openPremiumCodeRedeem", "openGenericPremiumCodeRedeem", "buyPremiumWithPoints", "openPointsShop", "revalidateAllPremiumAccessNow", "revalidateFontFamilyAccess", "revalidateReactionPackAccess", "startFontTrial", "startReactionPackTrial", "startPaletteTrial", "endFontTrial", "endReactionPackTrial", "endPaletteTrial", "isEmojiLockedForViewer", "isFontPremium", "isReactionPackPremium", "getPremiumPointsPrice", "getActivePremiumCodes", "cleanupTrialChatArtifacts", "refreshPremiumScreensLive", "updateLivePremiumCountdowns", "getLoyaltyLevel"]}, {"id": "pt_theme", "label": " Tema & Görünüm", "desc": "Tema/palet/yazı tipi uygulama, kart stili, otomatik karanlık mod", "fns": ["applyTheme", "setPalette", "applyBgTheme", "applyFontFamily", "setFontFamily", "applyCardStyle", "applyNumberSize", "buildTheme", "setReactionPack", "applyAutoDarkModeIfNeeded", "toggleAutoDarkMode", "saveAutoDarkHours", "applySparkleLayer", "applyStatColors", "openFontGroupPopup", "openPaletteGroupPopup", "openReactionPackGroupPopup", "selectCustomThemeFromGroup", "selectPaletteFromGroup", "getFontCssAndEnsureLoaded", "loadGoogleFontIfNeeded", "toggleBgPaletteSync", "suggestPaletteForColor", "renderTeamColorThemeSuggestion", "applySuggestedTeamTheme"]}, {"id": "pt_login", "label": " Giriş Ekranı", "desc": "Giriş akışı, lig seçici, şifre alanı, mod seçimi, giriş ekranı teması ve düzeni", "fns": ["applyLoginScreenTheme", "applyLoginLayoutBlock", "populateLoginLeagueSel", "onLoginLeagueChange", "showLoginPasswordField", "renderModeOptions", "selectMode", "backToModeScreen", "backToLogin", "toggleLoginUpdates", "cancelRememberedAutoLogin", "openForgotPasswordForm", "renderTempPasswordHint", "doEnter", "doEnterAfterPasswordCheck", "loadProfileAndEnter", "getHashLeagueId", "handleHash"]}, {"id": "pt_auth", "label": " Giriş & Profil", "desc": "Giriş akışı, şifre işlemleri, profil kaydı, oturum takibi", "fns": ["doLogoutPt", "saveNewPassword", "openPasswordManager", "registerVisitor", "startPresenceTracking", "setVisitorOnline", "setVisitorOffline", "syncProfileToFirebase", "saveSettName", "saveSettFavTeam", "previewProfileAvatar", "handleAvatarUpload"]}, {"id": "pt_media", "label": " Medya & Yükleme", "desc": "Fotoğraf/video/GIF yükleme, video kırpma, Supabase aktarımı", "fns": ["uploadImageToSupabase", "uploadVideoToSupabase", "processAndUploadCommentVideo", "trimVideoClientSide", "requestPtTrimWakeLock", "releasePtTrimWakeLock", "openVideoTrimmer", "updateTrimRangeHint", "confirmVideoTrim", "cancelVideoTrim", "searchGifs", "searchGifsDebounced", "openGifPicker", "renderGifFilterChips", "buildGifQuery", "toggleGifFilter", "selectGif", "handleCommentPhoto", "handleCommentVideo", "triggerCommentPhoto", "openVideoMenu", "promptVideoLink", "setVideoLink", "parseVideoUrl", "renderCommentMedia", "renderCommentVideo", "playPtLazyVideo", "openImagePreviewOv", "openImageViewerFullscreen", "updateUploadProgressUI", "_supabaseXhrUpload", "_processLogoImg", "getUrlHostname", "isKnownVideoHost", "isEmbeddableVideoUrl", "buildVideoEmbedHtml"]}, {"id": "pt_cards", "label": " Kart Oluşturma & Paylaşım", "desc": "Maç/profil/sezon kartı üretimi ve paylaşımı", "fns": ["generateMatchSummaryCard", "downloadMyProfileCard", "downloadSeasonSummaryCard", "downloadFavTeamSummaryCard", "downloadSeasonWrapCard", "shareCardImage", "renderStandingsPreviewCard", "confirmDownloadMatchCard", "confirmDownloadMyProfileCard", "confirmDownloadSeasonCard", "confirmDownloadFavTeamCard", "shareAppLink"]}, {"id": "pt_data", "label": " Veri & Bağlantı", "desc": "Firebase dinleyicileri, lig yükleme, önbellek, senkronizasyon", "fns": ["listenToLeague", "startMatchesDirectListener", "stopMatchesDirectListener", "startChatDirectListener", "stopChatDirectListener", "clearLocalCache", "getEffectiveMatches", "getAllCommentsFlat", "getVersions", "init", "ptRenderPlanla"]}, {"id": "pt_feedback", "label": " Geri Bildirim & Şikayet", "desc": "Geri bildirim formu, içerik şikayeti", "fns": ["openFeedbackForm", "submitFeedback", "handleFeedbackPhoto", "handleFeedbackVideo", "renderFeedbackMediaPreview", "reportContent"]}, {"id": "pt_maintenance", "label": " Bakım Modu", "desc": "Bakım ekranı, zamanlanmış bakım geçişleri, izinli kullanıcılar", "fns": ["isMaintenanceCurrentlyActive", "showMaintenanceScreen", "hideMaintenanceScreen", "checkMaintenanceScheduleTransition", "isUserAllowedDuringMaintenance", "returnToLoginFromMaintenance", "scheduleMaintenanceBoundaryCheck"]}, {"id": "pt_polls", "label": " Anketler & Tahminler", "desc": "Anket oylama, MVP/maç oylaması, skor tahmini", "fns": ["votePoll", "pollNotificationHtml", "savePersonalNote", "renderPersonalNoteSection", "categorizeNote"]}, {"id": "pt_embed", "label": " Gömülü Yayın (YouTube vb.)", "desc": "Gömülü kaynakların oynatıcı içinde çalışması: durum akışı, ses/hız/sarma komutları, kanal geçişi", "fns": ["ptpGomuluMedya", "buildVideoEmbedHtml", "ptIsDirectMediaUrl", "ptExtractVideoUrl", "ptIsPlayerOnlyUrl", "ptpGomuluKenarKirp", "ptpGomuluIcKatman", "ptpKenarBuyutmeOrani", "ptpMerkezMaske", "ptpDurumDegisti", "ptfSegmentler", "ptfAralikDurumu", "ptfAralikCoz", "ptpYayinBindirmeGuncelle", "ptTabelaSaatMetni"]}, {"id": "pt_rcx", "label": " Kumanda Gövdesi & Yerleşimi", "desc": "İki kumandanın ortak gövdesi, kanal listesi/kategori süzgeci, sürükleme ve konum kalıcılığı", "fns": ["rcxGovde", "buildChannelCats", "chPosUygula", "ptpChIlerlemeBaslat", "ptpChSeekBagla", "ptpChAyarKaydiriciBagla", "remoteCtrlProgressBaslat", "remoteCtrlSendSlider", "remoteCtrlResetPos", "ptpChKonumSifirla"]}, {"id": "pt_orient", "label": " Ekran Yönü & Tam Ekran", "desc": "Dikey/yatay çevirme, cihaz yön kilidi, tam ekrana giriş/çıkış, küçük pencere (PiP)", "fns": ["cihazYatayaKilitle", "toggleDikeyYatay", "cssIleDondur", "toggleFullscreen", "togglePip", "enterFullscreenProgrammatic"]}, {"id": "pt_storage", "label": " Yerel Kayıt & Tercihler", "desc": "localStorage okuma/yazma: tercihler, kumanda konumu, görülen sürüm, önbellek anahtarları", "fns": ["pref", "setPref", "prefs", "rcPosYaz", "rcPosOku", "chPosYaz", "chPosOku", "surumRozetiHtml"]}, {"id": "pt_a11y", "label": " Okunabilirlik & Kontrast", "desc": "Tema renklerinin okunabilirlik denetimi: soluk metin, bağlantı ve vurgu üzeri yazı renkleri", "fns": ["ptKontrastOrani", "ptZeminUstuYaziRengi", "ptOkunurYap", "applyTheme"]}, {"id": "pt_gecis", "label": " Geçiş & Oynatıcı Gösterim Teşhisi", "desc": "Bölümler ve videolar arası geçişler, geçiş örtüsü, yükleniyor göstergesi ve platform oynatıcısının beklenmedik görünmesi", "fns": ["ptpGecisOrtusuAc", "ptpFreezeCapture", "ptpFreezeRelease", "ptpSonrakiyeGec", "ptpSonrakiVarsaGec", "ptpAralikUygula", "ptpAralikBekcisiBaslat", "ptpGomuluBaslatmaBekcisi", "ptpYedekHazirla", "ptpYedegeGec", "ptpYedekTemizle", "ptpToplamAralikDurumu", "ptpAralikKonumEsle"]}, {"id": "pt_kisisel", "label": " Favoriler & İzleme Geçmişi", "desc": "Favori işaretleme, izleme geçmişi kaydı, kişisel süzgeçler ve bunların cihazlar arası eşitlenmesi", "fns": ["ptFavListesi", "ptFavYaz", "ptFavMi", "ptFavToggle", "ptGecmisListesi", "ptGecmiseEkle", "ptGecmisTemizle", "syncProfileToFirebase", "applySyncedPrefsAndCheckChanged", "ptVideoGorunumDegis"]}, {"id": "pt_ui", "label": " Yerleşim, Sıkışma & Titreme", "desc": "Yazı kesilmesi/sıkışması, okunamayacak küçük yazı, sayfa yatay taşması, küçük dokunma hedefi, ekran titremesi ve içerik zıplaması", "fns": []}, {"id": "pt_silent", "label": " Sessizce Yutulan Hatalar", "desc": "Kodun görmezden geldiği (boş yakalama bloğuna düşen) hataların tamamı - hangi fonksiyonda, hangi sebeple", "fns": []}];
 
   var SLOW_MS=250;                   // bir fonksiyon bu süreyi aşarsa "yavaş" kaydı
   var MAX_LOCAL=200;                 // cihazda tutulan en fazla kayıt
@@ -40211,7 +40204,7 @@ window.voteMvp=function(matchId,player){
       if(!window.firebase||!firebase.database||!firebase.auth){ setTimeout(dinle,800); return; }
       firebase.auth().onAuthStateChanged(function(u){
         if(!u||kuruldu) return; kuruldu=true;
-        firebase.database().ref('sahaGorunum/logo').on('value',function(sn){ uygula(String(sn.val()||'')); },function(err){ self.__ds&&self.__ds(39002,err); });
+        false&&false&&false&&firebase.database().ref('sahaGorunum/logo').on('value',function(sn){ uygula(String(sn.val()||'')); },function(err){ self.__ds&&self.__ds(39002,err); });
       });
     }catch(e){ self.__ds&&self.__ds(39003,e); setTimeout(dinle,1500); }
   }
