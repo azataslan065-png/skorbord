@@ -45,9 +45,20 @@ function oku(y){
   /* (2026-11-16-E) Admin lig ayarlarını tek sezonda yapar (yayındaki sezon; yoksa Süper Lig). Skorbord'da 35 lig var: o sezonun ayarları
      bütün liglere temel olur, ligin kendi uzak ayarı onun üstüne, ESPN verisi en üste gelir. */
   var m = /^leagues\/([^\/]+)(\/.*)?$/.exec(y);
-  if(m){ var t = agacOku(UZAK, 'activeDisplayLeague'); t = (typeof t === 'string' && t) ? t : 'sb_tur_1';
+  if(m){ var t = temelLig();
     if(t !== m[1]){ var ub = agacOku(UZAK, 'leagues/' + t + (m[2] || '')); if(ub !== null) u = (u === null) ? ub : birlestir(ub, u, y); } }
   return (u === null) ? l : birlestir(u, l, y);
+}
+/* TEMEL SEZON (2026-11-17, kullanıcı: "admin paneli skorbord alanında yapılan hiçbir değişiklik skorborda yansımıyor"). KÖK SEBEP: temel
+   sezon yalnızca "Yayına al" ile seçilen sezondu, yoksa Süper Lig (sb_tur_1) sayılıyordu. Admin ayarları ise panelde AÇIK olan sezona
+   yazılıyor (admin'in kendi oluşturduğu sezon); yayına alınmadığı için Skorbord o sezonu hiç okumadı. ŞİMDİ: yayındaki sezon varsa o;
+   yoksa adminin kendi oluşturduğu (Skorbord ligi olmayan) en son sezon; o da yoksa Süper Lig. */
+function temelLig(){
+  var t = agacOku(UZAK, 'activeDisplayLeague'), L = agacOku(UZAK, 'leagues') || {}, M = agacOku(UZAK, 'leaguesMeta') || {};
+  if(typeof t === 'string' && t && L[t]) return t;
+  var ad = Object.keys(L).filter(function(k){ return k.indexOf('sb_') !== 0 && L[k] && typeof L[k] === 'object'; });
+  ad.sort(function(a, b){ return ((M[b] && M[b].createdAt) || 0) - ((M[a] && M[a].createdAt) || 0); });
+  return ad[0] || 'sb_tur_1';
 }
 function uzakYaz(yol, v, yama){
   var p = parcala(String(yol || '').replace(/^\/+|\/+$/g, ''));

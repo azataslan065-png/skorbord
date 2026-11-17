@@ -620,7 +620,8 @@ function uzakDinle(){
 }
 function baslat(){
   if(!kimliktenSlug(ligKimlik(A.lig))){ A.lig='tur.1'; ayarYaz(); }
-  uzakDinle();
+  // (2026-11-17) "Skorbord'a özel ayarlar" admin'den kaldırıldı (kullanıcı isteği); skorbord/ayarlar artık okunmaz. Skorbord'un bütün ayarları
+  // admin'in Skorbord kaynağındaki normal panelinden gelir (bkz. yerel-vt.js UZAK KÖK).
   metaYaz();
   // lig belgesi gelene kadar arayüz boş bir sezon görür
   YerelVT.yaz('leagues/'+ligKimlik(A.lig), {leagueName:LIG_AD[A.lig]||A.lig, season:'', teams:{}, matches:{}, lgConfig:{winPts:3,drawPts:1}});
