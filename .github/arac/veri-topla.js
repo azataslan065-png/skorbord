@@ -151,7 +151,7 @@ async function eslestir(takim, milli, eski){
   const bekleyen = [];
   for(const [id, t] of Object.entries(takim)){
     const e = eski && eski.takim && eski.takim[id];
-    if(e && e.wd !== undefined){ sonuc[id] = e.wd; continue; }   // önceki eşleşme (ya da "bulunamadı" = null) yeniden aranmaz
+    if(e && e.wd){ sonuc[id] = e.wd; continue; }   // önceki eşleşme yeniden aranmaz; bulunamayan her çalışmada yeniden aranır
     bekleyen.push(id);
   }
   for(const id of bekleyen){
