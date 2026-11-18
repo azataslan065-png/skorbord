@@ -395,6 +395,39 @@ async function wikiLig(L, eski){
   mac.forEach(m => { m.evLogo = takim[m.ev].logo; m.depLogo = takim[m.dep].logo; m.evAd = takim[m.ev].ad; m.depAd = takim[m.dep].ad; });
   return { yil, sezonAdi, takim, gecmis: {}, mac, kaynak: 'Vikipedi' };
 }
+
+// ── SIRALAMALAR: UEFA ülke ve kulüp katsayıları (UEFA'nın kendi sitesinin veri servisi), FIFA dünya sıralaması (FIFA'nın sitesinin veri servisi) ──
+async function siralamaTopla(){
+  const dosya = path.join(VERI, 'siralama.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+  const o = { t: Date.now() };
+  const s = new Date(), hedef = s.getUTCMonth() >= 6 ? s.getUTCFullYear() + 1 : s.getUTCFullYear();   // 2026-27 sezonu = 2027
+  const uefa = async tip => { const j = await al('https://comp.uefa.com/v2/coefficients?coefficientRange=OVERALL&coefficientType=' + tip + '&language=EN&page=1&pagesize=500&seasonYear=' + hedef, { h: { 'User-Agent': 'Mozilla/5.0' } });
+    return (j && j.data && j.data.members) ? { guncel: j.data.lastUpdateDate || '', liste: j.data.members } : null; };
+  const ulke = await uefa('MEN_ASSOCIATION');
+  if(ulke) o.uefaUlke = { guncel: ulke.guncel, sezon: hedef, liste: ulke.liste.map(m => ({ s: m.overallRanking.position, kod: m.member.countryCode, ad: m.member.countryName, logo: m.member.logoUrl, p: m.overallRanking.totalValue,
+    takim: m.overallRanking.numberOfTeams, kalan: m.overallRanking.numberOfTeamsStillInPlaying, egilim: m.overallRanking.trend,
+    sz: (m.seasonRankings || []).map(z => ({ y: z.seasonYear, p: z.totalValue })).sort((a, b) => a.y - b.y) })).sort((a, b) => a.s - b.s) };
+  else if(eski.uefaUlke) o.uefaUlke = eski.uefaUlke;
+  const kulup = await uefa('MEN_CLUB');
+  if(kulup) o.uefaKulup = { guncel: kulup.guncel, sezon: hedef, liste: kulup.liste.map(m => ({ s: m.overallRanking.position, ad: m.member.displayName, kod: m.member.countryCode, ulke: m.member.countryName, logo: m.member.logoUrl,
+    p: m.overallRanking.totalValue, ulkeP: m.overallRanking.nationalAssociationPoints, egilim: m.overallRanking.trend, kupa: m.competition && m.competition.displayName || '',
+    sz: (m.seasonRankings || []).map(z => ({ y: z.seasonYear, p: z.totalValue })).sort((a, b) => a.y - b.y) })).sort((a, b) => a.s - b.s) };
+  else if(eski.uefaKulup) o.uefaKulup = eski.uefaKulup;
+  // FIFA: sayfadaki en yeni sıralama kimliği; sonra yukarı doğru daha yenisi aranır (sayfa bazen eski kimlikleri listeliyor)
+  const fifa = async id => { const j = await al('https://inside.fifa.com/api/ranking-overview?locale=en&dateId=' + id, { h: { 'User-Agent': 'Mozilla/5.0' }, deneme: 2 }); return (j && j.rankings && j.rankings.length) ? j.rankings : null; };
+  let enIyi = null, enId = (eski.fifa && eski.fifa.id) || '';
+  const sayfa = await al('https://inside.fifa.com/fifa-world-ranking/men', { metin: true, h: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' } });
+  const ids = [...new Set(String(sayfa || '').match(/id1\d{4}/g) || [])].map(x => +x.slice(2)); if(enId) ids.push(+enId.slice(2));
+  let n = ids.length ? Math.max(...ids) : 14870;
+  const tarih = r => Date.parse((r[0] && r[0].lastUpdateDate) || '') || 0;
+  let r0 = await fifa('id' + n); if(r0){ enIyi = r0; enId = 'id' + n; }
+  for(let k = n + 1, bos = 0; k < n + 400 && bos < 120; k++){ const r = await fifa('id' + k); if(r && (!enIyi || tarih(r) >= tarih(enIyi))){ enIyi = r; enId = 'id' + k; bos = 0; } else bos++; }
+  if(enIyi) o.fifa = { id: enId, guncel: (enIyi[0] && enIyi[0].lastUpdateDate) || '', liste: enIyi.map(x => ({ s: x.rankingItem.rank, ad: x.rankingItem.name, kod: x.rankingItem.countryCode, bayrak: x.rankingItem.flag && x.rankingItem.flag.src,
+    p: x.rankingItem.totalPoints, onceki: x.rankingItem.previousRank, oncekiP: x.previousPoints, kita: x.tag && x.tag.text })).sort((a, b) => a.s - b.s) };
+  else if(eski.fifa) o.fifa = eski.fifa;
+  fs.writeFileSync(dosya, JSON.stringify(o));
+  console.log('SIRALAMA', 'uefa ülke', o.uefaUlke ? o.uefaUlke.liste.length : 0, 'uefa kulüp', o.uefaKulup ? o.uefaKulup.liste.length : 0, 'fifa', o.fifa ? o.fifa.liste.length + ' ' + o.fifa.guncel + ' ' + o.fifa.id : 0);
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
@@ -450,6 +483,7 @@ async function ligIsle(L){
   fs.mkdirSync(VERI, { recursive: true }); trAdOku();
   const tum = ligleriOku();
   const ligler = tum.filter((l, i) => (!SECILI.length || SECILI.includes(l.slug)) && (!(GRUP.length === 2 && GRUP[1] > 0) || i % GRUP[1] === GRUP[0]));
+  if(!HIZLI && (SECILI.includes('siralama') || (!SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0)))){ try{ await siralamaTopla(); }catch(e){ console.log('HATA sıralama', e && e.stack || e); } }
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));

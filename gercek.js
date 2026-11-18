@@ -20,7 +20,7 @@ function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call
    · Suudi Arabistan'ın ESPN adı "ksa.1" (eskisi "sau.1" hata veriyordu).
    · Ek ligler: ESPN'in futbol listesindeki diğer ulusal ligler ve büyük turnuvalar; TFF 2. Lig TheSportsDB'den. */
 var LIGLER=[
- ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],
+ ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],['tur.cup','Ziraat Türkiye Kupası','Türkiye','wiki'],['tur.super','Turkcell Süper Kupa','Türkiye','wiki'],
  ['uefa.champions','UEFA Şampiyonlar Ligi','Avrupa'],['uefa.europa','UEFA Avrupa Ligi','Avrupa'],['uefa.europa.conf','UEFA Konferans Ligi','Avrupa'],['uefa.super_cup','UEFA Süper Kupa','Avrupa'],
  ['eng.1','İngiltere Premier Lig','İngiltere'],['eng.2','İngiltere Championship','İngiltere'],['eng.3','İngiltere League One','İngiltere'],['eng.4','İngiltere League Two','İngiltere'],['eng.5','İngiltere National League','İngiltere'],
  ['esp.1','İspanya La Liga','İspanya'],['esp.2','İspanya La Liga 2','İspanya'],
@@ -67,7 +67,7 @@ function tsdbE(m){
   var canli=!bitti && !ert && m.evG!=null;
   var taraf=function(id, ad, logo, g){ return {id:String(id), name:trAd(ad), full:trAd(ad), logo:logo||'', score:g==null?null:String(g), color:'', alt:''}; };
   return {rid:'ts'+m.id, lid:'', date:new Date(m.z), state:bitti?'post':(canli?'in':'pre'), sname:ert?(/cancel/i.test(m.d)?'STATUS_CANCELED':'STATUS_POSTPONED'):'', clock:'', period:0, sezon:0, kova:'',
-    h:taraf(m.ev, m.evAd, m.evLogo, m.evG), a:taraf(m.dep, m.depAd, m.depLogo, m.depG), evs:[], stad:m.st||'', not:'', tsdb:true, hafta:m.r};
+    h:taraf(m.ev, m.evAd, m.evLogo, m.evG), a:taraf(m.dep, m.depAd, m.depLogo, m.depG), evs:(m.olay||[]).slice().sort(function(x,y){ return x.min-y.min; }), stad:m.st||'', not:'', tsdb:true, hafta:m.r, hakem:m.hakem||'', pen:m.pen||'', uz:!!m.uz};
 }
 function tsdbYukle(slug, k){
   return veriAl(slug, true).then(function(j){
@@ -184,6 +184,8 @@ function durumNotu(e){
   if(/CANCEL/.test(n)) return 'İptal edildi';
   if(/ABANDON|SUSPEND/.test(n)) return 'Yarıda kaldı';
   if(/DELAY/.test(n)) return 'Gecikti';
+  if(e.pen) return 'Penaltılar: '+e.pen.replace('-',' - ');
+  if(e.uz) return 'Uzatmalar sonunda';
   return '';
 }
 function macNesnesi(e, hafta, eski){
@@ -197,6 +199,7 @@ function macNesnesi(e, hafta, eski){
   if(canli){ m.minute=dk(e.clock)||1; m.isHalftime=/HALFTIME/.test(e.sname); } else { delete m.minute; delete m.isHalftime; }
   if(e.evs.length || !m.events || !m._ozet) m.events=(m._ozet && (m.events||[]).length>=e.evs.length)?m.events:e.evs;
   if(e.stad) m.stadium=e.stad;
+  if(e.hakem && !m._gorevli) m.referee=e.hakem;
   var nt=durumNotu(e); if(nt) m.note=nt; else if(m.note && /Ertelendi|İptal|Yarıda|Gecikti/.test(m.note)) delete m.note;
   m.espn=e.rid;
   return m;
