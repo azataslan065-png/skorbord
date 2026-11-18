@@ -1,13 +1,9 @@
-// Deneme 6: beIN maç merkezi istemci kodundaki veri servisleri (yayın ekibi alanı var mı)
-const al = async (u, h) => { try{ const r = await fetch(u, { headers: Object.assign({ 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36', 'Accept-Language': 'tr-TR,tr' }, h || {}) }); return { s: r.status, t: await r.text() }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
+// Deneme 7: beIN maç servisi (apigateway) alanları
+const al = async (u) => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36', 'Accept': 'application/json', 'Origin': 'https://beinsports.com.tr', 'Referer': 'https://beinsports.com.tr/' } }); return { s: r.status, t: await r.text() }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
 (async () => {
-  const p = await al('https://beinsports.com.tr/mac-merkezi/gaziantep-fk-kasimpasa/1515839');
-  const src = [...new Set(p.t.match(/\/_next\/static\/[^"']+\.js/g) || [])]; console.log('===== betikler', src.length);
-  const hosts = new Set(), yollar = new Set(), alan = new Set();
-  for(const s of src){ const r = await al('https://beinsports.com.tr' + s); const t = r.t;
-    (t.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/[A-Za-z0-9_\-\/.]*)?/g) || []).forEach(u => { if(!/w3\.org|schema\.org|reactjs|github|google|facebook|twitter|instagram|youtube|apple|tiktok/.test(u)) hosts.add(u.slice(0, 90)); });
-    (t.match(/["'`]\/?(api|v1|v2|match|matches|mac|livescore|broadcast|tvguide)[A-Za-z0-9_\-\/]*["'`]/gi) || []).forEach(u => yollar.add(u.slice(0, 80)));
-    ['commentator', 'Commentator', 'spiker', 'Spiker', 'yorumcu', 'Yorumcu', 'announcer', 'referee', 'Referee', 'broadcaster', 'channelName'].forEach(w => { const i = t.indexOf(w); if(i >= 0) alan.add(w + ' :: ' + t.slice(Math.max(0, i - 160), i + 160).replace(/\s+/g, ' ')); });
+  for(const u of ['https://apigateway.beinsports.com.tr/api/match/1515839', 'https://apigateway.beinsports.com.tr/api/match/detail/1515839', 'https://apigateway.beinsports.com.tr/api/live/1515839', 'https://apigateway.beinsports.com.tr/api/fixture/head2head/1515839']){
+    const r = await al(u); console.log('=====', u, r.s, r.t.length); console.log(r.t.slice(0, 2500));
+    try{ const j = JSON.parse(r.t); const anah = new Set(); const gez = (o, p, d) => { if(!o || typeof o !== 'object' || d > 6) return; Object.keys(o).forEach(k => { anah.add(p + k); gez(o[k], p + k + '.', d + 1); }); }; gez(j, '', 0);
+      console.log('ANAHTARLAR', [...anah].filter(k => !/\.\d+\./.test(k)).slice(0, 200).join(' ')); }catch(e){}
   }
-  console.log('HOSTLAR', [...hosts].slice(0, 60)); console.log('YOLLAR', [...yollar].slice(0, 80)); console.log('ALANLAR'); [...alan].forEach(x => console.log('  ', x));
 })();
