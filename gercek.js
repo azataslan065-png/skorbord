@@ -486,6 +486,12 @@ function havaYukle(slug, v, lj){
     });
   }catch(e){}
 }
+/* Yayın hakları 2026-27 (cnbce.com / aspor.com.tr): Süper Lig ve 1. Lig beIN SPORTS; 2. ve 3. Lig Tivibu Spor; Ziraat Türkiye Kupası ve
+   Turkcell Süper Kupa ATV / A Spor; Premier Lig ve Ligue 1 beIN SPORTS; La Liga, Bundesliga, Serie A S Sport; UEFA kupaları TRT / tabii;
+   Uluslar Ligi ATV / A Spor; FA Cup TRT. Kanalın kendisi (beIN SPORTS 2 gibi) yayın akışından ya da haberden gelirse o yazılır. */
+var YAYINCI={'tur.1':'beIN SPORTS','tur.2':'beIN SPORTS','tur.3':'Tivibu Spor','tur.4':'Tivibu Spor','tur.cup':'ATV / A Spor','tur.super':'ATV / A Spor',
+  'eng.1':'beIN SPORTS','fra.1':'beIN SPORTS','esp.1':'S Sport','ger.1':'S Sport','ita.1':'S Sport','uefa.champions':'TRT / tabii','uefa.europa':'TRT / tabii',
+  'uefa.europa.conf':'TRT / tabii','uefa.super_cup':'TRT / tabii','uefa.nations':'ATV / A Spor','eng.fa':'TRT'};
 function otoYukle(slug, v){
   var isler=[veriAl('yayin').catch(function(){ return null; })];
   isler.push(TFF_LIG[slug]?veriAl('tff-'+slug).catch(function(){ return null; }):Promise.resolve(null));
@@ -519,6 +525,8 @@ function otoYukle(slug, v){
     // Yayın ekibi (haberlerden): spiker, yorumcu, kanal
     if(ekip&&ekip.liste) ekip.liste.forEach(function(x){ if(x.lig!==slug) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var e=o[mid]=o[mid]||{};
       if(x.spiker) e.spiker=x.spiker; if(x.yorumcu&&x.yorumcu.length) e.yorumcu=x.yorumcu.join(', '); if(x.kanal&&!e.tv) e.tv=x.kanal; });
+    // Yayın hakkı sahibi (2026-27 sezonu): maçın kendi kanalı bilinmiyorsa ligin yayıncısı yazılır
+    var yk=YAYINCI[slug]; if(yk) Object.keys(v.matches).forEach(function(mid){ var e=o[mid]=o[mid]||{}; if(!e.tv) e.tv=yk; });
     OTO[slug]=o;
     havaYukle(slug, v, lj);
     var n=Object.keys(o).length; if(n) gunluk('otomatik maç bilgisi', slug, n+' maç');
@@ -1052,7 +1060,7 @@ function anaMacAc(slug, rid){
 function anaFavLig(slug){ var f=favOku(); if(f.lig[slug]) delete f.lig[slug]; else f.lig[slug]=1; favYaz(f); anaCiz(); }
 function anaFavMac(rid){ var f=favOku(); if(f.mac[rid]) delete f.mac[rid]; else f.mac[rid]=Date.now(); var s=Date.now()-14*864e5; Object.keys(f.mac).forEach(function(k){ if(f.mac[k]<s) delete f.mac[k]; }); favYaz(f); anaCiz(); }
 function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); }
-/* ═══ TANITIM TURU (2026-11-18, kullanıcı: "Tanıtım turu puan tablosu sistemine ait olduğu için skorboard doğru gösterilmiyor").
+/* ═══ TANITIM TURU (2026-11-18, kullanıcı: "Tanıtım turu puan durumu sistemine ait olduğu için skorboard doğru gösterilmiyor").
    Lig sayfasının turu (Ana bölümler, Sohbet...) ana ekranın arkasında kalan düğmeleri gösteriyordu. Skorbord'un kendi turu: ana ekran. */
 var SB_TUR=[
   {hedef:null, baslik:'Skorbord\'a hoş geldiniz', metin:'Gerçek liglerin canlı skorları, puan durumları ve maç bilgileri burada. Kısa turu istediğiniz an "Atla" ile kapatabilir, Ayarlar\'dan yeniden başlatabilirsiniz.'},

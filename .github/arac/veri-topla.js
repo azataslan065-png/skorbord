@@ -589,7 +589,10 @@ async function youtubeTopla(tum){
   const izin = Object.values(ayar.kanallar || {}).map(norm), engel = Object.values(ayar.engel || {}).map(norm);
   // Kanalların "Canlı yayınlar" sekmesi doğrudan okunur: TFF'nin resmî kanalı (2. Lig, 3. Lig, Ziraat Türkiye Kupası, Turkcell Süper Kupa ve TFF'nin
   // seçtiği maçlar) ve admin'in @kullanıcıadı / UC... kimliğiyle yazdığı kanallar
-  const KANAL = [['channel/UCVoNfzLtczc_TV8-xKjcmKg', 'Türkiye Futbol Federasyonu']].concat(Object.values(ayar.kanallar || {}).map(x => String(x).trim()).filter(x => /^@[\w.-]+$|^UC[\w-]{20,}$/.test(x)).map(x => [x[0] === '@' ? x : 'channel/' + x, x]));
+  // Yayın hakkı sahiplerinin resmî kanalları (2026-27): TFF; A Spor (Ziraat Türkiye Kupası, Turkcell Süper Kupa, Uluslar Ligi — ATV/A Spor);
+  // TRT Spor ve tabii Spor (UEFA kupaları, milli maçlar); Sıfır TV (geçen sezon 2. ve 3. Lig'in YouTube yayıncısı)
+  const KANAL = [['channel/UCVoNfzLtczc_TV8-xKjcmKg', 'Türkiye Futbol Federasyonu'], ['channel/UCJElRTCNEmLemgirqvsW63Q', 'A Spor'], ['channel/UCfYNqluOf8EbQkL44otydMw', 'TRT Spor'],
+    ['channel/UCb5OsXSwzcyqZFoKKs3Su3g', 'tabii Spor'], ['channel/UCDX7Vf8VLBHdC-HZtKG9gOQ', 'Sıfır TV']].concat(Object.values(ayar.kanallar || {}).map(x => String(x).trim()).filter(x => /^@[\w.-]+$|^UC[\w-]{20,}$/.test(x)).map(x => [x[0] === '@' ? x : 'channel/' + x, x]));
   const kanalYayin = [];
   for(const [yol, ad] of KANAL){ for(const sek of ['streams', 'live']){ const h = await ytSayfa('https://www.youtube.com/' + yol + '/' + sek); const l = ytVideolar(h).map(v => Object.assign(v, { k: v.k || ad, kanalan: true }));
       if(sek === 'live'){ const vid = /"videoId":"([\w-]{11})"[^]{0,400}?"isLive":true/.exec(h) || /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(h); const bas = /<meta name="title" content="([^"]+)"/.exec(h);
