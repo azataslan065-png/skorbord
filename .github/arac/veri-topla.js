@@ -733,7 +733,7 @@ async function tvfLig(L, eski){
   const r = await fetch(adres, { headers: { 'User-Agent': TVF_UA, 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(45000) });
   const ck = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map(c => c.split(';')[0]).join('; ');
   const t = await r.text(); const de = x => x.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
-  const snm = /wire:snapshot="([^"]+)"/.exec(t), tok = (/data-csrf="([^"]+)"/.exec(t) || [])[1];
+  const snm = [...t.matchAll(/wire:snapshot="([^"]+)"/g)].find(m => /league-detail/.test(m[1])), tok = (/data-csrf="([^"]+)"/.exec(t) || [])[1];   // birden çok bileşen olabilir: lig bileşeni seçilir
   if(!snm || !tok) throw new Error('TVF sayfası okunamadı');
   const u = await fetch('https://tvf.org.tr/livewire/update', { method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', 'X-Livewire': '', 'X-CSRF-TOKEN': tok, 'Cookie': ck, 'User-Agent': TVF_UA, 'Referer': adres },
     body: JSON.stringify({ _token: tok, components: [{ snapshot: de(snm[1]), updates: {}, calls: [{ path: '', method: 'setActiveTab', params: ['fikstur'] }] }] }) });
