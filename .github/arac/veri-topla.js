@@ -14,6 +14,8 @@ const TSDB = 'https://www.thesportsdb.com/api/v1/json/123/';
 const WD_SP = 'https://query.wikidata.org/sparql', WD_API = 'https://www.wikidata.org/w/api.php', COMMONS = 'https://commons.wikimedia.org/w/api.php';
 const bek = ms => new Promise(r => setTimeout(r, ms));
 const arg = process.argv.slice(2), HIZLI = arg.includes('--hizli'), SECILI = arg.filter(a => !a.startsWith('--'));
+// --grup=i/n : ligler n parçaya bölünür, bu çalışma i. parçayı (0'dan) yapar (GitHub'da paralel işler; bir iş 5 saat sınırına takılmaz)
+const GRUP = (arg.find(a => a.startsWith('--grup=')) || '').slice(7).split('/').map(Number);
 const OZET = [];
 
 async function al(u, o){
@@ -349,8 +351,9 @@ async function ligIsle(L){
 
 (async () => {
   fs.mkdirSync(VERI, { recursive: true }); trAdOku();
-  const ligler = ligleriOku().filter(l => !SECILI.length || SECILI.includes(l.slug));
+  const tum = ligleriOku();
+  const ligler = tum.filter((l, i) => (!SECILI.length || SECILI.includes(l.slug)) && (!(GRUP.length === 2 && GRUP[1] > 0) || i % GRUP[1] === GRUP[0]));
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
-  if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ t: Date.now(), ligler: ligler.map(l => l.slug) }));
+  if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
 })();
