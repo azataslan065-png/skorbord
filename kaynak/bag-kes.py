@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-J'
+SB_BUILD = '2026-11-18-K'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -284,4 +284,18 @@ isle('index.html', [
           while((ligNameEl.scrollHeight>Math.ceil(px*1.08*2)+2||ligNameEl.scrollWidth>kutu+1)&&px>9&&adim<48){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
         }
         if(ligNameEl.scrollWidth>kutu+1)ligNameEl.style.textOverflow='ellipsis';""")),
+])
+# Lig logosu (veri/lig-logo/*.png) temizlenmez (2026-11-18-K): bu logolar zaten saydam ve beyaz rozet üstünde durur; kenara değen siyahı
+# silen işlem Trendyol Süper Lig logosunun siyah yazısını da siliyor, yalnız kırmızı "S" kalıyordu.
+isle('index.html', [
+  ('lig logosu işlenmez', degis("""function _processLogoImg(imgEl){
+  try{
+    const src=imgEl.src;
+    if(!src)return;
+""", """function _processLogoImg(imgEl){
+  try{
+    const src=imgEl.src;
+    if(!src)return;
+    if(src.indexOf('/veri/lig-logo/')!==-1){ imgEl.style.visibility=''; return; }   /* Skorbord: hazır lig logosu olduğu gibi */
+""")),
 ])

@@ -611,6 +611,31 @@ try{ setTimeout(function(){ firebase.database().ref('macBilgi').on('value', func
 function ligLogoUygula(v){
   return veriAl('lig-logo').then(function(j){ var u=j&&j.logo&&j.logo[v.slug]; if(u) v.logo=new URL(u, location.href).href; return v; }, function(){ return v; });
 }
+/* ÜST ÇUBUK: LİG ADI VE LOGOSU (2026-11-18-K, kullanıcı ekran görüntüsü: "Süper ..." ve seçilemeyen logo; "nav her koşulda koyu").
+   KÖK SEBEP (ad): sığdırma yalnız çizim anında bir kez ölçüyordu; telefonda yazı tipi (Outfit) sonradan yüklenince ad genişliyor,
+   ölçüm yenilenmediği için "…" ile kesiliyordu. ŞİMDİ: ad kutusu her boyut / yazı tipi / metin değişiminde yeniden sığdırılır: tek
+   satırda 11 px'e kadar, olmazsa iki satır (9 px'e kadar). KÖK SEBEP (logo): lig logoları çoğunlukla açık zemin için çizilmiş
+   (Trendyol'un siyah yazısı koyu çubukta kayboluyordu). ŞİMDİ logo beyaz, yuvarlak köşeli bir rozetin içinde durur. */
+(function(){ try{ var st=document.createElement('style'); st.textContent='#ptLogo:has(img){background:#fff!important;border-radius:9px!important;padding:3px!important;box-sizing:border-box!important;overflow:hidden!important;box-shadow:0 0 0 1px rgba(255,255,255,.12)}'
+  +'#ptLogo img{object-fit:contain!important}.topbar{padding:.5rem .6rem!important;gap:.4rem!important}#sbAnaDon{min-width:28px!important;width:28px!important;padding:0!important}.topbar-btns{gap:0!important}.topbar-btns .tb-btn{min-width:28px!important;padding:.2rem!important}.topbar-season{white-space:nowrap}#ptLigName.sb-iki{white-space:normal!important;display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.08!important;overflow-wrap:anywhere;text-overflow:clip!important}';
+  (document.head||document.documentElement).appendChild(st); }catch(e){} })();
+function adSigdir(){
+  var e=document.getElementById('ptLigName'); if(!e) return; var w=e.clientWidth; if(!w) return;
+  var anah=e.textContent+'|'+w; if(e._sbAnah===anah) return;
+  e.classList.remove('sb-iki'); ['textOverflow','whiteSpace','display','webkitLineClamp','webkitBoxOrient','lineHeight','overflowWrap'].forEach(function(k){ e.style[k]=''; }); var px=14; e.style.fontSize=px+'px';
+  while(e.scrollWidth>w+1&&px>11){ px-=0.5; e.style.fontSize=px+'px'; }
+  if(e.scrollWidth>w+1){ e.classList.add('sb-iki'); px=13; e.style.fontSize=px+'px';
+    while((e.scrollHeight>Math.ceil(px*1.08*2)+2||e.scrollWidth>w+1)&&px>9){ px-=0.5; e.style.fontSize=px+'px'; } }
+  e._sbAnah=e.textContent+'|'+e.clientWidth;
+}
+window.__sbAdSigdir=adSigdir;
+(function(){ var kur=function(){ var e=document.getElementById('ptLigName'); if(!e) return setTimeout(kur, 500);
+  var z=null, plan=function(){ if(z) return; z=requestAnimationFrame(function(){ z=null; e._sbAnah=null; adSigdir(); }); };
+  try{ new MutationObserver(plan).observe(e, {childList:true, characterData:true, subtree:true}); }catch(x){}
+  try{ new ResizeObserver(function(){ var a=e.textContent+'|'+e.clientWidth; if(a!==e._sbAnah) plan(); }).observe(e.parentNode); }catch(x){}
+  try{ document.fonts&&document.fonts.ready.then(plan); document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone', plan); }catch(x){}
+  plan(); }; kur(); })();
+
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
