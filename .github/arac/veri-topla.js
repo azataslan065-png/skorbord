@@ -661,7 +661,7 @@ async function youtubeTopla(tum){
 //    "maçı kim anlatıyor" haberleri yazıyor: Bing Haberler'de aranır, haber metinlerinden kesin ifadeler okunur ("maçın spikeri X",
 //    "X anlatacak", "yorumcu koltuğunda X ve Y"). Soru biçimindeki tahminler ("X mi anlatıyor?") alınmaz. Türk takımlarının maçları.
 //    Çıktı: veri/ekip.json (uygulama maç bilgisine işler; admin'in elle girdiği önce gelir).
-const TR_KULUP = /galatasaray|fenerbah|be[sş]ikta[sş]|trabzon|ba[sş]ak[sş]ehir|samsun|g[oö]ztepe|kasımpa[sş]a|kasimpasa|konya|antalya|alanya|kayseri|rize|sivas|gaziantep|kocaeli|ey[uü]p|amed|g[eç]n[cç]lerbirli|karag[uü]mr[uü]k|[cç]orum|erzurum|t[uü]rkiye|turkey/i;
+const TR_KULUP = /anadolu efes|efes|t[uü]rk telekom|bah[cç]e[sş]ehir|vak[ıi]fbank|eczac[ıi]ba[sş]ı|eczaciba|halkbank|ziraat|thy|t[uü]rk hava|galatasaray|fenerbah|be[sş]ikta[sş]|trabzon|ba[sş]ak[sş]ehir|samsun|g[oö]ztepe|kasımpa[sş]a|kasimpasa|konya|antalya|alanya|kayseri|rize|sivas|gaziantep|kocaeli|ey[uü]p|amed|g[eç]n[cç]lerbirli|karag[uü]mr[uü]k|[cç]orum|erzurum|t[uü]rkiye|turkey/i;
 const EKIP_KANAL = /(beIN SPORTS(?: (?:[1-5]|MAX ?\d?|HABER))?|TRT 1|TRT Spor Yıldız|TRT Spor|ATV|TV8,5|TV8|S Sport Plus|S Sport 2|S Sport|Exxen(?:spor)?|A Spor|Tivibu Spor|Tabii|TOD)/;
 const AD = '([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})';
 const EKIP_RED_K = new Set('süper lig ligi maç maçı maçın maçta maçını milli türkiye kupa kupası spor sports kim spiker spikeri yorumcu yorumcular saat kanal hakem teknik direktör haber haberler gazete galatasaray fenerbahçe beşiktaş trabzonspor avrupa şampiyonlar uluslar konferans futbol karşılaşma karşılaşmayı mücadele mücadeleyi yayın bu o'.split(' '));
@@ -687,10 +687,11 @@ async function ekipTopla(tum){
   const dosya = path.join(VERI, 'ekip.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   const simdi = Date.now(), aday = [], gun = o => new Date(simdi + 3 * 3600e3 + o * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
   for(const L of tum){
-    if(!/^tur\.|^uefa\.|^fifa\.|^conmebol\.america/.test(L.slug)) continue;
+    const SP = /^(bsk\.tur\.(bsl|kbsl|tbl)|vlb\.tur\.(sultanlar|efeler)|bsk\.int\.(euroleague|eurocup|bcl|euroligk)|vlb\.int\.(cevsl|cevkupa))$/.test(L.slug);   // basketbol / voleybol (2026-11-18-N)
+    if(!SP && !/^tur\.|^uefa\.|^fifa\.|^conmebol\.america/.test(L.slug)) continue;
     let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, L.slug + '.json'), 'utf8')); }catch(e){}
-    const ekle = (rid, ev, dep, z) => { if(z - simdi > 3 * 864e5 || simdi - z > 3 * 3600e3) return; if(!/^tur\./.test(L.slug) && !TR_KULUP.test(ev + ' ' + dep)) return; aday.push({ lig: L.slug, rid, ev, dep, z }); };
-    if(L.tsdb){ if(j && j.mac && /^tur\.(1|2|cup|super)$/.test(L.slug)) j.mac.forEach(m => ekle('ts' + m.id, m.evAd || (j.takim[m.ev] || {}).ad, m.depAd || (j.takim[m.dep] || {}).ad, Date.parse(m.z))); continue; }
+    const ekle = (rid, ev, dep, z) => { if(z - simdi > 3 * 864e5 || simdi - z > 3 * 3600e3) return; if(!/^tur\./.test(L.slug) && !/^(bsk|vlb)\.tur\./.test(L.slug) && !TR_KULUP.test(ev + ' ' + dep)) return; aday.push({ lig: L.slug, rid, ev, dep, z }); };
+    if(L.tsdb){ if(j && j.mac && (SP || /^tur\.(1|2|cup|super)$/.test(L.slug))) j.mac.forEach(m => ekle('ts' + m.id, m.evAd || (j.takim[m.ev] || {}).ad, m.depAd || (j.takim[m.dep] || {}).ad, Date.parse(m.z))); continue; }
     const s = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + L.slug + '/scoreboard?dates=' + gun(0) + '-' + gun(3), { deneme: 2 });
     ((s && s.events) || []).forEach(ev => { const c = ev.competitions && ev.competitions[0]; if(!c) return; const t = h => { const x = (c.competitors || []).find(k => k.homeAway === h) || {}; const n = (x.team && (x.team.displayName || x.team.shortDisplayName)) || ''; return TR_AD[n] || n; };
       ekle(String(ev.id), t('home'), t('away'), Date.parse(ev.date)); });
@@ -700,7 +701,7 @@ async function ekipTopla(tum){
   for(const a of aday){
     const k = a.lig + '|' + a.rid, e = once[k];
     if(e && simdi - (e.t || 0) < (e.spiker ? 8 : 4) * 3600e3){ liste.push(e); continue; }   // bulunduysa 8, bulunmadıysa 4 saatte bir yeniden aranır
-    if(arama >= 25){ if(e) liste.push(e); continue; }
+    if(arama >= 35){ if(e) liste.push(e); continue; }
     const q = a.ev + ' ' + a.dep + ' maçını kim anlatıyor'; arama++;
     const r = await al('https://www.bing.com/news/search?q=' + encodeURIComponent(q) + '&format=rss&setlang=tr&cc=tr', { metin: true, accept: 'application/rss+xml,text/xml' });
     const it = [...String(r || '').matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);

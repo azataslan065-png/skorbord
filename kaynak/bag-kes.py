@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-M'
+SB_BUILD = '2026-11-18-N'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -317,4 +317,25 @@ isle('index.html', [
     if(D.sbSpor==='voleybol'){ if(b.G!==a.G)return b.G-a.G; const ra=a.YG?a.AG/a.YG:a.AG*100, rb=b.YG?b.AG/b.YG:b.AG*100; if(rb!==ra)return rb-ra; }""")),
   ('çok spor B başlık', rx(r"""\$\{stAlignStyle\('b'\)\}">B</span>""", lambda m: """${stAlignStyle('b')}">${D.sbSpor==='basketbol'?'%':D.sbSpor==='voleybol'?'':'B'}</span>""", "D.sbSpor==='voleybol'?'':'B'}</span>")),
   ('çok spor B hücre', degis("""${stAlignStyle('b',pos)}">${t.B}</div>""", """${stAlignStyle('b',pos)}">${D.sbSpor==='basketbol'?(t.O?Math.round(t.G/t.O*100):0):D.sbSpor==='voleybol'?'':t.B}</div>""")),
+])
+# BASKETBOL / VOLEYBOL MAÇ DETAYI (2026-11-18-N): canlı durum (çeyrek / set), skor altında çeyrek / set skorları, futbol sekmesi
+# "Maç Akışı" gizlenir; Detay / Kadro / Anlatım / İstatistik gercek.js'teki window.__sbSporMd ile çizilir (bkz. orada).
+isle('index.html', [
+  ('spor durum', degis("  else statusLabel='MS';\n", "  else statusLabel='MS';\n  try{ if(window.__sbDurum){ const _sd=window.__sbDurum(m); if(_sd) statusLabel=_sd; } }catch(e){}   /* Skorbord: basketbol / voleybol */\n")),
+  ('spor skor altı', degis("""          ${m.htHomeGoals!=null?`<div class="md-ht">(İY ${m.htHomeGoals}-${m.htAwayGoals})</div>`:''}""",
+    """          ${m.htHomeGoals!=null?`<div class="md-ht">(İY ${m.htHomeGoals}-${m.htAwayGoals})</div>`:''}
+          ${window.__sbSkorAlt?window.__sbSkorAlt(m):''}""")),
+  ('spor sekme', degis("""      <button class="md-tab ${_mdTab==='karne'?'active':''}" onclick="switchMdTab('karne')">Maç Akışı</button>""",
+    """      ${(D.sbSpor&&D.sbSpor!=='futbol')?'':`<button class="md-tab ${_mdTab==='karne'?'active':''}" onclick="switchMdTab('karne')">Maç Akışı</button>`}""")),
+  ('spor gövde', degis("  if(_mdTab==='onrapor')body=renderMdOnRapor(id,m,h,a);\n", """  const _sbB=(D.sbSpor&&D.sbSpor!=='futbol'&&window.__sbSporMd)?window.__sbSporMd(_mdTab,id,m,h,a):null;   /* Skorbord: basketbol / voleybol */
+  if(_sbB!=null)body=_sbB;
+  else if(_mdTab==='onrapor')body=renderMdOnRapor(id,m,h,a);
+""")),
+])
+# Alt şerit her koşulda (2026-11-18-N): maç ve duyuru yoksa da açık kalır, "bugün maç yok" yazar (bkz. gercek.js CANLI ALT ŞERİT).
+isle('index.html', [
+  ('şerit boşken not', degis("""  if(!weekMatches.length && !anns.length){
+    ticker.classList.remove('on');""", """  if(!weekMatches.length && !anns.length && window.__sbSeritNot){ anns.push(window.__sbSeritNot()); }   /* Skorbord: şerit hep açık */
+  if(!weekMatches.length && !anns.length){
+    ticker.classList.remove('on');""")),
 ])

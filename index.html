@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-18-M';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-18-N';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -9320,6 +9320,7 @@ function renderLiveTicker(highlightId){
   const anns=Object.values((D.tickerAnnouncements)||{}).sort((a,b)=>(a.ts||0)-(b.ts||0)).map(x=>x.text).filter(Boolean);
   const order=(D.tickerOrder)||'mixed';
 
+  if(!weekMatches.length && !anns.length && window.__sbSeritNot){ anns.push(window.__sbSeritNot()); }   /* Skorbord: şerit hep açık */
   if(!weekMatches.length && !anns.length){
     ticker.classList.remove('on'); document.body.classList.remove('ticker-on');
     window._tickerCurrentHTML=''; window._tickerStructSig=null; return;
@@ -13902,6 +13903,7 @@ function renderMatchDetailContent(){
   if(m.isLive){isLive=true;statusLabel='<span data-canli-saat="'+id+'">'+ptCanliSaat(m)+'</span>'+ptUzatmaEki(m);}
   else if(!m.played)statusLabel=(m.time||'');
   else statusLabel='MS';
+  try{ if(window.__sbDurum){ const _sd=window.__sbDurum(m); if(_sd) statusLabel=_sd; } }catch(e){}   /* Skorbord: basketbol / voleybol */
 
   const banner=`
     <div class="md-banner">
@@ -13916,6 +13918,7 @@ function renderMatchDetailContent(){
           <div class="md-score-big">${m.played||m.isLive?(m.homeGoals??0)+' - '+(m.awayGoals??0):'vs'}</div>
           ${penStr?`<div class="md-ht">${penStr}</div>`:''}
           ${m.htHomeGoals!=null?`<div class="md-ht">(İY ${m.htHomeGoals}-${m.htAwayGoals})</div>`:''}
+          ${window.__sbSkorAlt?window.__sbSkorAlt(m):''}
         </div>
         <div class="md-team-col">
           ${a.logo?`<img src="${a.logo}" class="md-logo" onload="_processLogoImg(this)" onerror="this.style.display='none'"/>`:`<div class="md-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem"></div>`}
@@ -13935,7 +13938,7 @@ function renderMatchDetailContent(){
       ${(!m.played&&!m.isLive)?`<button class="md-tab ${_mdTab==='onrapor'?'active':''}" onclick="switchMdTab('onrapor')">Maç Önü</button>`:''}
       <button class="md-tab ${_mdTab==='detay'?'active':''}" onclick="switchMdTab('detay')">Detay</button>
       <button class="md-tab ${_mdTab==='kadro'?'active':''}" onclick="switchMdTab('kadro')">Kadro</button>
-      <button class="md-tab ${_mdTab==='karne'?'active':''}" onclick="switchMdTab('karne')">Maç Akışı</button>
+      ${(D.sbSpor&&D.sbSpor!=='futbol')?'':`<button class="md-tab ${_mdTab==='karne'?'active':''}" onclick="switchMdTab('karne')">Maç Akışı</button>`}
       <button class="md-tab ${_mdTab==='anlati'?'active':''}" onclick="switchMdTab('anlati')">Anlatım</button>
       <button class="md-tab ${_mdTab==='anlatim'?'active':''}" onclick="switchMdTab('anlatim')">Yorumlar</button>
       <button class="md-tab ${_mdTab==='standings'?'active':''}" onclick="switchMdTab('standings')">Puan Durumu</button>
@@ -13949,7 +13952,9 @@ function renderMatchDetailContent(){
   // Sekmeli menü: yükseklik sabitlenir ki sekme değiştirince kutu zıplamasın.
   try{var _sc=document.getElementById('sheetContent');if(_sc)_sc.classList.add('sheet-fixed-h');}catch(e){self.__ds&&self.__ds(13143,e)}
   if(_mdTab==='onrapor'&&(m.played||m.isLive))_mdTab='detay';
-  if(_mdTab==='onrapor')body=renderMdOnRapor(id,m,h,a);
+  const _sbB=(D.sbSpor&&D.sbSpor!=='futbol'&&window.__sbSporMd)?window.__sbSporMd(_mdTab,id,m,h,a):null;   /* Skorbord: basketbol / voleybol */
+  if(_sbB!=null)body=_sbB;
+  else if(_mdTab==='onrapor')body=renderMdOnRapor(id,m,h,a);
   else if(_mdTab==='detay')body=renderMdDetay(id,m,h,a,ntInfo);
   else if(_mdTab==='kadro')body=renderMdKadro(id,m,h,a);
   else if(_mdTab==='karne')body=renderMdKarne(id,m,h,a);
@@ -40232,6 +40237,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=cd3bf189"></script>
+<script src="gercek.js?v=fd9c987a"></script>
 </body>
 </html>
