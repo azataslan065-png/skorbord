@@ -8,6 +8,7 @@ function lwCoz(x){ if(Array.isArray(x)){ if(x.length === 2 && x[1] && typeof x[1
     const sn = [...t.matchAll(/wire:snapshot="([^"]+)"/g)].map(m => de(m[1])).find(x => /league-detail/.test(x));
     const d = lwCoz(JSON.parse(sn).data);
     console.log('==', s, 'AÇIKLAMA', JSON.stringify(d.leagueDescriptions).slice(0, 1500));
+    const bul = (o, yol) => { if(o && typeof o === 'object'){ if('dusecektakimsayisi' in o){ console.log('   META', yol, JSON.stringify(o).slice(0, 900)); return; } Object.keys(o).forEach(k => bul(o[k], yol + '.' + k)); } }; bul(d, 'd');
     const p = d.leaguePoints; console.log('   PUAN', JSON.stringify(p).slice(0, 300));
     const sat = JSON.stringify(p).match(/"TEAMCOLORROW":\[[^\]]*\]/g) || []; console.log('   RENK', [...new Set(sat)].slice(0, 20).join(' '));
     const i = t.indexOf('legend'); console.log('   HTML', t.replace(/<script[\s\S]*?<\/script>/g, '').replace(/\s+/g, ' ').match(/(Play[- ]?Off|Küme|düş|Lig Etab)[^<]{0,120}/gi)?.slice(0, 12).join(' || '));
