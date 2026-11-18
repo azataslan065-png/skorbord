@@ -110,7 +110,7 @@ function tsdbMac(x, r){
 }
 async function tsdbLig(L, eski){
   const lj = await tsdb('lookupleague.php?id=' + L.tsdb); const lig = (lj && lj.leagues && lj.leagues[0]) || {};
-  const s = lig.strCurrentSeason || ((eski && eski.sezonAdi) || '');
+  let s = (HIZLI && eski && eski.sezonAdi && eski.mac && eski.mac.length) ? eski.sezonAdi : (lig.strCurrentSeason || ((eski && eski.sezonAdi) || ''));
   let mac;
   if(HIZLI && eski && eski.mac && eski.mac.length && eski.sezonAdi === s){
     // 30 dakikalık güncelleme: yalnızca bitmemiş ve şu ana yakın (dün-yarın) maçların turları yeniden istenir
@@ -120,6 +120,8 @@ async function tsdbLig(L, eski){
     for(const r of turlar){ const j = await tsdb('eventsround.php?id=' + L.tsdb + '&r=' + r + '&s=' + s); const e = (j && j.events) || [];
       e.forEach(x => { const i = mac.findIndex(m => m.id === x.idEvent); const yeni = tsdbMac(x, r); if(i >= 0) mac[i] = Object.assign({}, mac[i], yeni, { evLogo: mac[i].evLogo || yeni.evLogo, depLogo: mac[i].depLogo || yeni.depLogo }); else mac.push(yeni); }); }
   } else mac = await tsdbSezon(L.tsdb, s);
+  // TheSportsDB'nin "güncel sezon" adı bazen maçların sezon adından farklı (EuroCup: "2026" / maçlar "2026-2027"): diğer yazımlar denenir
+  if(!mac.length && !HIZLI && s){ const y = parseInt(s, 10); for(const a of (/-/.test(s) ? [String(y + 1), String(y)] : [y + '-' + (y + 1), (y - 1) + '-' + y])){ const m2 = await tsdbSezon(L.tsdb, a); if(m2.length){ mac = m2; s = a; break; } } }
   const takim = {};
   mac.forEach(m => { [[m.ev, m.evAd, m.evLogo], [m.dep, m.depAd, m.depLogo]].forEach(([id, ad, logo]) => { if(!takim[id]) takim[id] = { ad, kisa: ad, yer: '', logo: logo || '' }; else if(!takim[id].logo && logo) takim[id].logo = logo; }); });
   // Rozeti olmayan takımlar için bir kez takım kaydı (eski dosyadan gelir)
