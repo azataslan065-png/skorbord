@@ -506,10 +506,13 @@ async function tffTopla(){
     const mac = liste.map(m => { const e = once[m.id] || {}; return Object.assign({}, m, { z: e.z, saatYok: e.saatYok, hk: e.hk, st: e.st, evLogo: e.evLogo, depLogo: e.depLogo, t: e.t || 0 }); });
     // hangi maçların sayfası okunur: tarihi bilinmeyen (ilk kez), yakın (-1..+4 gün, 3 saatte bir), görevlisi eksik oynanmış maç (arşiv, bir kez)
     const yakin = m => m.z && Math.abs(Date.parse(m.z) - simdi) < 4 * 864e5;
-    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || ((!m.z || m.saatYok) && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
+    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || (!m.z) || (m.saatYok && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
     sira.sort((a, b) => (yakin(b) ? 1 : 0) - (yakin(a) ? 1 : 0));
     const sinir = HIZLI ? 80 : 700; let n = 0;
-    for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); if(!d) continue; Object.assign(m, tffMacOku(d)); m.t = simdi; n++; await bek(150); }
+    let hata = 0;
+    for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); const o = d ? tffMacOku(d) : {};
+      if(!o.z){ hata++; if(hata >= 8){ await bek(60000); hata = 0; } else await bek(1500); continue; }   // boş / sınır sayfası: işaretlenmez, sonra yeniden denenir
+      hata = 0; Object.assign(m, o); m.t = simdi; n++; await bek(300); }
     const gruplar = {}; mac.forEach(m => { if(!m.g) return; const g = gruplar[m.g] || (gruplar[m.g] = {}); g[m.evK] = m.ev; g[m.depK] = m.dep; });
     const cikti = { lig: slug, kaynak: 'TFF', t: simdi, gruplar: Object.keys(gruplar).length ? gruplar : null, mac: mac.map(m => { const o = Object.assign({}, m); Object.keys(o).forEach(k => { if(o[k] == null || o[k] === '') delete o[k]; }); return o; }) };
     fs.writeFileSync(dosya, JSON.stringify(cikti));
@@ -530,7 +533,7 @@ async function tffLig(L, eski){
   const TSDB_ID = { 'tur.3': '4679' }; if(TSDB_ID[L.slug] && !HIZLI){ const tj = await tsdb('lookup_all_teams.php?id=' + TSDB_ID[L.slug]); const tl = ((tj && tj.teams) || []).map(t => t.strTeam).filter(Boolean);
     const P = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|kulubu|futbol|spor)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
     const ben = (a, b) => { const A = P(a), B = P(b); if(!A.length || !B.length) return 0; return A.filter(x => B.some(y => y === x || (x.length >= 4 && y.length >= 4 && (y.startsWith(x) || x.startsWith(y))))).length / Math.min(A.length, B.length); };
-    const kul = {}; Object.values(takim).forEach(t => { let en = null, ep = 0; tl.forEach(n => { if(kul[n]) return; const p = ben(t.ad, n); if(p > ep){ ep = p; en = n; } }); if(en && ep >= 1 && P(en).length < P(t.ad).length){ kul[en] = 1; t.tffAd = t.ad; t.ad = t.kisa = TR_AD[en] || en; } }); }
+    const kul = {}; Object.values(takim).forEach(t => { let en = null, ep = 0; tl.forEach(n => { if(kul[n]) return; const p = ben(t.ad, n); if(p > ep){ ep = p; en = n; } }); if(en && ep >= 1 && P(en).length < P(t.ad).length){ kul[en] = 1; t.tffAd = t.ad; t.ad = t.kisa = TR_AD[en] || en; } }); console.log('  ' + L.slug + ' TheSportsDB adları', tl.length, 'değişen', Object.keys(kul).length, tl.slice(0, 5).join('/')); }
   else if(eski && eski.takim) Object.entries(takim).forEach(([k, t]) => { const e = eski.takim[k]; if(e && e.tffAd && e.tffAd === t.ad){ t.tffAd = e.tffAd; t.ad = t.kisa = e.ad; } });
   const mac = j.mac.filter(m => m.z).map(m => ({ id: m.id, r: m.h, z: m.z, ev: m.evK, dep: m.depK, evAd: takim[m.evK].ad, depAd: takim[m.depK].ad, evLogo: takim[m.evK].logo, depLogo: takim[m.depK].logo,
     evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', saatYok: m.saatYok || undefined, hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
