@@ -1,22 +1,23 @@
-const al = async (u, h) => { try{ const r = await fetch(u, { headers: Object.assign({ 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }, h || {}) }); const t = await r.text(); let j = null; try{ j = JSON.parse(t); }catch(e){} return { s: r.status, j, t: t.slice(0, 300) }; }catch(e){ return { s: 'HATA ' + e.message }; } };
+const al = async (u, h) => { try{ const r = await fetch(u, { headers: Object.assign({ 'User-Agent': 'SkorbordVeri/1.0 (github.com/azataslan065-png/skorbord)', 'Accept': 'application/json' }, h || {}) }); const t = await r.text(); let j = null; try{ j = JSON.parse(t); }catch(e){} return { s: r.status, j, t: t.slice(0, 400) }; }catch(e){ return { s: 'HATA ' + e.message }; } };
+const bek = ms => new Promise(z => setTimeout(z, ms));
+const sp = async q => al('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), { Accept: 'application/sparql-results+json' });
 (async () => {
-  for(const sl of ['tur.cup', 'tur.super_cup', 'tur.supercup', 'tur.turkish_cup', 'tur.kupa']){ const r = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + sl + '/scoreboard'); const l = r.j && r.j.leagues && r.j.leagues[0]; console.log('ESPN', sl, r.s, l ? (l.name + ' sezon ' + (l.season && l.season.year)) : r.t.slice(0, 80)); }
-  const a = await al('https://www.thesportsdb.com/api/v1/json/123/all_leagues.php'); const L = (a.j && a.j.leagues) || [];
-  console.log('TSDB tüm lig', L.length, L.filter(x => /turk|türk/i.test(x.strLeague + ' ' + (x.strLeagueAlternate || ''))).map(x => x.idLeague + ':' + x.strLeague).join(' | '));
-  for(const id of ['4677', '4678', '5492', '4837']){ const r = await al('https://www.thesportsdb.com/api/v1/json/123/lookupleague.php?id=' + id); const l = r.j && r.j.leagues && r.j.leagues[0]; console.log('TSDB lig', id, l ? l.strLeague + ' ' + l.strCountry + ' ' + l.strCurrentSeason : r.t.slice(0, 60)); await new Promise(z => setTimeout(z, 2200)); }
-  // FIFA sıralaması
-  let f = await al('https://inside.fifa.com/api/ranking-overview?locale=en&dateId=&rankingType=football'); console.log('FIFA1', f.s, f.t.slice(0, 200));
-  f = await al('https://api.fifa.com/api/v3/fifarankings/rankings/rankingsbyschedule?rankingScheduleId=&language=en'); console.log('FIFA2', f.s, f.t.slice(0, 200));
-  f = await al('https://inside.fifa.com/api/ranking-overview?locale=en'); console.log('FIFA3', f.s, f.t.slice(0, 300));
-  // UEFA katsayıları
-  let u = await al('https://comp.uefa.com/v2/coefficients?coefficientRange=OVERALL&coefficientType=MEN_ASSOCIATION&language=EN&page=1&pagesize=60&seasonYear=2027'); console.log('UEFA ülke', u.s, u.t.slice(0, 300));
-  u = await al('https://comp.uefa.com/v2/coefficients?coefficientRange=OVERALL&coefficientType=MEN_CLUB&language=EN&page=1&pagesize=10&seasonYear=2027'); console.log('UEFA kulüp', u.s, u.t.slice(0, 300));
-  // Hakemler: ESPN özetinde görevliler
-  for(const sl of ['tur.1', 'eng.1', 'esp.1', 'ger.1', 'ita.1', 'fra.1', 'uefa.champions', 'ned.1', 'por.1', 'bra.1', 'usa.1']){
-    const sb = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + sl + '/scoreboard?dates=20261101-20261117'); let e = ((sb.j && sb.j.events) || []).filter(x => x.status && x.status.type && x.status.type.completed);
-    if(!e.length){ const s2 = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + sl + '/scoreboard?dates=20261108'); e = ((s2.j && s2.j.events) || []).filter(x => x.status && x.status.type && x.status.type.completed); }
-    const ev = e[e.length - 1]; if(!ev){ console.log('HAKEM', sl, 'maç yok'); continue; }
-    const s = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + sl + '/summary?event=' + ev.id); const o = ((s.j || {}).gameInfo || {}).officials || [];
-    console.log('HAKEM', sl, o.length, JSON.stringify(o.map(x => (x.position && (x.position.displayName || x.position.name)) + '=' + (x.fullName || x.displayName))).slice(0, 300), 'yayın', JSON.stringify(((s.j || {}).broadcasts || []).slice(0, 2)).slice(0, 150));
+  const T = 'https://www.thesportsdb.com/api/v1/json/123/';
+  let r = await al(T + 'eventsround.php?id=4339&r=10&s=2026-2027'); const e = (r.j && r.j.events) || []; console.log('TSDB SL tur', r.s, e.length, e[0] ? Object.keys(e[0]).join(',') : r.t.slice(0, 80)); if(e[0]) console.log('  hakem alanı', e.map(x => x.strOfficial || x.strReferee || '').join(' | '));
+  await bek(2500);
+  const lig = {};
+  for(const tid of ['133690', '134370', '134386', '133929']){ const x = await al(T + 'eventslast.php?id=' + tid); ((x.j && x.j.results) || []).forEach(ev => { lig[ev.idLeague] = ev.strLeague; }); const n = await al(T + 'eventsnext.php?id=' + tid); ((n.j && n.j.events) || []).forEach(ev => { lig[ev.idLeague] = ev.strLeague; }); await bek(4500); }
+  console.log('TSDB takım ligleri', JSON.stringify(lig));
+  // Wikidata FIFA sıralaması (P1352 sıralama, P459 belirleme yöntemi)
+  let q = await sp('SELECT ?m ?mLabel (COUNT(*) AS ?n) WHERE { ?t wdt:P31 wd:Q6979593 ; p:P1352 ?st . ?st pq:P459 ?m . SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } GROUP BY ?m ?mLabel ORDER BY DESC(?n) LIMIT 5');
+  console.log('WD sıralama yöntemleri', JSON.stringify(((q.j && q.j.results.bindings) || []).map(b => b.m.value.split('/').pop() + ' ' + b.mLabel.value + ' ' + b.n.value)));
+  q = await sp('SELECT ?tLabel ?r ?d WHERE { VALUES ?t { wd:Q42267 wd:Q483856 } ?t p:P1352 ?st . ?st ps:P1352 ?r ; pq:P585 ?d . SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } ORDER BY DESC(?d) LIMIT 4');
+  console.log('WD İspanya/Türkiye son sıralama', JSON.stringify(((q.j && q.j.results.bindings) || []).map(b => b.tLabel.value + ' ' + b.r.value + ' ' + b.d.value.slice(0, 10))));
+  // FIFA: sıralama tarihleri
+  for(const u of ['https://inside.fifa.com/api/ranking-overview?locale=en&dateId=id14800', 'https://inside.fifa.com/api/rankings/dates?locale=en', 'https://inside.fifa.com/fifa-world-ranking/men']){ const x = await al(u); console.log('FIFA', u.slice(25, 90), x.s, x.t.slice(0, 200).replace(/\s+/g, ' ')); }
+  // Vikipedi: Türkiye Kupası maç kutuları
+  for(const [w, t] of [['en', '2026–27 Turkish Cup'], ['tr', '2026-27 Türkiye Kupası'], ['en', '2026 Turkish Super Cup'], ['tr', '2026 TFF Süper Kupa']]){
+    const x = await al('https://' + w + '.wikipedia.org/w/api.php?action=parse&prop=wikitext&format=json&redirects=1&page=' + encodeURIComponent(t)); const wt = (x.j && x.j.parse && x.j.parse.wikitext['*']) || '';
+    const kutu = (wt.match(/\{\{\s*(Football box|Futbol kutusu|Footballbox)[^]*?\n\}\}/gi) || []); console.log('VİKİ', w, t, x.s, 'uzunluk', wt.length, 'kutu', kutu.length, kutu[0] ? kutu[0].slice(0, 400).replace(/\n/g, ' ¶ ') : '');
   }
 })();
