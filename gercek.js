@@ -20,7 +20,7 @@ function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call
    · Suudi Arabistan'ın ESPN adı "ksa.1" (eskisi "sau.1" hata veriyordu).
    · Ek ligler: ESPN'in futbol listesindeki diğer ulusal ligler ve büyük turnuvalar; TFF 2. Lig TheSportsDB'den. */
 var LIGLER=[
- ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],['tur.4','TFF 3. Lig','Türkiye','tff'],['tur.cup','Ziraat Türkiye Kupası','Türkiye','wiki'],['tur.super','Turkcell Süper Kupa','Türkiye','wiki'],
+ ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','tff'],['tur.4','TFF 3. Lig','Türkiye','tff'],['tur.cup','Ziraat Türkiye Kupası','Türkiye','wiki'],['tur.super','Turkcell Süper Kupa','Türkiye','wiki'],
  ['uefa.champions','UEFA Şampiyonlar Ligi','Avrupa'],['uefa.europa','UEFA Avrupa Ligi','Avrupa'],['uefa.europa.conf','UEFA Konferans Ligi','Avrupa'],['uefa.super_cup','UEFA Süper Kupa','Avrupa'],
  ['eng.1','İngiltere Premier Lig','İngiltere'],['eng.2','İngiltere Championship','İngiltere'],['eng.3','İngiltere League One','İngiltere'],['eng.4','İngiltere League Two','İngiltere'],['eng.5','İngiltere National League','İngiltere'],
  ['esp.1','İspanya La Liga','İspanya'],['esp.2','İspanya La Liga 2','İspanya'],
@@ -483,6 +483,13 @@ function otoYukle(slug, v){
       Object.keys(tff.gruplar).sort().forEach(function(ad){ var ids=[]; Object.keys(tff.gruplar[ad]).forEach(function(k){ var n=tff.gruplar[ad][k], en=null, ep=0;
           Object.keys(v.teams).forEach(function(id){ if(kul[id]) return; var p=adBenzer(n, takimAdi(v, id)); if(p>ep){ ep=p; en=id; } }); if(en&&ep>=0.6){ kul[en]=1; ids.push(en); } });
         if(ids.length) gr.push({ad:ad, takimlar:ids}); });
+      // adı tutmayan takımlar (TheSportsDB ile TFF adları çok farklı): aynı haftada eşleşmiş bir rakiple oynadığı maçtan bulunur
+      var esK={}; gr.forEach(function(g){ g.takimlar.forEach(function(id){ var n=takimAdi(v,id), en=null, ep=0; Object.keys(tff.gruplar[g.ad]).forEach(function(k){ var p=adBenzer(tff.gruplar[g.ad][k], n); if(p>ep){ ep=p; en=k; } }); if(en) esK[en]=id; }); });
+      for(var tur=0; tur<2; tur++){ var oy={};
+        (tff.mac||[]).forEach(function(t){ [[t.evK,t.depK],[t.depK,t.evK]].forEach(function(c){ var x=c[0], y=c[1]; if(esK[x]||!esK[y]) return;
+          mlist.forEach(function(mm){ var m=mm[1]; if(+m.week!==+t.h) return; var o=m.homeId===esK[y]?m.awayId:(m.awayId===esK[y]?m.homeId:null); if(!o||kul[o]) return; var k=x+'|'+o; oy[k]=(oy[k]||0)+1; }); }); });
+        Object.keys(oy).sort(function(a,b){ return oy[b]-oy[a]; }).forEach(function(k){ if(oy[k]<2) return; var x=k.split('|')[0], o=k.split('|')[1]; if(esK[x]||kul[o]) return; esK[x]=o; kul[o]=1;
+          gr.forEach(function(g){ if(tff.gruplar[g.ad][x]) g.takimlar.push(o); }); }); }
       if(gr.length>1) v.gruplar=gr; }
     // TV kanalı (beIN yayın akışı): maç günü, maç saatinde (±15 dk) başlayan yayın
     if(yay&&yay.liste) yay.liste.forEach(function(y){ var p=String(y.ad).split(' - '); if(p.length!==2) return;
