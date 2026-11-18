@@ -38,6 +38,7 @@ jobs:
       - name: Topla
         if: steps.k.outputs.atla != '1'
         run: |
+          if [ "${{ matrix.grup }}" = "0" ] && [ -z "${{ steps.k.outputs.h }}" ]; then npm i --no-save --silent --prefix .github/arac sharp@0.33.5 || true; fi
           G="--grup=${{ matrix.grup }}/8"; if [ -n "${{ steps.k.outputs.h }}" ] || [ -n "${{ inputs.ligler }}" ]; then G=""; fi
           node .github/arac/veri-topla.js ${{ steps.k.outputs.h }} $G ${{ inputs.ligler }}
       - name: Kaydet

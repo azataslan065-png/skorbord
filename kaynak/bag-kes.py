@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-I'
+SB_BUILD = '2026-11-18-J'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -244,4 +244,44 @@ isle('index.html', [
 """, """    const awayData=renderHalfPitch(a,'right',false,liveEvents2,'away');
     """ + _KBOS + """
 """)),
+])
+
+# Puan durumu öğe yerleşimi (2026-11-18-J, kullanıcı: "logo, sıralama, ok vb. ögeleri elle düzenledim fakat farklı lige veya maça geçince
+# bozuluyor, çıkıp tekrar girince düzeliyor"). KÖK SEBEP: adaptStandingsColumnScale uzun takım adı taşınca sıra+ok+logo kümesini (ve
+# gerekirse istatistik sütunlarını) küçültüyor, ölçeği ise HİÇ geri büyütmüyordu (yalnız küçülen bir mandal; bir önceki ligin ölçeğinden
+# devam ediyordu). Uzun adlı bir lig / grup açılınca küme daralıyor, sonra açılan her ligde öyle kalıyordu: ok "▲:" diye kırpılıyor,
+# logo ve sıra admin'in ayarladığı yerden kayıyordu; ölçek yalnız sayfa yeniden açılınca 1'den hesaplanıyordu (o yüzden "çıkıp girince
+# düzeliyor"). ŞİMDİ: lig, grup veya ev/deplasman/hafta görünümü değişince ölçek 1'den yeniden hesaplanır — her tablo, uygulama yeni
+# açılmış gibi kendi adlarına göre ölçülür. Aynı tablo içindeki tekrar çizimlerde eski davranış (titreme olmasın diye) korunur.
+# Ok alanı da artık içeriğini kırpmaz.
+isle('index.html', [
+  ('puan durumu ölçek tablo başına', degis("""    const rows=el.querySelectorAll('.st-row');
+    let maxOverflow=0;
+""", """    /* Skorbord: tablo (lig / grup / görünüm) değişince ölçek 1'den yeniden hesaplanır (bkz. bag-kes) */
+    var _stAnah=(typeof _curLeagueId!=='undefined'?_curLeagueId:'')+'|'+(function(){ try{ return window.__sbGrupTakim?Object.keys(window.__sbGrupTakim(D.teams||{})).sort().join(','):''; }catch(e){ return ''; } })()+'|'+(typeof _stVenueFilter!=='undefined'?_stVenueFilter:'')+'|'+(typeof _stWeekFilter!=='undefined'?_stWeekFilter:'');
+    if(window._stOlcekAnah!==_stAnah){ window._stOlcekAnah=_stAnah; applyStandingsColumnScale(1,1); }
+    const rows=el.querySelectorAll('.st-row');
+    let maxOverflow=0;
+""")),
+  ('ok kırpılmaz', degis(".rank-arrow-wrap{font-size:max(9px,.62rem);display:inline-block;flex:0 0 calc(22px * var(--st-col-scale,1));width:calc(22px * var(--st-col-scale,1));overflow:hidden;",
+    ".rank-arrow-wrap{font-size:max(9px,.62rem);display:inline-block;flex:0 0 calc(22px * var(--st-col-scale,1));width:calc(22px * var(--st-col-scale,1));overflow:visible;letter-spacing:-.3px;")),
+])
+# Bölge notlarında "sondan" sıralar (gercek.js BOLGE_SABIT): görünen tablonun / grubun takım sayısına göre çözülür.
+isle('index.html', [
+  ('bölge sondan 1', degis("  const rankNotes=D.rankNotes||[];\n", "  const rankNotes=(window.__sbBolge?window.__sbBolge(D.rankNotes||[]):D.rankNotes)||[];\n")),
+  ('bölge sondan 2', degis("  var notes=(D.rankNotes||[]).filter(function(n){return n&&n.from&&n.to;});", "  var notes=((window.__sbBolge?window.__sbBolge(D.rankNotes||[],totalTeams):D.rankNotes)||[]).filter(function(n){return n&&n.from&&n.to;});")),
+])
+# Üst çubuktaki lig adı (2026-11-18-J, kullanıcı: "lig ekranına girince lig ismi tam gösterilmiyor, Trendyol Süper Lig yazısı ekrana
+# sığmıyor"). Skorbord'un üst çubuğunda altı düğme var; ad tek satırda 9 px'e kadar küçültülüp yine sığmazsa "…" ile kesiliyordu.
+# ŞİMDİ: tek satırda en çok 11 px'e kadar küçülür; yine sığmazsa iki satıra bölünür (iki satırda gerekirse 9 px'e kadar), kesilmez.
+isle('index.html', [
+  ('lig adı iki satır', degis("""        while(ligNameEl.scrollWidth>kutu+1&&px>9&&adim<24){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        if(ligNameEl.scrollWidth>kutu+1)ligNameEl.style.textOverflow='ellipsis';""", """        ligNameEl.style.whiteSpace='';ligNameEl.style.display='';ligNameEl.style.webkitLineClamp='';ligNameEl.style.webkitBoxOrient='';ligNameEl.style.lineHeight='';ligNameEl.style.textOverflow='';
+        while(ligNameEl.scrollWidth>kutu+1&&px>11&&adim<24){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        if(ligNameEl.scrollWidth>kutu+1){   /* Skorbord: sığmayan ad iki satıra bölünür (kesilmez) */
+          ligNameEl.style.whiteSpace='normal';ligNameEl.style.display='-webkit-box';ligNameEl.style.webkitBoxOrient='vertical';ligNameEl.style.webkitLineClamp='2';ligNameEl.style.lineHeight='1.08';ligNameEl.style.overflowWrap='anywhere';
+          px=Math.max(px,12);ligNameEl.style.fontSize=px+'px';
+          while((ligNameEl.scrollHeight>Math.ceil(px*1.08*2)+2||ligNameEl.scrollWidth>kutu+1)&&px>9&&adim<48){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        }
+        if(ligNameEl.scrollWidth>kutu+1)ligNameEl.style.textOverflow='ellipsis';""")),
 ])

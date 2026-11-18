@@ -275,6 +275,33 @@ function ligYukle(slug, zorla){
 var BOLGE_TR=[[/champions league qual/i,'Şampiyonlar Ligi Elemesi','#3b82f6'],[/champions league/i,'Şampiyonlar Ligi','#2563eb'],[/europa league qual/i,'Avrupa Ligi Elemesi','#f59e0b'],[/europa league/i,'Avrupa Ligi','#f97316'],
  [/conference league qual/i,'Konferans Ligi Elemesi','#10b981'],[/conference league/i,'Konferans Ligi','#059669'],[/relegation play/i,'Küme Düşme Play-off','#fb923c'],[/relegat/i,'Küme Düşme','#ef4444'],
  [/promotion play/i,'Yükselme Play-off','#22d3ee'],[/promot/i,'Yükselme','#22c55e'],[/play-?offs?/i,'Play-off','#a78bfa'],[/round of 16|knockout/i,'Üst Tur','#22c55e'],[/libertadores/i,'Libertadores','#2563eb'],[/sudamericana/i,'Sudamericana','#f59e0b'],[/eliminat/i,'Elendi','#ef4444']];
+/* SABİT BÖLGELER (2026-11-18-J, kullanıcı: "bazı ligler için açıklamalar eklenmemiş"). Kaynak puan durumunda bölge notu vermeyen
+   ligler: TFF 1/2/3. Lig ve İsviçre (TheSportsDB / TFF'den gelir, bölge bilgisi yok), ESPN'in not vermediği birkaç lig. Değerler 2026-27
+   statülerinden (TFF statüleri, Wikipedia sezon sayfaları). Kaynak kendi notunu verirse o kullanılır. Eksi sıra = sondan (gruplarda
+   takım sayısı farklı olabildiği için); "sondan" nesnesi grup büyüklüğüne göre kaç takım düştüğünü verir. */
+var BOLGE_SABIT={
+ 'tur.2':[{from:1,to:2,color:'#22c55e',label:'Süper Lig\'e Yükselme'},{from:3,to:3,color:'#06b6d4',label:'Play-off Finali'},{from:4,to:7,color:'#22d3ee',label:'Play-off Çeyrek Final'},{from:-4,to:-1,color:'#ef4444',label:'TFF 2. Lig\'e Düşme'}],
+ 'tur.3':[{from:1,to:1,color:'#22c55e',label:'TFF 1. Lig\'e Yükselme'},{from:2,to:5,color:'#22d3ee',label:'Yükselme Play-off'},{sondan:{18:3,17:2},color:'#ef4444',label:'TFF 3. Lig\'e Düşme'}],
+ 'tur.4':[{from:1,to:1,color:'#22c55e',label:'TFF 2. Lig\'e Yükselme'},{from:2,to:5,color:'#22d3ee',label:'Yükselme Play-off'},{from:-4,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'sui.1':[{from:1,to:1,color:'#3b82f6',label:'Şampiyonlar Ligi Elemesi'},{from:2,to:3,color:'#10b981',label:'Konferans Ligi Elemesi'},{from:4,to:6,color:'#a78bfa',label:'Şampiyonluk Grubu'},{from:-2,to:-2,color:'#fb923c',label:'Küme Düşme Play-off'},{from:-1,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'bra.1':[{from:1,to:4,color:'#2563eb',label:'Libertadores'},{from:-4,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'bra.2':[{from:1,to:4,color:'#22c55e',label:'Yükselme'},{from:-4,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'ksa.1':[{from:1,to:1,color:'#2563eb',label:'AFC Şampiyonlar Ligi Elite'},{from:-3,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'rsa.1':[{from:1,to:2,color:'#2563eb',label:'CAF Şampiyonlar Ligi'},{from:3,to:3,color:'#f59e0b',label:'CAF Konfederasyon Kupası'},{from:-2,to:-2,color:'#fb923c',label:'Küme Düşme Play-off'},{from:-1,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'chn.1':[{from:-2,to:-1,color:'#ef4444',label:'Küme Düşme'}],
+ 'aus.1':[{from:1,to:6,color:'#a78bfa',label:'Final Serisi'}]
+};
+/* görünen tablonun (seçili grubun) takım sayısına göre sondan sıraları çözer; renderStandings ve senaryo bölgeleri çağırır */
+window.__sbBolge=function(notes, n){
+  try{ if(!Array.isArray(notes)||!notes.some(function(x){ return x&&(x.sondan||x.from<0||x.to<0); })) return notes;
+    if(!n){ var t=(window.D&&D.teams)||{}; try{ if(window.__sbGrupTakim) t=window.__sbGrupTakim(t); }catch(e){} n=Object.keys(t).length; }
+    if(!n) return notes.filter(function(x){ return x&&x.from>0&&x.to>0; });
+    return notes.map(function(x){ var o={from:x.from,to:x.to,color:x.color,label:x.label};
+      if(x.sondan){ var k=Object.keys(x.sondan).map(Number).sort(function(a,b){ return a-b; }), c=x.sondan[k[k.length-1]];
+        k.forEach(function(b){ if(n<=b&&c===x.sondan[k[k.length-1]]) c=x.sondan[b]; }); o.from=n-c+1; o.to=n; }
+      if(o.from<0) o.from=n+o.from+1; if(o.to<0) o.to=n+o.to+1; return o; }).filter(function(o){ return o.from>=1&&o.to>=o.from; });
+  }catch(e){ return notes; }
+};
 function bolgeNotlari(j){
   try{
     var gr=(j&&j.children&&j.children.length)?j.children:[j||{}];
@@ -578,12 +605,18 @@ function ytUygula(){
 setTimeout(function(){ ytTazele(); setInterval(function(){ if(!document.hidden) ytTazele(); }, 3*60000); }, 2500);
 try{ setTimeout(function(){ firebase.database().ref('macBilgi').on('value', function(){ ytUygula(); }); }, 3000); }catch(e){}
 
+/* LİG LOGOSU (2026-11-18-J, kullanıcı: "lig ekranında logolar doğru görünmüyor, eski yapımlar kullanılıyor"): güncel logolar veri işinde
+   toplanır (veri/lig-logo.json + veri/lig-logo/<lig>.png; TFF'nin kendi logoları, Vikipedi, Wikidata). Yoksa ESPN'in logosu; o da yoksa
+   boş kalır (eskiden yöneticinin kendi sezon logosu bütün liglere düşüyordu). */
+function ligLogoUygula(v){
+  return veriAl('lig-logo').then(function(j){ var u=j&&j.logo&&j.logo[v.slug]; if(u) v.logo=new URL(u, location.href).href; return v; }, function(){ return v; });
+}
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
   gorevliDinle();
-  return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||null, teams:v.teams, matches:v.matches,
-    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbKupa:TSDB_LIG[v.slug]==='wiki'||null, sbGercek:{slug:v.slug, t:Date.now()}};
+  return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||'', teams:v.teams, matches:v.matches,
+    lgConfig:{winPts:3, drawPts:1}, rankNotes:(v.notlar&&v.notlar.length)?v.notlar:(BOLGE_SABIT[v.slug]||[]), sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbKupa:TSDB_LIG[v.slug]==='wiki'||null, sbGercek:{slug:v.slug, t:Date.now()}};
 }
 function agacaYaz(v){
   var id=ligKimlik(v.slug), eski=YerelVT.ham('leagues/'+id)||{}, b=ligBelgesi(v);
@@ -598,7 +631,7 @@ function metaYaz(){
   YerelVT.yaz('activeDisplayLeague', ligKimlik(A.lig));
 }
 function ligiAc(slug){
-  return ligYukle(slug).then(function(v){ return otoYukle(slug, v); }).then(function(v){ agacaYaz(v); return v; });
+  return ligYukle(slug).then(function(v){ return otoYukle(slug, v); }).then(ligLogoUygula).then(function(v){ agacaYaz(v); return v; });
 }
 
 /* ---------- giriş: ayrı uygulamada hesap yok; cihazdaki adla doğrudan açılır ---------- */
@@ -622,7 +655,7 @@ function ligSec(slug){
   if(!kimliktenSlug(ligKimlik(slug))) return;
   A.lig=slug; ayarYaz();
   var id=ligKimlik(slug);
-  if(!YerelVT.ham('leagues/'+id)) YerelVT.yaz('leagues/'+id, {leagueName:LIG_AD[slug]||slug, season:'', teams:{}, matches:{}, lgConfig:{winPts:3,drawPts:1}});
+  if(!YerelVT.ham('leagues/'+id)) YerelVT.yaz('leagues/'+id, {leagueName:LIG_AD[slug]||slug, logoUrl:'', season:'', teams:{}, matches:{}, lgConfig:{winPts:3,drawPts:1}});
   YerelVT.yaz('activeDisplayLeague', id);
   try{ _curLeagueId=id; localStorage.setItem('pt_curLeague', id); try{ ptElleSezonYaz(id); }catch(e){} listenToLeague(id); }catch(e){ gunluk('lig değiştirilemedi', e.message); }
   window._tickerStructSig=null;
@@ -869,7 +902,7 @@ function ayarla(k,v){
 function yenile(){
   try{ showToast('Veri yenileniyor…'); }catch(e){}
   sonTam=0; B.t=0;
-  ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(function(v){ agacaYaz(v); try{ showToast('Veri güncellendi'); }catch(e){} }, function(e){ try{ showToast('Veri alınamadı: '+e.message,'er'); }catch(x){} });
+  ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(ligLogoUygula).then(function(v){ agacaYaz(v); try{ showToast('Veri güncellendi'); }catch(e){} }, function(e){ try{ showToast('Veri alınamadı: '+e.message,'er'); }catch(x){} });
   bugunDongu();
 }
 function ayarKancasi(){
@@ -896,7 +929,7 @@ function uzakUygula(d){
     if(typeof U.seritAcikVarsayilan==='boolean'){ try{ if(localStorage.getItem('pt_liveTicker')===null){ _liveTickerEnabled=U.seritAcikVarsayilan; localStorage.setItem('pt_liveTicker', U.seritAcikVarsayilan?'on':'off'); } }catch(e){} }
   }
   try{ metaYaz(); }catch(e){}
-  if(adImza!==_adImza){ var ilk=_adImza===null; _adImza=adImza; if(!ilk||adImza!==''){ sonTam=0; ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(agacaYaz, function(){}); } }
+  if(adImza!==_adImza){ var ilk=_adImza===null; _adImza=adImza; if(!ilk||adImza!==''){ sonTam=0; ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(ligLogoUygula).then(agacaYaz, function(){}); } }
   // Görünen ligler dışında kalan lig seçiliyse ya da bu cihazda ilk açılışsa yöneticinin varsayılan ligine geçilir.
   var hedef=null;
   if(!ligAktifMi(A.lig)) hedef=(U.varsayilanLig&&ligAktifMi(U.varsayilanLig))?U.varsayilanLig:aktifLigler()[0][0];

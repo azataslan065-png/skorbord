@@ -752,7 +752,7 @@ body.bg-anim-sway #bgFixedLayer{transform-origin:center;animation:bgSway calc(7s
    hatası geri gelir) - bunun yerine kutu, en kötü ihtimalle "▲12" gibi 3 karakteri bile
    rahatça alacak şekilde 22px'e genişletildi. */
 /* SENSÖR BULGUSU: sıra değişim oku (▲1/▼1) 7.4px - okunabilirlik eşiğinin (9px) altında. */
-.rank-arrow-wrap{font-size:max(9px,.62rem);display:inline-block;flex:0 0 calc(22px * var(--st-col-scale,1));width:calc(22px * var(--st-col-scale,1));overflow:hidden;white-space:nowrap;text-align:center;transform:translate(var(--st-rank-arrow-x,0px),var(--st-rank-arrow-y,0px)) scale(var(--st-rank-arrow-scale,1))}
+.rank-arrow-wrap{font-size:max(9px,.62rem);display:inline-block;flex:0 0 calc(22px * var(--st-col-scale,1));width:calc(22px * var(--st-col-scale,1));overflow:visible;letter-spacing:-.3px;white-space:nowrap;text-align:center;transform:translate(var(--st-rank-arrow-x,0px),var(--st-rank-arrow-y,0px)) scale(var(--st-rank-arrow-scale,1))}
 /* HATA DÜZELTMESİ (kullanıcı bildirdi: "bazı cihazlarda yeterli alan olmasına rağmen takım
    ismi kısıtlı görünüyor, örn. 'Azatsp...'"): Bu hücre bir CSS Grid öğesi olduğundan
    varsayılan olarak kendi track'ini ("minmax(0,1fr)") doldurması BEKLENİR, ama bazı
@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-18-I';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-18-J';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -7855,7 +7855,13 @@ function listenToLeague(leagueId){
         if(!kutu)return;
         var px=parseFloat(getComputedStyle(ligNameEl).fontSize)||13;
         var adim=0;
-        while(ligNameEl.scrollWidth>kutu+1&&px>9&&adim<24){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        ligNameEl.style.whiteSpace='';ligNameEl.style.display='';ligNameEl.style.webkitLineClamp='';ligNameEl.style.webkitBoxOrient='';ligNameEl.style.lineHeight='';ligNameEl.style.textOverflow='';
+        while(ligNameEl.scrollWidth>kutu+1&&px>11&&adim<24){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        if(ligNameEl.scrollWidth>kutu+1){   /* Skorbord: sığmayan ad iki satıra bölünür (kesilmez) */
+          ligNameEl.style.whiteSpace='normal';ligNameEl.style.display='-webkit-box';ligNameEl.style.webkitBoxOrient='vertical';ligNameEl.style.webkitLineClamp='2';ligNameEl.style.lineHeight='1.08';ligNameEl.style.overflowWrap='anywhere';
+          px=Math.max(px,12);ligNameEl.style.fontSize=px+'px';
+          while((ligNameEl.scrollHeight>Math.ceil(px*1.08*2)+2||ligNameEl.scrollWidth>kutu+1)&&px>9&&adim<48){px-=0.5;adim++;ligNameEl.style.fontSize=px+'px';}
+        }
         if(ligNameEl.scrollWidth>kutu+1)ligNameEl.style.textOverflow='ellipsis';
         // TEŞHİS RAPORU DÜZELTMESİ (tekrarlayan: "ptLigName · 8.7px (eşik 9px)"):
         // Küçültme döngüsü 9px'te duruyordu ama BAŞLANGIÇ değeri zaten 9px'in altına
@@ -10341,7 +10347,7 @@ function renderStandings(){
     })()}
     <div class="st-cols"><span>Sıra</span><span>Takım</span><span style="text-align:center;${stAlignStyle('o')}">O</span><span style="text-align:center;${stAlignStyle('g')}">G</span><span style="text-align:center;${stAlignStyle('b')}">B</span><span style="text-align:center;${stAlignStyle('m')}">M</span><span style="text-align:center;${stAlignStyle('ag')}">A</span><span style="text-align:center;${stAlignStyle('yg')}">Y</span><span style="text-align:center;${stAlignStyle('av')}">Av</span><span style="text-align:center;${stAlignStyle('p')}">P</span></div>`;
 
-  const rankNotes=D.rankNotes||[];
+  const rankNotes=(window.__sbBolge?window.__sbBolge(D.rankNotes||[]):D.rankNotes)||[];
   function getRankNote(pos){return rankNotes.find(n=>pos>=n.from&&pos<=n.to);}
   // KULLANICI TALEBİ: "Maç sonrası puan durumunda canlı sıralama değişim oku göstergesi" -
   // her takımın SON OYNANAN HAFTA öncesine göre kaç sıra yukarı/aşağı gittiğini gösteren küçük
@@ -10515,6 +10521,9 @@ function adaptStandingsColumnScale(cb,gen){
   // ek küçültme hesaplanıyor. Zaten yeterliyse HİÇBİR ŞEY değiştirilmiyor (flicker/gerileme yok).
   requestAnimationFrame(()=>{
     if(gen!=null&&gen!==window._standingsRenderGen)return;
+    /* Skorbord: tablo (lig / grup / görünüm) değişince ölçek 1'den yeniden hesaplanır (bkz. bag-kes) */
+    var _stAnah=(typeof _curLeagueId!=='undefined'?_curLeagueId:'')+'|'+(function(){ try{ return window.__sbGrupTakim?Object.keys(window.__sbGrupTakim(D.teams||{})).sort().join(','):''; }catch(e){ return ''; } })()+'|'+(typeof _stVenueFilter!=='undefined'?_stVenueFilter:'')+'|'+(typeof _stWeekFilter!=='undefined'?_stWeekFilter:'');
+    if(window._stOlcekAnah!==_stAnah){ window._stOlcekAnah=_stAnah; applyStandingsColumnScale(1,1); }
     const rows=el.querySelectorAll('.st-row');
     let maxOverflow=0;
     rows.forEach(row=>{
@@ -13573,7 +13582,7 @@ function averajCumlesi(benimAV,rakipAV,rakipAd){
 function scenarioBolgeler(totalTeams){
   /* Bölgeler öncelikle ligin KENDİ tanımından (rankNotes) okunur. Tanım yoksa makul
      varsayılanlara düşülür - ama bu durum kullanıcıya ayrıca belirtilir. */
-  var notes=(D.rankNotes||[]).filter(function(n){return n&&n.from&&n.to;});
+  var notes=((window.__sbBolge?window.__sbBolge(D.rankNotes||[],totalTeams):D.rankNotes)||[]).filter(function(n){return n&&n.from&&n.to;});
   if(notes.length){
     return notes.map(function(n){
       return {ad:n.label||'Bölge',renk:n.color||'#7c3aed',bas:Number(n.from),son:Number(n.to),kaynak:'lig'};
@@ -40218,6 +40227,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=7be4af2f"></script>
+<script src="gercek.js?v=c1b70ed3"></script>
 </body>
 </html>

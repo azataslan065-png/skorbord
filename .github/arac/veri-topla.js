@@ -764,6 +764,65 @@ async function ligIsle(L){
     'eşleşmeyen', tk.filter(x => !x.wd).map(x => x.ad).slice(0, 8).join('/')].join(' '));
 }
 
+
+/* LİG LOGOLARI (2026-11-18-J, kullanıcı: "lig ekranında logolar doğru görünmüyor, eski yapımlar kullanılıyor; bütün ligler için").
+   ESPN'in lig logoları eski (sponsor öncesi) çizimler, TheSportsDB/TFF/Vikipedi ligleri ise logosuzdu (ekranda yöneticinin kendi sezon
+   logosu görünüyordu). Kaynak sırası: TFF'nin kendi logo klasörü (2. ve 3. Lig) → Vikipedi madde görseli (Türk ligleri trwiki, diğerleri
+   enwiki; fotoğraf/afiş .jpg'ler atlanır) → Wikidata P154 (tercih edilen). Görsel indirilip en çok 192 px'e küçültülür,
+   veri/lig-logo/<lig>.png olarak saklanır (uygulama telefonlardan dış siteye gitmez). Haftada bir yenilenir ("logo" ile elle). */
+const LOGO_TFF = { 'tur.3': 'https://www.tff.org/Resources/TFF/Images/0000000015/TFF/TFF-Logolar/Orjinal/nesine-2-lig.png',
+  'tur.4': 'https://www.tff.org/Resources/TFF/Images/0000000015/TFF/TFF-Logolar/Orjinal/nesine-3-lig.png' };
+const LOGO_TRWIKI = { 'tur.1': 'Süper Lig', 'tur.2': 'TFF 1. Lig', 'tur.cup': 'Türkiye Kupası', 'tur.super': 'Türkiye Süper Kupası' };
+async function vikiGorsel(site, map){
+  const ks = Object.keys(map), o = {};
+  for(let i = 0; i < ks.length; i += 45){
+    const parca = ks.slice(i, i + 45);
+    const j = await al('https://' + site + '.wikipedia.org/w/api.php?action=query&format=json&redirects=1&prop=pageimages&piprop=thumbnail|name&pithumbsize=330&pilicense=any&pilimit=50&titles=' + encodeURIComponent(parca.map(k => map[k]).join('|')));
+    const q = (j && j.query) || {}, ad = {}; parca.forEach(k => { ad[map[k]] = k; });
+    (q.normalized || []).concat(q.redirects || []).forEach(n => { if(ad[n.from]) ad[n.to] = ad[n.from]; });
+    Object.values(q.pages || {}).forEach(p => { const k = ad[p.title]; if(k && p.thumbnail && !/\.jpe?g$/i.test(p.pageimage || '')) o[k] = p.thumbnail.source.replace(/\?.*$/, ''); });
+  }
+  return o;
+}
+async function wdLogo(map){
+  const o = {}, ks = Object.keys(map);
+  for(let i = 0; i < ks.length; i += 40){
+    const parca = ks.slice(i, i + 40);
+    const j = await al(WD_API + '?action=wbgetentities&sites=enwiki&redirects=yes&props=claims|sitelinks&sitefilter=enwiki&format=json&titles=' + encodeURIComponent(parca.map(k => map[k]).join('|')));
+    const E = Object.values((j && j.entities) || {});
+    parca.forEach(k => { const e = E.find(x => x.sitelinks && x.sitelinks.enwiki && x.sitelinks.enwiki.title.toLowerCase() === map[k].toLowerCase()); const c = (e && e.claims && e.claims.P154) || [];
+      const s = c.find(x => x.rank === 'preferred') || c.find(x => !(x.qualifiers && x.qualifiers.P582)); const f = s && s.mainsnak.datavalue && s.mainsnak.datavalue.value;
+      if(f && !/\.jpe?g$/i.test(f)) o[k] = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(f) + '?width=330'; });
+  }
+  return o;
+}
+async function ligLogoTopla(tum, zorla){
+  const dosya = path.join(VERI, 'lig-logo.json'); let eski = {};
+  try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+  if(!zorla && eski.t && Date.now() - eski.t < 7 * 864e5) return;
+  let sharp = null; try{ sharp = require('sharp'); }catch(e){ console.log('logo: sharp yok, görseller küçültülmeden saklanacak'); }
+  const W = JSON.parse(fs.readFileSync(path.join(__dirname, 'lig-wiki.json'), 'utf8'));
+  const en = await vikiGorsel('en', W), tr = await vikiGorsel('tr', LOGO_TRWIKI), wd = await wdLogo(W);
+  const klas = path.join(VERI, 'lig-logo'); fs.mkdirSync(klas, { recursive: true });
+  const out = { t: Date.now(), logo: {}, kaynak: {} }, slugs = tum.map(l => l.slug);
+  for(const s of slugs){
+    const aday = [LOGO_TFF[s], tr[s], en[s], wd[s]].filter(Boolean);
+    for(const u of aday){
+      try{
+        const r = await fetch(u, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(40000) }); if(!r.ok) continue;
+        let b = Buffer.from(await r.arrayBuffer()); if(b.length < 200) continue;
+        if(sharp){ b = await sharp(b).resize(192, 192, { fit: 'inside', withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer(); }
+        else if(b[0] !== 0x89) continue;   // küçültme yoksa yalnız PNG saklanır
+        fs.writeFileSync(path.join(klas, s + '.png'), b);
+        out.logo[s] = 'veri/lig-logo/' + s + '.png?v=' + require('crypto').createHash('md5').update(b).digest('hex').slice(0, 8);
+        out.kaynak[s] = u.replace(/^https?:\/\//, '').split('/')[0]; break;
+      }catch(e){}
+      await bek(300);
+    }
+  }
+  fs.writeFileSync(dosya, JSON.stringify(out));
+  console.log('LİG LOGOLARI', Object.keys(out.logo).length + '/' + slugs.length, 'yok:', slugs.filter(s => !out.logo[s]).join(' '));
+}
 (async () => {
   fs.mkdirSync(VERI, { recursive: true }); trAdOku();
   const tum = ligleriOku();
@@ -775,6 +834,7 @@ async function ligIsle(L){
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
   if(SECILI.includes('ekip') || ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
   if(SECILI.includes('youtube') || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
+  if((SECILI.includes('logo') || ana) && !HIZLI){ try{ await ligLogoTopla(tum, SECILI.includes('logo')); }catch(e){ console.log('HATA logo', e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
 })();
