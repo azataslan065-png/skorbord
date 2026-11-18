@@ -507,7 +507,7 @@ function ytKimlik(u){ var m=/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([A
 function ytKayitlar(){
   var o=[], gor={}, simdi=Date.now();
   var ekle=function(v, lig, rid, ad, z, kanal, logo){ if(!v||gor[v]) return; if(z&&(simdi<z-60*60e3||simdi>z+150*60e3)) return; gor[v]=1;
-    o.push({id:'yt_'+v, title:ad, url:'https://www.youtube.com/watch?v='+v, isLive:true, logo:logo||'', category:'YouTube'+(kanal?' · '+kanal:''), createdAt:z||simdi, sbYoutube:{lig:lig, rid:rid}}); };
+    o.push({id:'yt_'+v, title:ad+(kanal?' · '+kanal:''), url:'https://www.youtube.com/watch?v='+v, isLive:true, logo:logo||'', category:'YouTube', createdAt:z||simdi, sbYoutube:{lig:lig, rid:rid}}); };
   // elle girilenler (admin): bütün liglerden
   try{ var mb=YerelVT.uzak('macBilgi')||{}; Object.keys(mb).forEach(function(l){ Object.keys(mb[l]||{}).forEach(function(r){ var g=mb[l][r]||{}, v=ytKimlik(g.youtube); if(v) ekle(v, l.replace(/_/g,'.'), r, g.ytAd||((LIG_AD[l.replace(/_/g,'.')]||'')+' maçı'), g.ytZ||0, g.ytKanal||'', ''); }); }); }catch(e){}
   (YT.liste||[]).forEach(function(x){ ekle(x.v, x.lig, x.rid, trAd(x.ev)+' - '+trAd(x.dep), x.z, x.k, ''); });
