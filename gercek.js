@@ -1076,7 +1076,7 @@ function anaLigYukle(slug, ofs){
   var gun=gunTarih(ofs), anah=slug+'|'+ofs, c=ANA.kume[anah]||(ANA.kume[anah]={t:0, l:[], logo:''});
   if(c.p) return c.p;
   if(TSDB_LIG[slug]){
-    c.p=veriAl(slug).then(function(j){ c.p=null; c.t=Date.now(); c.l=((j&&j.mac)||[]).map(tsdbE).filter(function(e){ return !isNaN(e.date)&&ayniGun(e.date,gun); }); return c; });
+    c.p=veriAl(slug).then(function(j){ c.p=null; c.t=Date.now(); c.yok=!(j&&j.mac&&j.mac.length)&&sporu(slug)!=='futbol'; c.l=((j&&j.mac)||[]).map(tsdbE).filter(function(e){ return !isNaN(e.date)&&ayniGun(e.date,gun); }); return c; });
     return c.p;
   }
   var gunler=[ymd(gun)]; if(AMERIKA.test(slug)||/^(bsk|vlb)\.(usa|can|mex|bra|arg|pur)\./.test(slug)) gunler.push(ymd(gunEkle(gun,-1)));   // Amerika'nın akşam maçları bizde ertesi günün sabahı
@@ -1126,7 +1126,7 @@ function anaCiz(){
   var dolu=[], bos=[], favMac=[];
   sira.forEach(function(s){ var c=ANA.kume[s+'|'+ofs]; if(!c||!c.t){ return; } var l=c.l.slice().sort(function(a,b){ return a.date-b.date; });
     l.forEach(function(e){ if(fav.mac[e.rid]) favMac.push([s,e]); });
-    if(l.length) dolu.push(anaKart(s, l, fav, c.logo)); else bos.push(s); });
+    if(l.length) dolu.push(anaKart(s, l, fav, c.logo)); else if(!c.yok) bos.push(s); });   // veri kaynağında bu sezon maçı olmayan basketbol/voleybol ligi listelenmez
   var bekleyen=sira.filter(function(s){ var c=ANA.kume[s+'|'+ofs]; return !c||!c.t; }).length;
   var h='<div class="sba-ust"><img src="app-icon-192.png" alt="" class="sba-logo"><b>Skorbord</b><span style="flex:1"></span>'
     +'<button type="button" class="sba-btn" id="sbAnaTv" title="TV / Canlı Yayın" aria-label="TV / Canlı Yayın" onclick="try{openVideoScreen(\'tv\')}catch(e){}"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8 3l4 4 4-4"/></svg></button>'

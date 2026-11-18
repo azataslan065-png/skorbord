@@ -9,9 +9,12 @@ permissions:
 jobs:
   dene:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        parca: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: node .github/arac/kaynak2.js > rapor2.txt 2>&1 || true
-      - run: cat rapor2.txt
+      - run: node .github/arac/kaynak2.js || true
+        env: { PARCA: '${{ matrix.parca }}', PARCA_SAY: '6' }

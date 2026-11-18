@@ -99,7 +99,7 @@ async function tsdbSezon(id, s){
     e.forEach(x => mac.push(tsdbMac(x, r)));
   }
   // eleme turları (TheSportsDB: 125 çeyrek final, 150 yarı final, 160 üçüncülük, 200 final vb.) ve play-off
-  for(const r of [100, 125, 150, 160, 170, 180, 200, 300, 400, 500]){ const j = await tsdb('eventsround.php?id=' + id + '&r=' + r + '&s=' + s); const e = (j && j.events) || []; e.forEach(x => { if(!mac.some(m => m.id === x.idEvent)) mac.push(tsdbMac(x, r)); }); }
+  /* 0: turu tutulmayan ligler (KBL, BNXT, BAL…) */ for(const r of [0, 100, 125, 150, 160, 170, 180, 200, 300, 400, 500]){ const j = await tsdb('eventsround.php?id=' + id + '&r=' + r + '&s=' + s); const e = (j && j.events) || []; e.forEach(x => { if(!mac.some(m => m.id === x.idEvent)) mac.push(tsdbMac(x, r)); }); }
   return mac;
 }
 function tsdbMac(x, r){
