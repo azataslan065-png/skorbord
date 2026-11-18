@@ -545,7 +545,7 @@ async function tffLig(L, eski){
 //    Spiker / yorumcu adı beIN'in hiçbir sayfasında ve veri servisinde yok (maç servisi hakemleri veriyor, yayın ekibini vermiyor).
 async function yayinTopla(){
   const dosya = path.join(VERI, 'yayin.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
-  const KANAL = [['beinsports', 'beIN SPORTS 1'], ['beinsports-2', 'beIN SPORTS 2'], ['beinsports-3', 'beIN SPORTS 3'], ['beinsports-4', 'beIN SPORTS 4']];
+  const KANAL = [['beinsports', 'beIN SPORTS 1'], ['beinsports-2', 'beIN SPORTS 2'], ['beinsports-3', 'beIN SPORTS 3'], ['beinsports-4', 'beIN SPORTS 4'], ['bein-sports-haber', 'beIN SPORTS HABER']];
   const GUN = ['pazar', 'pazartesi', 'sali', 'carsamba', 'persembe', 'cuma', 'cumartesi'];
   const tr = new Date(Date.now() + 3 * 3600e3), gunler = [GUN[tr.getUTCDay()], GUN[(tr.getUTCDay() + 1) % 7]];
   const yeni = []; let okunan = 0;
@@ -555,9 +555,30 @@ async function yayinTopla(){
     l.forEach(x => { const t = /(\d+)\/(\d+)\/(\d{4})/.exec(x.event_date || ''), s = /^(\d{2}):(\d{2})/.exec(x.event_time || ''); if(!t || !s || !/ - /.test(x.name || '')) return;
       yeni.push({ g: t[3] + '-' + t[1].padStart(2, '0') + '-' + t[2].padStart(2, '0'), s: s[1] + ':' + s[2], ad: x.name, k: ad, mid: x.related_match_id || undefined }); });
   }
+  // (2026-11-18, kullanıcı: "sadece beIN Sports yazması yetmiyor ... beIN Sports 1, 2, 3, Haber, tabii Spor 1, 2, 3 ve benzeri kanallar")
+  // Kanal kanal yayın akışları (XMLTV, 7 güne kadar): beIN SPORTS 1-5 / MAX 1-2 / HABER, S Sport / S Sport 2, TRT 1, TRT Spor, TRT Spor Yıldız,
+  // A Spor, ATV, TV8, TV8,5. Maçın kanalı, maç saatinde (±20 dk) başlayan ve iki takımın adını taşıyan programdan bulunur (uygulama eşleştirir).
+  const EPG = ['https://iptv-epg.org/files/epg-tr.xml', 'https://www.open-epg.com/files/turkey1.xml', 'https://epgshare01.online/epgshare01/epg_ripper_TR1.xml.gz'];
+  const KAD = id => { const x = id.replace(/\.tr$/i, '').replace(/[._]/g, ' ').replace(/\s+/g, ' ').replace(/\bHD\b/i, '').trim(), u = x.toUpperCase().replace(/\s+/g, '');
+    let m; if((m = /^(?:BEINSPORTS|BEINSPORT)(\d)$/.exec(u)) || /^BEINSPORTS$/.test(u) && (m = [0, '1'])) return 'beIN SPORTS ' + m[1]; if((m = /^BEINSPORTSMAX(\d)$/.exec(u))) return 'beIN SPORTS MAX ' + m[1]; if(/^BEINSPORTSHABER$/.test(u)) return 'beIN SPORTS HABER';
+    if(/^SSPORT$/.test(u)) return 'S Sport'; if(/^SSPORT2$/.test(u)) return 'S Sport 2'; if(/^SSPORTPLUS$/.test(u)) return 'S Sport Plus'; if(/^TRT1$/.test(u)) return 'TRT 1'; if(/^(TRT3\/)?TRTSPOR$/.test(u)) return 'TRT Spor'; if(/^TRTSPORYILDIZ$/.test(u)) return 'TRT Spor Yıldız';
+    if(/^ASPOR$/.test(u)) return 'A Spor'; if(/^ATV$/.test(u)) return 'ATV'; if(/^TV8$/.test(u)) return 'TV8'; if(/^TV8,?5$/.test(u)) return 'TV8,5'; if((m = /^TABII(?:SPOR)?(\d)$/.exec(u))) return 'tabii Spor ' + m[1]; if((m = /^TIVIBUSPOR(\d?)$/.exec(u))) return 'Tivibu Spor' + (m[1] ? ' ' + m[1] : ''); return ''; };
+  const zlib = require('zlib'), ent = x => String(x || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (a, n) => String.fromCharCode(+n)).trim();
+  const trSaat = (st) => { const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})\d{0,2}\s*([+-]\d{4})?/.exec(st); if(!m) return null; const of = m[6] ? (+m[6].slice(0, 3)) * 60 + Math.sign(+m[6].slice(0, 3) || 1) * (+m[6].slice(3)) : 0;
+    const z = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - of * 60e3, t = new Date(z + 3 * 3600e3).toISOString(); return { z, g: t.slice(0, 10), s: t.slice(11, 16) }; };
+  let epgSay = 0;
+  for(const u of EPG){
+    try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(90000) }); if(!r.ok) continue; let b = Buffer.from(await r.arrayBuffer()); if(b[0] === 0x1f && b[1] === 0x8b) b = zlib.gunzipSync(b); const x = b.toString('utf8');
+      for(const m of x.matchAll(/<programme start="([^"]+)"[^>]*channel="([^"]+)"[^>]*>([\s\S]*?)<\/programme>/g)){ const k = KAD(m[2]); if(!k) continue;
+        const ti = ent((/<title[^>]*>([^<]*)</.exec(m[3]) || [])[1]), de = ent((/<desc[^>]*>([^<]*)</.exec(m[3]) || [])[1]); const ad = (ti + ' | ' + de).slice(0, 300);
+        if(!/ - | – | vs\.? /i.test(ad) || /\b(BANT|TEKRAR|ÖZET|ÖZETLER|ARŞİV|ARSIV|HIGHLIGHTS)\b/i.test(ti)) continue;
+        const t = trSaat(m[1]); if(!t || t.z < Date.now() - 864e5 || t.z > Date.now() + 8 * 864e5) continue;
+        yeni.push({ g: t.g, s: t.s, ad, k, canli: /<live\s*\/>/.test(m[3]) || undefined }); epgSay++; } }catch(e){ console.log('  EPG okunamadı', u, e.message); }
+  }
   const sinir = Date.now() - 12 * 864e5, anah = x => x.g + '|' + x.s + '|' + x.k + '|' + x.ad, gor = {};
   const tum = yeni.concat(eski.liste || []).filter(x => { if(Date.parse(x.g) < sinir || gor[anah(x)]) return false; gor[anah(x)] = 1; return true; });
-  fs.writeFileSync(dosya, JSON.stringify({ t: Date.now(), kaynak: 'beIN SPORTS yayın akışı', liste: tum }));
+  fs.writeFileSync(dosya, JSON.stringify({ t: Date.now(), kaynak: 'beIN SPORTS yayın akışı ve kanal yayın akışları (XMLTV)', liste: tum }));
+  console.log('  EPG maç programı', epgSay, 'kanallar', [...new Set(yeni.map(x => x.k))].join(', '));
   console.log('YAYIN', 'okunan sayfa', okunan, 'yeni satır', yeni.length, 'toplam', tum.length);
 }
 

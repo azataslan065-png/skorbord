@@ -466,6 +466,10 @@ function adBenzer(a, b){
   var ort=0; A.forEach(function(x){ if(B.some(function(y){ return y===x||(x.length>=4&&y.length>=4&&(y.indexOf(x)===0||x.indexOf(y)===0)); })) ort++; });
   return ort/Math.min(A.length, B.length);
 }
+function adMetinde(metin, takim){   // takım adının parçaları bir metinde (yayın başlığı) geçiyor mu: 0..1
+  var M=adParca(metin), T=adParca(takim); if(!T.length||!M.length) return 0;
+  var n=T.filter(function(t){ return M.some(function(b){ return b===t||(t.length>=4&&b.length>=4&&(b.indexOf(t)===0||t.indexOf(b)===0)); }); }).length; return n/T.length;
+}
 function takimAdi(v, id){ var t=v.teams[id]||{}; return [t.name, t.shortName].filter(Boolean).join(' '); }
 /* HAVA DURUMU (2026-11-18): ev sahibinin stadının konumu (Wikidata) → Open-Meteo saatlik tahmini; maç saatindeki sıcaklık ve hava.
    Yalnızca dün - önümüzdeki 7 gün arasındaki maçlar (tahmin süresi). Sonuç maç bilgisinde "Hava Durumu" satırında. */
@@ -518,10 +522,13 @@ function otoYukle(slug, v){
         Object.keys(oy).sort(function(a,b){ return oy[b]-oy[a]; }).forEach(function(k){ if(oy[k]<2) return; var x=k.split('|')[0], o=k.split('|')[1]; if(esK[x]||kul[o]) return; esK[x]=o; kul[o]=1;
           gr.forEach(function(g){ if(tff.gruplar[g.ad][x]) g.takimlar.push(o); }); }); }
       if(gr.length>1) v.gruplar=gr; }
-    // TV kanalı (beIN yayın akışı): maç günü, maç saatinde (±15 dk) başlayan yayın
-    if(yay&&yay.liste) yay.liste.forEach(function(y){ var p=String(y.ad).split(' - '); if(p.length!==2) return;
-      var mid=esle(p[0], p[1], function(m){ if(m.date!==y.g||!m.time) return false; var a=+m.time.slice(0,2)*60+ +m.time.slice(3,5), b=+y.s.slice(0,2)*60+ +y.s.slice(3,5); return Math.abs(a-b)<=15; });
-      if(mid){ var x=o[mid]=o[mid]||{}; if(!x.tv) x.tv=y.k; else if(x.tv.indexOf(y.k)<0) x.tv+=', '+y.k; } });
+    // TV kanalı (beIN yayın akışı + kanal kanal yayın akışları): maç günü, maç saatinde (±20 dk) başlayan ve iki takımın adını taşıyan yayın.
+    // Kanalın kendisi yazılır (beIN SPORTS 2, TRT Spor, A Spor...); aynı maç birden çok kanaldaysa hepsi.
+    if(yay&&yay.liste){ var gunMac={}; mlist.forEach(function(x){ var m=x[1]; if(m.date&&m.time) (gunMac[m.date]=gunMac[m.date]||[]).push(x); });
+      yay.liste.forEach(function(y){ var l=gunMac[y.g]; if(!l) return; var b=+y.s.slice(0,2)*60+ +y.s.slice(3,5), en=null, ep=0;
+        l.forEach(function(x){ var m=x[1], a=+m.time.slice(0,2)*60+ +m.time.slice(3,5); if(Math.abs(a-b)>20) return; var p=adMetinde(y.ad, takimAdi(v,m.homeId))+adMetinde(y.ad, takimAdi(v,m.awayId)); if(p>ep){ ep=p; en=x[0]; } });
+        if(en&&ep>=1.2){ var x=o[en]=o[en]||{}; if(!x.tvK) x.tvK=[]; if(x.tvK.indexOf(y.k)<0) x.tvK.push(y.k); } });
+      Object.keys(o).forEach(function(mid){ var x=o[mid]; if(x.tvK){ x.tvK.sort(function(a,b){ return a.localeCompare(b,'tr',{numeric:true}); }); x.tv=x.tvK.join(', '); delete x.tvK; } }); }
     // Yayın ekibi (haberlerden): spiker, yorumcu, kanal
     if(ekip&&ekip.liste) ekip.liste.forEach(function(x){ if(x.lig!==slug) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var e=o[mid]=o[mid]||{};
       if(x.spiker) e.spiker=x.spiker; if(x.yorumcu&&x.yorumcu.length) e.yorumcu=x.yorumcu.join(', '); if(x.kanal&&!e.tv) e.tv=x.kanal; });
