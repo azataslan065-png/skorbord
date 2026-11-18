@@ -1,16 +1,18 @@
-// Deneme 50: TVF lig açıklamaları (leagueDescriptions) ve puan tablosu renk satırları
-const de = s => s.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
-function lwCoz(x){ if(Array.isArray(x)){ if(x.length === 2 && x[1] && typeof x[1] === 'object' && x[1].s) return lwCoz(x[0]); return x.map(lwCoz); } if(x && typeof x === 'object'){ const o = {}; Object.keys(x).forEach(k => { o[k] = lwCoz(x[k]); }); return o; } return x; }
+// Deneme 51: TheSportsDB maç ayrıntısı (çeyrek / set skorları) ve oyuncu listesi; TVF takım kadrosu
+const bek = ms => new Promise(r => setTimeout(r, ms)); const T = 'https://www.thesportsdb.com/api/v1/json/123/';
+const al = async u => { for (let i = 0; i < 5; i++) { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124' }, signal: AbortSignal.timeout(30000) }); if (r.status === 429) { await bek(15000); continue; } return await r.json().catch(() => null); }catch(e){ await bek(3000); } } return null; };
 (async () => {
   if (process.env.PARCA !== '0') return;
-  for (const s of ['sultanlar-ligi', 'efeler-ligi']) {
-    const t = await (await fetch('https://tvf.org.tr/lig/' + s, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124' } })).text();
-    const sn = [...t.matchAll(/wire:snapshot="([^"]+)"/g)].map(m => de(m[1])).find(x => /league-detail/.test(x));
-    const d = lwCoz(JSON.parse(sn).data);
-    console.log('==', s, 'AÇIKLAMA', JSON.stringify(d.leagueDescriptions).slice(0, 1500));
-    const bul = (o, yol) => { if(o && typeof o === 'object'){ if('dusecektakimsayisi' in o){ console.log('   META', yol, JSON.stringify(o).slice(0, 900)); return; } Object.keys(o).forEach(k => bul(o[k], yol + '.' + k)); } }; bul(d, 'd');
-    const p = d.leaguePoints; console.log('   PUAN', JSON.stringify(p).slice(0, 300));
-    const sat = JSON.stringify(p).match(/"TEAMCOLORROW":\[[^\]]*\]/g) || []; console.log('   RENK', [...new Set(sat)].slice(0, 20).join(' '));
-    const i = t.indexOf('legend'); console.log('   HTML', t.replace(/<script[\s\S]*?<\/script>/g, '').replace(/\s+/g, ' ').match(/(Play[- ]?Off|Küme|düş|Lig Etab)[^<]{0,120}/gi)?.slice(0, 12).join(' || '));
+  const fs = require('fs');
+  for (const s of ['bsk.tur.bsl', 'vlb.ita.superlega', 'bsk.int.euroleague']) {
+    const j = JSON.parse(fs.readFileSync('veri/' + s + '.json', 'utf8')); const m = j.mac.filter(x => x.evG != null).slice(-1)[0];
+    const e = await al(T + 'lookupevent.php?id=' + m.id); const ev = e && e.events && e.events[0]; await bek(2300);
+    console.log('EV', s, m.id, ev ? Object.entries(ev).filter(([k, v]) => v != null && v !== '' && !/Thumb|Banner|Poster|Square|Fanart|Map|Badge/.test(k)).map(([k, v]) => k + '=' + String(v).slice(0, 60)).join(' | ') : 'yok');
+    const tid = m.ev; const p = await al(T + 'lookup_all_players.php?id=' + tid); await bek(2300);
+    const pl = (p && (p.player || p.players)) || []; console.log('OYUNCU', s, tid, pl.length, pl.slice(0, 4).map(x => x.strPlayer + '/' + x.strPosition + '/' + (x.strNumber || '') + '/' + (x.strCutout || x.strThumb ? 'foto' : '')).join(' ; '));
+    const l = await al(T + 'lookuplineup.php?id=' + m.id); await bek(2300); console.log('LINEUP', s, JSON.stringify(l).slice(0, 300));
   }
+  // TVF takım sayfası
+  const t = await (await fetch('https://tvf.org.tr/lig/sultanlar-ligi', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124' } })).text();
+  console.log('TVF takım bağlantıları', [...new Set(t.match(/href="[^"]*(takim|kulup|team)[^"]*"/gi) || [])].slice(0, 10).join(' '));
 })();
