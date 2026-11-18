@@ -509,9 +509,9 @@ async function tffTopla(){
     const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || (!m.z) || (m.saatYok && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
     sira.sort((a, b) => (yakin(b) ? 1 : 0) - (yakin(a) ? 1 : 0));
     const sinir = HIZLI ? 80 : 700; let n = 0;
-    let hata = 0;
+    let hata = 0, top = 0;
     for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); const o = d ? tffMacOku(d) : {};
-      if(!o.z){ hata++; if(hata >= 8){ await bek(60000); hata = 0; } else await bek(1500); continue; }   // boş / sınır sayfası: işaretlenmez, sonra yeniden denenir
+      if(!o.z){ hata++; top++; if(top >= 40) break; if(hata >= 6){ await bek(20000); hata = 0; } else await bek(1200); continue; }   // boş / sınır sayfası: işaretlenmez, sonraki çalışmada yeniden denenir
       hata = 0; Object.assign(m, o); m.t = simdi; n++; await bek(300); }
     const gruplar = {}; mac.forEach(m => { if(!m.g) return; const g = gruplar[m.g] || (gruplar[m.g] = {}); g[m.evK] = m.ev; g[m.depK] = m.dep; });
     const cikti = { lig: slug, kaynak: 'TFF', t: simdi, gruplar: Object.keys(gruplar).length ? gruplar : null, mac: mac.map(m => { const o = Object.assign({}, m); Object.keys(o).forEach(k => { if(o[k] == null || o[k] === '') delete o[k]; }); return o; }) };
