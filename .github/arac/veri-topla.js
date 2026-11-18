@@ -158,14 +158,19 @@ async function eslestir(takim, milli, eski){
   }
   for(const id of bekleyen){
     const t = takim[id], adlar = [];
-    if(milli){ adlar.push([t.ad + ' national football team', 'en'], [t.ad + ' milli futbol takımı', 'tr']); }
+    if(/^TBD\b/i.test(t.ad)){ sonuc[id] = null; continue; }   // ESPN'in "belli değil" yer tutucu takımı
+    if(milli){ const v2 = t.ad.replace(/^St\.\s*/i, 'Saint ').replace(/\bSt\.\s*/g, 'Saint ').replace(/-/g, ' and ').replace(/\band the\b/i, 'and the');
+      adlar.push([t.ad + ' national football team', 'en'], [v2 + ' national football team', 'en'], [t.ad + ' milli futbol takımı', 'tr'], [t.ad.replace(/-/g, ' ') + ' national football team', 'en']); }
     else { const tr = TR_AD[t.ad] || TR_AD[t.kisa];
       if(tr) adlar.push([tr, 'tr']);
       adlar.push([t.ad, 'en'], [t.ad, 'tr']); if(t.kisa && t.kisa !== t.ad) adlar.push([t.kisa, 'en']); if(t.yer && t.yer !== t.ad) adlar.push([t.yer, 'en']);
       const kok = t.ad.replace(/\s+(BB|FK|SK|FC|AS|JK|S\.K\.|F\.K\.)$/i, '');
-      [kok + ' FK', kok + ' SK', kok + 'spor', kok + ' FC'].forEach(x => adlar.push([x, 'tr'])); }
+      [kok + ' FK', kok + ' SK', kok + 'spor', kok + ' FC'].forEach(x => adlar.push([x, 'tr']));
+      // Tek kelimelik / şehirle aynı adlar (Braga, Bahia, Bolívar, Monterrey, León...): kulüp önekleriyle
+      const yalin = kok.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+      ['Club ', 'C.F. ', 'S.C. ', 'E.C. ', 'C.A. ', 'C.D. ', 'Club Atlético ', 'Club Deportivo '].forEach(o => adlar.push([o + yalin, 'en'])); }
     const aday = []; const gor = {};
-    for(const [a, d] of adlar){ (await wdAra(a, d)).forEach(x => { if(!gor[x.id] && !YAS_GEC.test(x.et)){ gor[x.id] = 1; aday.push(x.id); } }); if(aday.length >= 20) break; await bek(150); }
+    for(const [a, d] of adlar){ (await wdAra(a, d)).forEach(x => { if(!gor[x.id] && !YAS_GEC.test(x.et)){ gor[x.id] = 1; aday.push(x.id); } }); if(aday.length >= 30) break; await bek(150); }
     if(!aday.length){ sonuc[id] = null; continue; }
     // Önce futbol kulübü / milli futbol takımı; yoksa (çok branşlı kulüplerde) spor kulübü
     const tur = milli ? 'wd:Q6979593' : 'wd:Q476028 wd:Q847017';
@@ -218,6 +223,14 @@ async function kulupBilgi(wdIds, eski){
     if(t && w && w.y && Math.abs(t.y - w.y) > 1 && !(t.g && !w.g)) t = null;     // Vikipedi ile Wikidata çok farklıysa Wikidata'ya güven
     k.kur = (t && (!w || t.g >= (w.g ? 1 : 0) || t.a > w.a)) ? Object.assign({ k: 'Vikipedi' }, t) : (w ? Object.assign({ k: 'Wikidata' }, w) : null);
     await bek(120);
+  }
+  // Milli takımlarda Wikidata'da kuruluş yok: takıma bağlı federasyonun kuruluş tarihi kullanılır ("federasyon" diye işaretlenir)
+  const fedYok = ids.filter(c => !(o[c] && o[c].kur));
+  for(const p of parca(fedYok, 40)){
+    const b = await sparql('SELECT ?c ?inc ?pre ?fl WHERE { VALUES ?c { ' + p.map(x => 'wd:' + x).join(' ') + ' } ?c wdt:P31/wdt:P279* wd:Q6979593 . ?c ?prop ?f . ?f p:P571/psv:P571 [ wikibase:timeValue ?inc ; wikibase:timePrecision ?pre ] . '
+      + '?f rdfs:label ?fl FILTER(lang(?fl)="en" && REGEX(?fl, "(Federation|Association|Football Union|Federación|Federação|Fédération|Football Board)", "i")) }');
+    b.forEach(x => { const c = qid(v(x, 'c')); const k = o[c] || (o[c] = {}); if(k.kur) return; const m = /^(-?\d+)-(\d\d)-(\d\d)/.exec(v(x, 'inc').replace(/^\+/, '')); const pr = +v(x, 'pre');
+      if(m) k.kur = { k: 'Federasyon', y: +m[1], a: pr >= 10 ? +m[2] : 0, g: pr >= 11 ? +m[3] : 0, fed: v(x, 'fl') }; });
   }
   // Kupalar: kulübün kazandığı bütün turnuva sezonları (Wikidata P1346 kazanan + P3450 turnuva)
   for(const p of parca(ids, 25)){

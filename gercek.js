@@ -357,7 +357,7 @@ window.__sbKupaHtml=function(tid){
     var h='';
     // kulüp kimliği
     var kur=kurulusYaz(v.kur), bilgi=[];
-    if(kur) bilgi.push('<span><small>Kuruluş</small><b>'+e(kur)+'</b></span>');
+    if(kur) bilgi.push('<span><small>'+(v.kur&&v.kur.k==='Federasyon'?'Federasyon kuruluşu':'Kuruluş')+'</small><b>'+e(kur)+'</b></span>');
     if(v.stad) bilgi.push('<span><small>Stadyum</small><b>'+e(v.stad)+(v.kap?' · '+v.kap.toLocaleString('tr-TR'):'')+'</b></span>');
     if(bilgi.length) h+='<div class="sb-kulup">'+bilgi.join('')+'</div>';
     // raf: turnuva turnuva kupalar
