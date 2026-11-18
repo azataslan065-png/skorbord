@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-18-K';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-18-L';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -8267,8 +8267,9 @@ function calcS(teams,matches,filter){
     const hg=Number(m2.homeGoals||0),ag=Number(m2.awayGoals||0);
     if(filter!=='away'){h.O++;h.AG+=hg;h.YG+=ag;h.AV+=hg-ag;}
     if(filter!=='home'){a.O++;a.AG+=ag;a.YG+=hg;a.AV+=ag-hg;}
-    if(hg>ag){if(filter!=='away'){h.G++;h.P+=WIN_PTS;}if(filter!=='home')a.M++;}
-    else if(ag>hg){if(filter!=='home'){a.G++;a.P+=WIN_PTS;}if(filter!=='away')h.M++;}
+    const _vb=D.sbSpor==='voleybol', _az=Math.min(hg,ag), _wp=_vb?(_az<=1?3:2):WIN_PTS, _kp=_vb?(_az<=1?0:1):Number(cfg.lossPts||0);   /* Skorbord: basketbol / voleybol */
+    if(hg>ag){if(filter!=='away'){h.G++;h.P+=_wp;}if(filter!=='home'){a.M++;a.P+=_kp;}}
+    else if(ag>hg){if(filter!=='home'){a.G++;a.P+=_wp;}if(filter!=='away'){h.M++;h.P+=_kp;}}
     else{if(filter!=='away'){h.B++;h.P+=DRAW_PTS;}if(filter!=='home'){a.B++;a.P+=DRAW_PTS;}}
   });
   // Puan cezası uygula - takım puanı CEZA SONUCU EKSİYE DÜŞEBİLİR (kullanıcı talebi, alt sınır yok).
@@ -8297,7 +8298,9 @@ function calcS(teams,matches,filter){
     return aAV;
   }
   arr.sort((a,b)=>{
+    if(D.sbSirala==='yuzde'){ const pa=a.O?a.G/a.O:-1, pb=b.O?b.G/b.O:-1; if(pb!==pa)return pb-pa; if(b.G!==a.G)return b.G-a.G; }   /* Skorbord: basketbol */
     if(b.P!==a.P)return b.P-a.P;
+    if(D.sbSpor==='voleybol'){ if(b.G!==a.G)return b.G-a.G; const ra=a.YG?a.AG/a.YG:a.AG*100, rb=b.YG?b.AG/b.YG:b.AG*100; if(rb!==ra)return rb-ra; }
     if(b.AV!==a.AV)return b.AV-a.AV;
     if(b.AG!==a.AG)return b.AG-a.AG;
     const h2h=h2hAV(b,a)-h2hAV(a,b);
@@ -10346,7 +10349,7 @@ function renderStandings(){
         ${_stCanliHap}
       </div>`;
     })()}
-    <div class="st-cols"><span>Sıra</span><span>Takım</span><span style="text-align:center;${stAlignStyle('o')}">O</span><span style="text-align:center;${stAlignStyle('g')}">G</span><span style="text-align:center;${stAlignStyle('b')}">B</span><span style="text-align:center;${stAlignStyle('m')}">M</span><span style="text-align:center;${stAlignStyle('ag')}">A</span><span style="text-align:center;${stAlignStyle('yg')}">Y</span><span style="text-align:center;${stAlignStyle('av')}">Av</span><span style="text-align:center;${stAlignStyle('p')}">P</span></div>`;
+    <div class="st-cols"><span>Sıra</span><span>Takım</span><span style="text-align:center;${stAlignStyle('o')}">O</span><span style="text-align:center;${stAlignStyle('g')}">G</span><span style="text-align:center;${stAlignStyle('b')}">${D.sbSpor==='basketbol'?'%':D.sbSpor==='voleybol'?'':'B'}</span><span style="text-align:center;${stAlignStyle('m')}">M</span><span style="text-align:center;${stAlignStyle('ag')}">A</span><span style="text-align:center;${stAlignStyle('yg')}">Y</span><span style="text-align:center;${stAlignStyle('av')}">Av</span><span style="text-align:center;${stAlignStyle('p')}">P</span></div>`;
 
   const rankNotes=(window.__sbBolge?window.__sbBolge(D.rankNotes||[]):D.rankNotes)||[];
   function getRankNote(pos){return rankNotes.find(n=>pos>=n.from&&pos<=n.to);}
@@ -10414,7 +10417,7 @@ function renderStandings(){
       <div class="team-name-cell" data-fullname="${(t.name||'').replace(/"/g,'&quot;')}" style="font-size:${t.name&&t.name.length>22?'.47rem':t.name&&t.name.length>17?'.56rem':t.name&&t.name.length>10?'.64rem':'.73rem'};font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;${stAlignStyle('name',pos)}">${t.name}${isLiveTeam&&_liveTableOn?'<span style="font-size:.5rem;color:var(--ac3);margin-left:.2rem;animation:lp 1.2s infinite;display:inline-block">●</span>':''}</div>
       <div class="st-col-o" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-o-color,var(--tx));${stAlignStyle('o',pos)}">${t.O}</div>
       <div class="st-col-g" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:800;color:var(--st-g-color,var(--tx));${stAlignStyle('g',pos)}">${t.G}</div>
-      <div class="st-col-b" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-b-color,var(--tx));${stAlignStyle('b',pos)}">${t.B}</div>
+      <div class="st-col-b" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-b-color,var(--tx));${stAlignStyle('b',pos)}">${D.sbSpor==='basketbol'?(t.O?Math.round(t.G/t.O*100):0):D.sbSpor==='voleybol'?'':t.B}</div>
       <div class="st-col-m" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-m-color,var(--tx));${stAlignStyle('m',pos)}">${t.M}</div>
       <div class="st-col-ag" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-ag-color,var(--tx));${stAlignStyle('ag',pos)}">${t.AG}</div>
       <div class="st-col-yg" style="text-align:center;font-size:calc(.77rem * var(--st-num-size,1));font-weight:700;color:var(--st-yg-color,var(--mu));${stAlignStyle('yg',pos)}">${t.YG}</div>
@@ -40228,6 +40231,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=19887494"></script>
+<script src="gercek.js?v=cf3c3946"></script>
 </body>
 </html>

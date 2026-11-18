@@ -29,7 +29,7 @@ jobs:
         run: |
           H=""; if [ "${{ github.event.schedule }}" = "7,37 * * * *" ] || [ "${{ inputs.hizli }}" = "evet" ]; then H="--hizli"; fi
           echo "h=$H" >> $GITHUB_OUTPUT
-          if { [ -n "$H" ] || [ -n "${{ inputs.ligler }}" ]; } && [ "${{ matrix.grup }}" != "0" ]; then echo "atla=1" >> $GITHUB_OUTPUT; fi
+          if [ -n "$H" ] && [ "${{ matrix.grup }}" != "0" ]; then echo "atla=1" >> $GITHUB_OUTPUT; fi
       - uses: actions/checkout@v4
         if: steps.k.outputs.atla != '1'
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
         if: steps.k.outputs.atla != '1'
         run: |
           if [ "${{ matrix.grup }}" = "0" ] && [ -z "${{ steps.k.outputs.h }}" ]; then npm i --no-save --silent --prefix .github/arac sharp@0.33.5 || true; fi
-          G="--grup=${{ matrix.grup }}/8"; if [ -n "${{ steps.k.outputs.h }}" ] || [ -n "${{ inputs.ligler }}" ]; then G=""; fi
+          G="--grup=${{ matrix.grup }}/8"; if [ -n "${{ steps.k.outputs.h }}" ]; then G=""; fi   # lig listesi verilince de 8 parçaya bölünür
           node .github/arac/veri-topla.js ${{ steps.k.outputs.h }} $G ${{ inputs.ligler }}
       - name: Kaydet
         if: steps.k.outputs.atla != '1'

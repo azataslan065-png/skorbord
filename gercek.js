@@ -45,7 +45,37 @@ var LIGLER=[
  ['fifa.worldq.caf','Dünya Kupası Elemeleri (Afrika)','Milli'],['fifa.worldq.concacaf','Dünya Kupası Elemeleri (CONCACAF)','Milli'],
  ['conmebol.america','Copa América','Milli'],['caf.nations','Afrika Uluslar Kupası','Milli'],['afc.asian.cup','AFC Asya Kupası','Milli'],['concacaf.gold','CONCACAF Altın Kupa','Milli'],['concacaf.nations.league','CONCACAF Uluslar Ligi','Milli']
 ];
-var LIG_AD={}, TSDB_LIG={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; if(l[3]) TSDB_LIG[l[0]]=l[3]; });
+/* BASKETBOL VE VOLEYBOL (2026-11-18-L, kullanıcı: "prestijli basketbol liglerini ekle ... aynı şekilde voleybolda olsun").
+   Kısa ad: bsk.<ülke>.<lig> / vlb.<ülke>.<lig> (ülke kodu bayrak için; "int" = uluslararası). 4. alan kaynak: "espn:<spor>/<lig>" (ESPN'in
+   açık servisi; canlı) ya da TheSportsDB lig no (veri işi 30 dakikada bir toplar). Liste LIGLER_SPOR'da (veri işi de okur). */
+var LIGLER_SPOR=[
+ ['bsk.int.olimpiyat','Olimpiyat Oyunları Basketbol (Erkekler)','Dünya','espn:basketball/mens-olympics-basketball'],['bsk.int.olimpiyatk','Olimpiyat Oyunları Basketbol (Kadınlar)','Dünya','espn:basketball/womens-olympics-basketball'],
+ ['bsk.int.fibadk','FIBA Basketbol Dünya Kupası','Dünya','espn:basketball/fiba'],
+ ['bsk.int.euroleague','EuroLeague','Avrupa','4546'],['bsk.int.eurocup','EuroCup','Avrupa','4547'],['bsk.int.bcl','Basketbol Şampiyonlar Ligi (BCL)','Avrupa','4548'],
+ ['bsk.int.aba','ABA Ligi (Adriyatik Ligi)','Avrupa','4477'],['bsk.int.vtb','VTB Birleşik Ligi','Avrupa','4476'],['bsk.int.bnxt','BNXT League','Avrupa','5270'],
+ ['bsk.int.bal','Basketball Africa League (BAL)','Kıtalar arası','5269'],['bsk.int.bcla','Basketball Champions League Americas (BCLA)','Kıtalar arası','5273'],
+ ['bsk.usa.nba','NBA','ABD','espn:basketball/nba'],['bsk.usa.wnba','WNBA','ABD','espn:basketball/wnba'],['bsk.usa.gleague','NBA G League','ABD','espn:basketball/nba-development'],
+ ['bsk.usa.ncaa','NCAA Division I (Erkekler)','ABD','espn:basketball/mens-college-basketball'],['bsk.can.cebl','CEBL (Kanada)','Kanada','5266'],['bsk.mex.lnbp','LNBP (Meksika)','Meksika','5119'],
+ ['bsk.tur.bsl','Türkiye Sigorta Basketbol Süper Ligi','Türkiye','4475'],['bsk.tur.tbl','Türkiye Basketbol Ligi (TBL)','Türkiye','5693'],['bsk.tur.kbsl','Kadınlar Basketbol Süper Ligi','Türkiye','5932'],
+ ['bsk.tur.kupa','Türkiye Kupası (Basketbol)','Türkiye','5507'],['bsk.tur.cbk','Cumhurbaşkanlığı Kupası (Basketbol)','Türkiye','5508'],
+ ['bsk.esp.acb','Liga ACB','İspanya','4408'],['bsk.esp.kupa','Copa del Rey (Basketbol)','İspanya','4832'],['bsk.ita.lba','Lega Basket Serie A','İtalya','4433'],['bsk.ita.kupa','Coppa Italia (Basketbol)','İtalya','5409'],
+ ['bsk.gre.gbl','Greek Basket League','Yunanistan','4452'],['bsk.fra.lnb','LNB Élite','Fransa','4423'],['bsk.ger.bbl','Basketball Bundesliga','Almanya','4441'],['bsk.ltu.lkl','LKL','Litvanya','4478'],
+ ['bsk.isr.bpl','İsrail Basketbol Premier Ligi','İsrail','4474'],['bsk.srb.kls','KLS','Sırbistan','5121'],['bsk.pol.plk','PLK','Polonya','4578'],['bsk.gbr.sbl','Super League Basketball','Birleşik Krallık','4431'],
+ ['bsk.aus.nbl','NBL','Avustralya','espn:basketball/nbl'],['bsk.chn.cba','CBA','Çin','4442'],['bsk.jpn.bleague','B.League','Japonya','4977'],['bsk.kor.kbl','KBL','Güney Kore','5124'],['bsk.arg.lnb','LNB','Arjantin','4734'],
+ ['vlb.tur.efeler','Efeler Ligi','Türkiye','4543'],['vlb.ita.superlega','SuperLega','İtalya','4544'],['vlb.ita.a1k','Serie A1 Kadınlar','İtalya','4584'],['vlb.pol.plusliga','PlusLiga','Polonya','5619'],
+ ['vlb.rus.superliga','Rusya Süper Ligi','Rusya','4545'],['vlb.fra.liguea','Ligue A (Erkekler)','Fransa','4582'],['vlb.ger.bundesliga','Voleybol Bundesliga','Almanya','5618'],['vlb.gre.a1','A1 Ethniki','Yunanistan','4542'],
+ ['vlb.bel.liga','Volleyliga','Belçika','5617'],['vlb.kor.vleague','V-League (Erkekler)','Güney Kore','5757'],['vlb.kor.vleaguek','V-League (Kadınlar)','Güney Kore','5756'],
+ ['vlb.int.cevsl','CEV Şampiyonlar Ligi (Erkekler)','Avrupa','5616'],['vlb.int.cevkupa','CEV Kupası','Avrupa','5615'],['vlb.int.challenge','CEV Challenge Kupası','Avrupa','5614'],
+ ['vlb.int.avrupa','Avrupa Voleybol Şampiyonası (Erkekler)','Avrupa','5613'],['vlb.int.euroligm','Avrupa Altın Ligi (Erkekler)','Avrupa','5848'],['vlb.int.euroligk','Avrupa Altın Ligi (Kadınlar)','Avrupa','5849'],
+ ['vlb.int.vnl','FIVB Milletler Ligi (Erkekler)','Dünya','5083'],
+ ['vlb.usa.ncaa','NCAA Voleybol (Erkekler)','ABD','espn:volleyball/mens-college-volleyball'],['vlb.usa.ncaak','NCAA Voleybol (Kadınlar)','ABD','espn:volleyball/womens-college-volleyball']
+];
+LIGLER=LIGLER.concat(LIGLER_SPOR);
+var LIG_AD={}, TSDB_LIG={}, ESPN_YOL={}; LIGLER.forEach(function(l){ LIG_AD[l[0]]=l[1]; if(l[3]&&/^espn:/.test(l[3])) ESPN_YOL[l[0]]=l[3].slice(5); else if(l[3]) TSDB_LIG[l[0]]=l[3]; });
+function sporu(slug){ return /^bsk\./.test(slug||'')?'basketbol':/^vlb\./.test(slug||'')?'voleybol':'futbol'; }
+function eSite(slug){ var y=ESPN_YOL[slug]; return y?ESPN+'apis/site/v2/sports/'+y:SITE+slug; }
+function eStand(slug){ var y=ESPN_YOL[slug]; return y?ESPN+'apis/v2/sports/'+y:STAND+slug; }
+function ligKod(slug){ var p=String(slug||'').split('.'); return /^(bsk|vlb)$/.test(p[0])?(p[1]||''):p[0]; }
 
 /* ---------- VERİ DOSYASI (2026-11-18): veri/<lig>.json - GitHub'daki günlük görevin (.github/arac/veri-topla.js) ürettiği ek veri:
    kulüp kuruluş tarihi, stadyum, kupalar (Wikidata, kuruluştan bu yana), geçmiş sezonlar (ESPN arşivi), oyuncu fotoğrafları (Wikimedia
@@ -75,7 +105,8 @@ function tsdbYukle(slug, k){
     var teams={}, matches={};
     Object.keys(j.takim||{}).forEach(function(id){ var t=j.takim[id]; teams['t'+id]={id:'t'+id, name:trAd(t.ad), shortName:trAd(t.kisa||t.ad), logo:t.logo||'', color:'', tsdb:id}; });
     j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; matches['m'+e.rid]=o; });
-    var turAd=null; j.mac.forEach(function(m){ if(m.tur&&m.r){ (turAd=turAd||{})[m.r]=m.tur; } });
+    var turAd=null, ELEME={100:'Play-off',125:'Çeyrek Final',150:'Yarı Final',160:'Üçüncülük Maçı',170:'Play-off',180:'Play-off',200:'Final',300:'Play-off',400:'Play-off',500:'Eleme Turu'};
+    j.mac.forEach(function(m){ if(m.tur&&m.r){ (turAd=turAd||{})[m.r]=m.tur; } else if(m.r>=100&&ELEME[m.r]){ (turAd=turAd||{})[m.r]=ELEME[m.r]; } });
     var gr={}; j.mac.forEach(function(m){ if(!m.grup) return; var g=gr[m.grup]||(gr[m.grup]={}); g['t'+m.ev]=1; g['t'+m.dep]=1; });
     var gruplar=Object.keys(gr).sort().map(function(a){ return {ad:a, takimlar:Object.keys(gr[a])}; }); if(gruplar.length<2) gruplar=null;
     k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:gruplar, tsdb:true, turAd:turAd};
@@ -85,7 +116,7 @@ function tsdbYukle(slug, k){
   });
 }
 /* Yönetici "görünen ligleri" seçtiyse yalnız onlar listelenir; seçmediyse hepsi. */
-function aktifLigler(){ var a=U&&U.ligler; if(!a||typeof a!=='object') return LIGLER; var f=LIGLER.filter(function(l){ return a[l[0].replace(/\./g,'_')]; }); return f.length?f:LIGLER; }
+function aktifLigler(){ var a=U&&U.ligler; if(!a||typeof a!=='object') return LIGLER; var f=LIGLER.filter(function(l){ return sporu(l[0])!=='futbol'&&a[l[0].replace(/\./g,'_')]!==false || a[l[0].replace(/\./g,'_')]; }); return f.length?f:LIGLER; }
 function ligAktifMi(slug){ return aktifLigler().some(function(l){ return l[0]===slug; }); }
 
 /* ---------- Türkçe adlar: ESPN'in İngilizce / harfsiz yazdığı takım ve ülke adları ---------- */
@@ -236,15 +267,15 @@ function ligYukle(slug, zorla){
   veriAl(slug);   // ek veri (kupa, kuruluş, fotoğraf) arka planda
   if(TSDB_LIG[slug]){ k.yukleniyor=tsdbYukle(slug, k).catch(function(e){ k.yukleniyor=null; throw e; }); return k.yukleniyor; }
   k.yukleniyor=Promise.all([
-    getJSON(SITE+slug+'/scoreboard'),
-    getJSON(SITE+slug+'/teams?limit=200').catch(function(){ return null; }),
-    getJSON(STAND+slug+'/standings').catch(function(){ return null; })
+    getJSON(eSite(slug)+'/scoreboard'),
+    getJSON(eSite(slug)+'/teams?limit=200').catch(function(){ return null; }),
+    getJSON(eStand(slug)+'/standings').catch(function(){ return null; })
   ]).then(function(r){
     var sb=r[0], lg=(sb.leagues&&sb.leagues[0])||{}, sez=lg.season||{}, yil=sez.year||new Date().getFullYear();
     var y1=sez.startDate?new Date(sez.startDate).getFullYear():yil, y2=sez.endDate?new Date(sez.endDate).getFullYear():yil, yillar=[];
     if(sez.endDate && new Date(sez.endDate).getMonth()<1 && y2>y1) y2--; // bitişi 1 Ocak olan sezon tek yıllıktır
     for(var y=y1;y<=y2;y++) yillar.push(y);
-    return Promise.all(yillar.map(function(y){ return getJSON(SITE+slug+'/scoreboard?dates='+y+'&limit=1000').catch(function(e){ gunluk('yıl alınamadı',y,e.message); return null; }); })).then(function(ys){
+    return Promise.all(yillar.map(function(y){ return getJSON(eSite(slug)+'/scoreboard?dates='+y+'&limit=1000').catch(function(e){ gunluk('yıl alınamadı',y,e.message); return null; }); })).then(function(ys){
       var gor={}, es=[];
       ys.concat([sb]).forEach(function(j){ ((j&&j.events)||[]).forEach(function(ev){
         if(gor[ev.id]) return; var e=esAl(ev,'');
@@ -617,6 +648,7 @@ function ligLogoUygula(v){
    satırda 11 px'e kadar, olmazsa iki satır (9 px'e kadar). KÖK SEBEP (logo): lig logoları çoğunlukla açık zemin için çizilmiş
    (Trendyol'un siyah yazısı koyu çubukta kayboluyordu). ŞİMDİ logo beyaz, yuvarlak köşeli bir rozetin içinde durur. */
 (function(){ try{ var st=document.createElement('style'); st.textContent='#ptLogo:has(img){background:#fff!important;border-radius:9px!important;padding:3px!important;box-sizing:border-box!important;overflow:hidden!important;box-shadow:0 0 0 1px rgba(255,255,255,.12)}'
+  +'body[data-spor=basketbol] #pg-standings .st-col-ag,body[data-spor=basketbol] #pg-standings .st-col-yg{font-size:.56rem!important;letter-spacing:-.05em;font-variant-numeric:tabular-nums}body[data-spor=basketbol] #pg-standings .st-col-av{font-size:.62rem!important;letter-spacing:-.04em}'
   +'#ptLogo img{object-fit:contain!important}.topbar{padding:.5rem .6rem!important;gap:.4rem!important}#sbAnaDon{min-width:28px!important;width:28px!important;padding:0!important}.topbar-btns{gap:0!important}.topbar-btns .tb-btn{min-width:28px!important;padding:.2rem!important}.topbar-season{white-space:nowrap}#ptLigName.sb-iki{white-space:normal!important;display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.08!important;overflow-wrap:anywhere;text-overflow:clip!important}';
   (document.head||document.documentElement).appendChild(st); }catch(e){} })();
 function adSigdir(){
@@ -637,11 +669,17 @@ window.__sbAdSigdir=adSigdir;
   plan(); }; kur(); })();
 
 /* ---------- yerel ağaca yerleştirme ---------- */
+/* Spor kuralları (bkz. bag-kes "BASKETBOL / VOLEYBOL PUAN DURUMU"): FIBA usulü 2-1 puanlı basketbol ligleri; diğerleri galibiyet yüzdesi. */
+var BSK_21=/^bsk\.(tur|gre|isr|srb|pol|int\.(aba|bcl|fec|bal|bcla|lsa|easl|wasl|bclasia))\b/;
+function sporKurali(slug){ var sp=sporu(slug);
+  if(sp==='voleybol') return {cfg:{winPts:3, drawPts:0, lossPts:0}, sira:''};
+  if(sp==='basketbol') return BSK_21.test(slug)?{cfg:{winPts:2, drawPts:0, lossPts:1}, sira:''}:{cfg:{winPts:1, drawPts:0, lossPts:0}, sira:'yuzde'};
+  return {cfg:{winPts:3, drawPts:1}, sira:''}; }
 function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
   gorevliDinle();
   return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||'', teams:v.teams, matches:v.matches,
-    lgConfig:{winPts:3, drawPts:1}, rankNotes:(v.notlar&&v.notlar.length)?v.notlar:(BOLGE_SABIT[v.slug]||[]), sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbKupa:TSDB_LIG[v.slug]==='wiki'||null, sbGercek:{slug:v.slug, t:Date.now()}};
+    lgConfig:sporKurali(v.slug).cfg, sbSpor:sporu(v.slug), sbSirala:sporKurali(v.slug).sira, rankNotes:(v.notlar&&v.notlar.length)?v.notlar:(BOLGE_SABIT[v.slug]||[]), sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbKupa:TSDB_LIG[v.slug]==='wiki'||null, sbGercek:{slug:v.slug, t:Date.now()}};
 }
 function agacaYaz(v){
   var id=ligKimlik(v.slug), eski=YerelVT.ham('leagues/'+id)||{}, b=ligBelgesi(v);
@@ -656,6 +694,7 @@ function metaYaz(){
   YerelVT.yaz('activeDisplayLeague', ligKimlik(A.lig));
 }
 function ligiAc(slug){
+  try{ document.body.setAttribute('data-spor', sporu(slug)); }catch(e){}
   return ligYukle(slug).then(function(v){ return otoYukle(slug, v); }).then(ligLogoUygula).then(function(v){ agacaYaz(v); return v; });
 }
 
@@ -803,7 +842,7 @@ function ozetIsle(mid, j){
   YerelVT.yaz('leagues/'+ligKimlik(A.lig)+'/matches/'+mid, m2);
 }
 function ozetIste(mid){
-  var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m||!m.espn||m.tsdb) return;
+  var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m||!m.espn||m.tsdb||sporu(A.lig)!=='futbol') return;   // özet ayrıştırıcısı futbola göre
   if(!m.played&&!m.isLive&&(new Date(m.date+'T'+(m.time||'00:00'))-Date.now())>3*3600*1000) return;   // başlamasına çok var: özet boş
   var c=O[mid]||(O[mid]={t:0});
   if(c.yukleniyor) return;
@@ -830,7 +869,7 @@ function tsdbKadro(slug, tid){
   }).then(function(){ c.yukleniyor=false; }, function(){ c.yukleniyor=false; });
 }
 function kadroIste(tid){
-  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(t&&t.tsdb) return tsdbKadro(slug, tid); if(!t||!t.espn) return;
+  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(sporu(slug)!=='futbol') return; if(t&&t.tsdb) return tsdbKadro(slug, tid); if(!t||!t.espn) return;
   var c=K[slug+tid]||(K[slug+tid]={t:0});
   if(c.yukleniyor || (c.t && Date.now()-c.t<SEZON_TAZE)) return;
   c.yukleniyor=true;
@@ -883,7 +922,7 @@ function hizli(){
   if(!ligCanli()||hMesgul){ zH=setTimeout(hizli, ligCanli()?HIZLI:15000); return; }
   hMesgul=true;
   if(TSDB_LIG[A.lig]){ veriAl(A.lig, true).then(function(j){ if(j&&j.mac) ligeIsle(j.mac.map(tsdbE)); }).then(function(){ hMesgul=false; zH=setTimeout(hizli, 60000); }); return; }
-  getJSON(SITE+A.lig+'/scoreboard').then(function(j){ ligeIsle(((j&&j.events)||[]).map(function(ev){ return esAl(ev,''); })); }, function(){})
+  getJSON(eSite(A.lig)+'/scoreboard').then(function(j){ ligeIsle(((j&&j.events)||[]).map(function(ev){ return esAl(ev,''); })); }, function(){})
     .then(function(){ hMesgul=false; zH=setTimeout(hizli, HIZLI); });
 }
 function bugunDongu(){
@@ -907,7 +946,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ ret
 function ayarBolumu(){
   var sel='border-radius:10px;border:1px solid var(--br);background:var(--s3);color:var(--tx);padding:.55rem;width:100%;font-size:.8rem;font-family:inherit';
   var obek={}, sira=[];
-  aktifLigler().forEach(function(l){ if(!obek[l[2]]){ obek[l[2]]=[]; sira.push(l[2]); } obek[l[2]].push(l); });
+  aktifLigler().forEach(function(l){ var o=(sporu(l[0])==='futbol'?'':(sporu(l[0])==='basketbol'?'Basketbol · ':'Voleybol · '))+l[2]; if(!obek[o]){ obek[o]=[]; sira.push(o); } obek[o].push(l); });
   var ops=sira.map(function(o){ return '<optgroup label="'+esc(o)+'">'+obek[o].map(function(l){ return '<option value="'+esc(l[0])+'"'+(l[0]===A.lig?' selected':'')+'>'+esc(LIG_AD[l[0]]||l[1])+'</option>'; }).join('')+'</optgroup>'; }).join('');
   var seritAcik=false; try{ seritAcik=!!_liveTickerEnabled; }catch(e){}
   return '<div id="sbAyarBolum"><div style="font-size:.68rem;font-weight:800;color:var(--mu);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Skorbord</div>'+
@@ -1015,11 +1054,18 @@ function uzakDinle(){
 var ANA={gun:0, acik:true, kume:{}, yukleniyor:false, z:0, imza:''};
 var LIG_BUL={}; LIGLER.forEach(function(l){ LIG_BUL[l[0]]=l; });
 var ULKE_KOD={'Türkiye':1,'İngiltere':1,'İspanya':1,'İtalya':1,'Almanya':1,'Fransa':1,'Hollanda':1,'Portekiz':1,'Belçika':1,'İskoçya':1,'Yunanistan':1,'Rusya':1,'Avusturya':1,'İsviçre':1,'Danimarka':1,'Norveç':1,'İsveç':1};
-var KOD_AD={ksa:'Suudi Arabistan',jpn:'Japonya',chn:'Çin',ind:'Hindistan',aus:'Avustralya',usa:'ABD',mex:'Meksika',bra:'Brezilya',arg:'Arjantin',col:'Kolombiya',chi:'Şili',uru:'Uruguay',ecu:'Ekvador',per:'Peru',par:'Paraguay',bol:'Bolivya',crc:'Kosta Rika',rsa:'Güney Afrika'};
-function ligUlke(slug){ var l=LIG_BUL[slug]; if(!l) return ''; var k=slug.split('.')[0]; if(ULKE_KOD[l[2]]) return l[2]; return KOD_AD[k]||''; }
+var KOD_AD={ltu:'Litvanya',isr:'İsrail',srb:'Sırbistan',pol:'Polonya',gbr:'Birleşik Krallık',kor:'Güney Kore',can:'Kanada',ksa:'Suudi Arabistan',jpn:'Japonya',chn:'Çin',ind:'Hindistan',aus:'Avustralya',usa:'ABD',mex:'Meksika',bra:'Brezilya',arg:'Arjantin',col:'Kolombiya',chi:'Şili',uru:'Uruguay',ecu:'Ekvador',per:'Peru',par:'Paraguay',bol:'Bolivya',crc:'Kosta Rika',rsa:'Güney Afrika'};
+function ligUlke(slug){ var l=LIG_BUL[slug]; if(!l) return ''; var k=ligKod(slug); if(ULKE_KOD[l[2]]) return l[2]; return KOD_AD[k]||''; }
 function ligBaslik(slug){ var l=LIG_BUL[slug], u=ligUlke(slug), ad=LIG_AD[slug]||(l&&l[1])||slug; var kisa=u?ad.replace(new RegExp('^'+u.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+'),''):ad; return u?u+' - '+kisa:ad; }
-function ligBayrak(slug){ var k=slug.split('.')[0]; return (ligUlke(slug)&&/^[a-z]{3}$/.test(k))?'https://a.espncdn.com/i/teamlogos/countries/500/'+k+'.png':''; }
-function anaLigler(){ var a=null; try{ a=YerelVT.uzak('anasayfa'); }catch(e){} var l=(a&&Array.isArray(a.ligler)&&a.ligler.length)?a.ligler:LIGLER.map(function(x){ return x[0]; }); return l.filter(function(s){ return !!LIG_BUL[s]; }); }
+function ligBayrak(slug){ var k=ligKod(slug); return (ligUlke(slug)&&/^[a-z]{3}$/.test(k))?'https://a.espncdn.com/i/teamlogos/countries/500/'+k+'.png':''; }
+function anaLigler(){ var a=null; try{ a=YerelVT.uzak('anasayfa'); }catch(e){} var sp=anaSpor();
+  if(sp!=='futbol') return LIGLER_SPOR.map(function(x){ return x[0]; }).filter(function(s){ return sporu(s)===sp; });
+  var l=(a&&Array.isArray(a.ligler)&&a.ligler.length)?a.ligler:LIGLER.map(function(x){ return x[0]; }); return l.filter(function(s){ return !!LIG_BUL[s]&&sporu(s)==='futbol'; }); }
+function anaSpor(){ return (A.spor==='basketbol'||A.spor==='voleybol')?A.spor:'futbol'; }
+function anaSporSec(sp){ A.spor=sp; ayarYaz(); anaCiz(); anaYukle(); }
+function anaSporSeridi(){ var sp=anaSpor();
+  return '<div class="sba-spor">'+[['futbol','⚽','Futbol'],['basketbol','🏀','Basketbol'],['voleybol','🏐','Voleybol']].map(function(x){
+    return '<button type="button" class="'+(x[0]===sp?'on':'')+'" onclick="Gercek.anaSporSec(\''+x[0]+'\')"><span>'+x[1]+'</span>'+x[2]+'</button>'; }).join('')+'</div>'; }
 var FAV_AK='sb_fav';
 function favOku(){ try{ var f=JSON.parse(localStorage.getItem(FAV_AK)||'{}'); return {lig:f.lig||{}, mac:f.mac||{}}; }catch(e){ return {lig:{}, mac:{}}; } }
 function favYaz(f){ try{ localStorage.setItem(FAV_AK, JSON.stringify(f)); }catch(e){} }
@@ -1033,8 +1079,8 @@ function anaLigYukle(slug, ofs){
     c.p=veriAl(slug).then(function(j){ c.p=null; c.t=Date.now(); c.l=((j&&j.mac)||[]).map(tsdbE).filter(function(e){ return !isNaN(e.date)&&ayniGun(e.date,gun); }); return c; });
     return c.p;
   }
-  var gunler=[ymd(gun)]; if(AMERIKA.test(slug)) gunler.push(ymd(gunEkle(gun,-1)));   // Amerika'nın akşam maçları bizde ertesi günün sabahı
-  c.p=Promise.all(gunler.map(function(d){ return getJSON(SITE+slug+'/scoreboard?dates='+d).catch(function(){ return null; }); })).then(function(rs){
+  var gunler=[ymd(gun)]; if(AMERIKA.test(slug)||/^(bsk|vlb)\.(usa|can|mex|bra|arg|pur)\./.test(slug)) gunler.push(ymd(gunEkle(gun,-1)));   // Amerika'nın akşam maçları bizde ertesi günün sabahı
+  c.p=Promise.all(gunler.map(function(d){ return getJSON(eSite(slug)+'/scoreboard?dates='+d).catch(function(){ return null; }); })).then(function(rs){
     c.p=null; c.t=Date.now(); var gor={}, l=[];
     rs.forEach(function(j){ if(!j) return; var lg=(j.leagues||[])[0]; if(lg&&lg.logos&&lg.logos[0]&&!c.logo) c.logo=lg.logos[0].href;
       (j.events||[]).forEach(function(ev){ var e=esAl(ev,''); if(gor[e.rid]||isNaN(e.date)||!ayniGun(e.date,gun)) return; gor[e.rid]=1; l.push(e); }); });
@@ -1059,7 +1105,8 @@ function anaYukle(zorla){
 }
 function anaSatir(e, slug, fav){
   var canli=e.state==='in', bitti=e.state==='post', ert=/POSTPONED|CANCEL/.test(e.sname||'');
-  var sol=canli?'<b class="sba-dk">'+esc(e.clock?(dk(e.clock)||'')+"'":'Canlı')+'</b>':ert?'<span class="sba-ert">'+(/CANCEL/.test(e.sname)?'İptal':'Ert.')+'</span>':bitti?'<span class="sba-ms">MS</span>':esc(p2(e.date.getHours())+':'+p2(e.date.getMinutes()));
+  var sp=sporu(slug), cz=sp==='basketbol'?((e.period?e.period+'.Ç ':'')+(e.clock||'')).trim():sp==='voleybol'?(e.period?e.period+'. set':''):'';
+  var sol=canli?'<b class="sba-dk">'+esc(sp!=='futbol'?(cz||'Canlı'):(e.clock?(dk(e.clock)||'')+"'":'Canlı'))+'</b>':ert?'<span class="sba-ert">'+(/CANCEL/.test(e.sname)?'İptal':'Ert.')+'</span>':bitti?'<span class="sba-ms">MS</span>':esc(p2(e.date.getHours())+':'+p2(e.date.getMinutes()));
   var orta=(canli||bitti)?'<b class="sba-skor'+(canli?' canli':'')+'">'+esc(e.h.score==null?'-':e.h.score)+' - '+esc(e.a.score==null?'-':e.a.score)+'</b>':'<span class="sba-v">v</span>';
   var hk=bitti&&+e.h.score>+e.a.score, ak=bitti&&+e.a.score>+e.h.score;
   return '<div class="sba-mac" onclick="Gercek.anaMacAc(\''+esc(slug)+'\',\''+esc(e.rid)+'\')"><span class="sba-saat">'+sol+'</span><span class="sba-ev'+(hk?' kaz':'')+'">'+esc(trAd(e.h.name||e.h.full))+'</span>'+orta+'<span class="sba-dep'+(ak?' kaz':'')+'">'+esc(trAd(e.a.name||e.a.full))+'</span>'
@@ -1084,7 +1131,7 @@ function anaCiz(){
   var h='<div class="sba-ust"><img src="app-icon-192.png" alt="" class="sba-logo"><b>Skorbord</b><span style="flex:1"></span>'
     +'<button type="button" class="sba-btn" id="sbAnaTv" title="TV / Canlı Yayın" aria-label="TV / Canlı Yayın" onclick="try{openVideoScreen(\'tv\')}catch(e){}"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8 3l4 4 4-4"/></svg></button>'
     +'<button type="button" class="sba-btn" id="sbAnaSira" title="Sıralamalar" aria-label="Sıralamalar" onclick="Gercek.siralama()"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></button><button type="button" class="sba-btn" title="Yenile" onclick="Gercek.anaYenile()">⟳</button><button type="button" class="sba-btn" id="sbAnaAyar" title="Ayarlar" onclick="try{openSettings()}catch(e){}">⚙</button></div>'
-    +anaTarihSeridi(ofs)+'<div class="sba-ic">';
+    +anaSporSeridi()+anaTarihSeridi(ofs)+'<div class="sba-ic">';
   if(favMac.length) h+='<div class="sba-kart fav"><div class="sba-bas"><span class="sba-bay yildiz">★</span><span class="sba-ad">Favorilerim</span></div>'+favMac.map(function(x){ return anaSatir(x[1], x[0], fav); }).join('')+'</div>';
   h+=dolu.join('');
   if(!dolu.length&&!bekleyen) h+='<div class="sba-bos">'+esc(anaGunAd(ofs))+' kayıtlı liglerde maç yok.</div>';
@@ -1234,6 +1281,7 @@ function siraSekme(s){ SIRA.sekme=s; SIRA.ara=''; try{ localStorage.setItem('sb_
 function siraAra(v){ SIRA.ara=v; SIRA.odak=true; siralamaCiz(); }
 function siraTr(){ SIRA.tr=!SIRA.tr; siralamaCiz(); }
 (function(){ try{ var st=document.createElement('style'); st.textContent=''
+  +'.sba-spor{display:flex;gap:.35rem;padding:.45rem .8rem 0}.sba-spor button{flex:1;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.42rem .3rem;border-radius:10px;border:1.5px solid rgba(255,255,255,.12);background:#1a1a1a;color:#fff;font:inherit;font-size:.72rem;font-weight:800;cursor:pointer}.sba-spor button.on{background:var(--ac);border-color:var(--ac)}.sba-spor span{font-size:.85rem}'
   +'.sba-takvim{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border-bottom:1px solid var(--br)}.sba-takvim .sba-gunler{flex:1;min-width:0;padding:.15rem 0;border:0}'
   +'.sba-takvim .sba-gun{display:flex;flex-direction:column;align-items:center;gap:.05rem;border-radius:10px;padding:.3rem .62rem;background:#1a1a1a;border:1.5px solid rgba(255,255,255,.1);color:#fff;font-size:.68rem;white-space:nowrap}'
   +'.sba-takvim .sba-gun small{font-size:.56rem;font-weight:600;opacity:.7}.sba-takvim .sba-gun.bugun{background:#15803d;border-color:#22c55e}.sba-takvim .sba-gun.on{background:var(--ac);border-color:var(--ac)}'
@@ -1295,6 +1343,6 @@ function baslat(){
   document.addEventListener('visibilitychange', function(){ if(!document.hidden&&ANA.acik){ anaYukle(); anaDongu(); } });
 }
 
-window.Gercek={anaGoster:anaGoster, anaLigAc:anaLigAc, anaMacAc:anaMacAc, anaFavLig:anaFavLig, anaFavMac:function(r){ anaFavMac(r); }, anaGun:anaGun, anaTakvim:anaTakvim, siralama:siralamaAc, siraSekme:siraSekme, siraAra:siraAra, siraTr:siraTr, anaYenile:function(){ anaYukle(true); }, grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
+window.Gercek={anaSporSec:anaSporSec, anaGoster:anaGoster, anaLigAc:anaLigAc, anaMacAc:anaMacAc, anaFavLig:anaFavLig, anaFavMac:function(r){ anaFavMac(r); }, anaGun:anaGun, anaTakvim:anaTakvim, siralama:siralamaAc, siraSekme:siraSekme, siraAra:siraAra, siraTr:siraTr, anaYenile:function(){ anaYukle(true); }, grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
 baslat();
 })();

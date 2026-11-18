@@ -45,7 +45,8 @@ const YAS_GEC = /\b(u ?1[5-9]|u ?2[0-3]|youth|academy|akademi|reserves?|women|wo
 let TR_AD = {};
 function trAdOku(){ try{ const s = fs.readFileSync(path.join(KOK, 'gercek.js'), 'utf8'); const m = /var TR_AD=\{([\s\S]*?)\n\};/.exec(s); if(m) TR_AD = Function('return {' + m[1] + '}')(); }catch(e){} }
 function ligleriOku(){
-  const s = fs.readFileSync(path.join(KOK, 'gercek.js'), 'utf8'); const m = /var LIGLER=\[([\s\S]*?)\n\];/.exec(s);
+  const s = fs.readFileSync(path.join(KOK, 'gercek.js'), 'utf8'); const m0 = /var LIGLER=\[([\s\S]*?)\n\];/.exec(s), m1 = /var LIGLER_SPOR=\[([\s\S]*?)\n\];/.exec(s);
+  const m = [null, m0[1] + '\n' + ((m1 && m1[1]) || '')];   // futbol + basketbol / voleybol (2026-11-18-L)
   return [...m[1].matchAll(/\['([^']+)','([^']+)','([^']+)'(?:,'([^']+)')?\]/g)].map(x => ({ slug: x[1], ad: x[2], obek: x[3], tsdb: x[4] || '' }));
 }
 function sezonAdi(y, iki){ return iki ? (y + '-' + String((y + 1) % 100).padStart(2, '0')) : String(y); }
@@ -97,6 +98,8 @@ async function tsdbSezon(id, s){
     gor = true; bos = 0;
     e.forEach(x => mac.push(tsdbMac(x, r)));
   }
+  // eleme turları (TheSportsDB: 125 çeyrek final, 150 yarı final, 160 üçüncülük, 200 final vb.) ve play-off
+  for(const r of [100, 125, 150, 160, 170, 180, 200, 300, 400, 500]){ const j = await tsdb('eventsround.php?id=' + id + '&r=' + r + '&s=' + s); const e = (j && j.events) || []; e.forEach(x => { if(!mac.some(m => m.id === x.idEvent)) mac.push(tsdbMac(x, r)); }); }
   return mac;
 }
 function tsdbMac(x, r){
@@ -127,7 +130,7 @@ async function tsdbLig(L, eski){
   // Geçmiş: önceki iki sezonun maçlarından puan durumu (arşivdekiler yeniden istenmez)
   const gecmis = Object.assign({}, (eski && eski.gecmis) || {});
   const y0 = parseInt(s, 10);
-  if(!HIZLI && y0) for(const y of [y0 - 1, y0 - 2]){
+  if(!HIZLI && y0 && !/^(bsk|vlb)\./.test(L.slug)) for(const y of [y0 - 1, y0 - 2]){
     if(gecmis[y]) continue;
     const sn = y + '-' + (y + 1); const m2 = await tsdbSezon(L.tsdb, sn); if(!m2.length) continue;
     gecmis[y] = { ad: y + '-' + String((y + 1) % 100).padStart(2, '0'), satir: tabloHesapla(m2) };
@@ -718,12 +721,14 @@ async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   if(HIZLI && !L.tsdb) return;
+  if(/^espn:/.test(L.tsdb || '')) return;   // ESPN basketbol / voleybol ligleri: uygulama doğrudan ESPN'den okur, ek dosya yok
+  const FUTBOL = !/^(bsk|vlb)\./.test(L.slug);   // basketbol / voleybol: kulüp eşleşmesi, kadro, geçmiş sezon futbol kaynaklarına göre; atlanır
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
   const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb === 'tff' ? await tffLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
-  if(!HIZLI){
+  if(!HIZLI && FUTBOL){
     const wd = await eslestir(temel.takim, L.obek === 'Milli', eski);
     const eskiKulup = {}; Object.values((eski && eski.takim) || {}).forEach(t => { if(t.wd) eskiKulup[t.wd] = t; });
     ad('eşleşme'); const bilgi = await kulupBilgi(Object.values(wd), eskiKulup); ad('kulüp');
@@ -772,7 +777,7 @@ async function ligIsle(L){
    veri/lig-logo/<lig>.png olarak saklanır (uygulama telefonlardan dış siteye gitmez). Haftada bir yenilenir ("logo" ile elle). */
 const LOGO_TFF = { 'tur.3': 'https://www.tff.org/Resources/TFF/Images/0000000015/TFF/TFF-Logolar/Orjinal/nesine-2-lig.png',
   'tur.4': 'https://www.tff.org/Resources/TFF/Images/0000000015/TFF/TFF-Logolar/Orjinal/nesine-3-lig.png' };
-const LOGO_TRWIKI = { 'tur.1': 'Süper Lig', 'tur.2': 'TFF 1. Lig', 'tur.cup': 'Türkiye Kupası', 'tur.super': 'Türkiye Süper Kupası' };
+const LOGO_TRWIKI = { 'tur.1': 'Süper Lig', 'tur.2': 'TFF 1. Lig', 'tur.cup': 'Türkiye Kupası', 'tur.super': 'Türkiye Süper Kupası', 'bsk.tur.bsl': 'Basketbol Süper Ligi', 'bsk.tur.tbl': 'Türkiye Basketbol Ligi', 'bsk.tur.kbsl': 'Kadınlar Basketbol Süper Ligi', 'vlb.tur.efeler': 'Efeler Ligi', 'vlb.tur.sultanlar': 'Sultanlar Ligi' };
 async function vikiGorsel(site, map){
   const ks = Object.keys(map), o = {};
   for(let i = 0; i < ks.length; i += 45){
@@ -826,15 +831,16 @@ async function ligLogoTopla(tum, zorla){
 (async () => {
   fs.mkdirSync(VERI, { recursive: true }); trAdOku();
   const tum = ligleriOku();
-  const ligler = tum.filter((l, i) => (!SECILI.length || SECILI.includes(l.slug)) && (!(GRUP.length === 2 && GRUP[1] > 0) || i % GRUP[1] === GRUP[0]));
-  if(!HIZLI && (SECILI.includes('siralama') || (!SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0)))){ try{ await siralamaTopla(); }catch(e){ console.log('HATA sıralama', e && e.stack || e); } }
+  const G0 = !(GRUP.length === 2 && GRUP[0] !== 0);   // ortak işler (tff, yayın, logo…) yalnız ilk parçada
+  const ligler = tum.filter(l => !SECILI.length || SECILI.includes(l.slug)).filter((l, i) => !(GRUP.length === 2 && GRUP[1] > 0) || i % GRUP[1] === GRUP[0]);
+  if(!HIZLI && ((SECILI.includes('siralama') && G0) || (!SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0)))){ try{ await siralamaTopla(); }catch(e){ console.log('HATA sıralama', e && e.stack || e); } }
   const ana = !SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0);   // tek iş (grup 0) ortak dosyaları yazar
-  if(SECILI.includes('tff') || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
-  if(SECILI.includes('yayin') || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
+  if((SECILI.includes('tff') && G0) || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
+  if((SECILI.includes('yayin') && G0) || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
-  if(SECILI.includes('ekip') || ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
-  if(SECILI.includes('youtube') || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
-  if((SECILI.includes('logo') || ana) && !HIZLI){ try{ await ligLogoTopla(tum, SECILI.includes('logo')); }catch(e){ console.log('HATA logo', e && e.stack || e); } }
+  if((SECILI.includes('ekip') && G0) || ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
+  if((SECILI.includes('youtube') && G0) || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
+  if(((SECILI.includes('logo') && G0) || ana) && !HIZLI){ try{ await ligLogoTopla(tum, (SECILI.includes('logo') && G0)); }catch(e){ console.log('HATA logo', e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
 })();

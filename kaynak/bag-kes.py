@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-K'
+SB_BUILD = '2026-11-18-L'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -298,4 +298,22 @@ isle('index.html', [
     if(!src)return;
     if(src.indexOf('/veri/lig-logo/')!==-1){ imgEl.style.visibility=''; return; }   /* Skorbord: hazır lig logosu olduğu gibi */
 """)),
+])
+# BASKETBOL / VOLEYBOL PUAN DURUMU (2026-11-18-L). D.sbSpor ve D.sbSirala ligin belgesinden gelir (gercek.js ligBelgesi).
+#  · Basketbol: beraberlik yok. "yuzde" ligleri (NBA, EuroLeague, ACB…) galibiyet yüzdesine göre sıralanır, P = galibiyet; FIBA usulü
+#    ligler (BSL, TBL, KBSL, Yunanistan…) galibiyet 2, mağlubiyet 1 puan. B sütunu yerine galibiyet yüzdesi (%) gösterilir.
+#  · Voleybol: 3-0 / 3-1 galibiyet 3, mağlubiyet 0; 3-2 galibiyet 2, mağlubiyet 1. Eşitlikte galibiyet sayısı, sonra set averajı
+#    (alınan / verilen). A / Y sütunları set; beraberlik sütunu boş.
+isle('index.html', [
+  ('çok spor puan', degis("""    if(hg>ag){if(filter!=='away'){h.G++;h.P+=WIN_PTS;}if(filter!=='home')a.M++;}
+    else if(ag>hg){if(filter!=='home'){a.G++;a.P+=WIN_PTS;}if(filter!=='away')h.M++;}""", """    const _vb=D.sbSpor==='voleybol', _az=Math.min(hg,ag), _wp=_vb?(_az<=1?3:2):WIN_PTS, _kp=_vb?(_az<=1?0:1):Number(cfg.lossPts||0);   /* Skorbord: basketbol / voleybol */
+    if(hg>ag){if(filter!=='away'){h.G++;h.P+=_wp;}if(filter!=='home'){a.M++;a.P+=_kp;}}
+    else if(ag>hg){if(filter!=='home'){a.G++;a.P+=_wp;}if(filter!=='away'){h.M++;h.P+=_kp;}}""")),
+  ('çok spor sıralama', degis("""  arr.sort((a,b)=>{
+    if(b.P!==a.P)return b.P-a.P;""", """  arr.sort((a,b)=>{
+    if(D.sbSirala==='yuzde'){ const pa=a.O?a.G/a.O:-1, pb=b.O?b.G/b.O:-1; if(pb!==pa)return pb-pa; if(b.G!==a.G)return b.G-a.G; }   /* Skorbord: basketbol */
+    if(b.P!==a.P)return b.P-a.P;
+    if(D.sbSpor==='voleybol'){ if(b.G!==a.G)return b.G-a.G; const ra=a.YG?a.AG/a.YG:a.AG*100, rb=b.YG?b.AG/b.YG:b.AG*100; if(rb!==ra)return rb-ra; }""")),
+  ('çok spor B başlık', rx(r"""\$\{stAlignStyle\('b'\)\}">B</span>""", lambda m: """${stAlignStyle('b')}">${D.sbSpor==='basketbol'?'%':D.sbSpor==='voleybol'?'':'B'}</span>""", "D.sbSpor==='voleybol'?'':'B'}</span>")),
+  ('çok spor B hücre', degis("""${stAlignStyle('b',pos)}">${t.B}</div>""", """${stAlignStyle('b',pos)}">${D.sbSpor==='basketbol'?(t.O?Math.round(t.G/t.O*100):0):D.sbSpor==='voleybol'?'':t.B}</div>""")),
 ])
