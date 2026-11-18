@@ -153,7 +153,8 @@ async function eslestir(takim, milli, eski){
   const bekleyen = [];
   for(const [id, t] of Object.entries(takim)){
     const e = eski && eski.takim && eski.takim[id];
-    if(e && e.wd){ sonuc[id] = e.wd; continue; }   // önceki eşleşme yeniden aranmaz; bulunamayan her çalışmada yeniden aranır
+    if(e && e.wd){ sonuc[id] = e.wd; continue; }
+    if(takim[id] && takim[id].wd){ sonuc[id] = takim[id].wd; continue; }   // önceki eşleşme yeniden aranmaz; bulunamayan her çalışmada yeniden aranır
     bekleyen.push(id);
   }
   for(const id of bekleyen){
@@ -312,13 +313,95 @@ async function commonsBilgi(dosyalar){
   }
   return bilgi;
 }
+
+// ── VİKİPEDİ: Ziraat Türkiye Kupası ve Turkcell Süper Kupa (ESPN'de ve TheSportsDB'nin ücretsiz katmanında yok) ─────────────────
+// İngilizce Vikipedi'nin sezon sayfasındaki "Football box" maç kutuları okunur: tarih, saat, takımlar, skor, penaltılar, goller, stadyum, hakem.
+// Vikipedi gönüllülerce maçtan sonra güncellenir: canlı skor yok, sonuç birkaç saat içinde gelir.
+function wikiTemizle(x){
+  return String(x || '').replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '').replace(/<[^>]+>/g, ' ')
+    .replace(/\{\{\s*(flagicon|fb|flag|nowrap|small|sort)[^{}]*\}\}/gi, (m, t) => { if(/^(flagicon|fb|flag)$/i.test(t)) return ''; const p = m.replace(/^\{\{|\}\}$/g, '').split('|'); return p[p.length - 1]; })
+    .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1').replace(/'{2,}/g, '').replace(/\(\s*\d\s*\)/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function sablonlar(wt, ad){
+  const out = [], re = new RegExp('\\{\\{\\s*(?:' + ad + ')(?=\\s*[|}\\n])', 'gi'); let m;
+  while((m = re.exec(wt))){ let d = 0, j = m.index;
+    for(; j < wt.length; j++){ if(wt[j] === '{' && wt[j + 1] === '{'){ d++; j++; } else if(wt[j] === '}' && wt[j + 1] === '}'){ d--; j++; if(!d) break; } }
+    out.push({ i: m.index, t: wt.slice(m.index, j + 1) }); re.lastIndex = j + 1; }
+  return out;
+}
+function sablonAlan(t){
+  const ic = t.replace(/^\{\{[^|}]*\|?/, '').replace(/\}\}$/, ''), o = {}; let d = 0, parca = '';
+  const bit = () => { const e = parca.indexOf('='); if(e > 0) o[parca.slice(0, e).trim().toLowerCase()] = parca.slice(e + 1).trim(); parca = ''; };
+  for(let i = 0; i < ic.length; i++){ const c = ic[i], n = ic[i + 1];
+    if((c === '{' && n === '{') || (c === '[' && n === '[')){ d++; parca += c + n; i++; continue; }
+    if((c === '}' && n === '}') || (c === ']' && n === ']')){ d--; parca += c + n; i++; continue; }
+    if(c === '|' && d === 0){ bit(); continue; } parca += c; }
+  bit(); return o;
+}
+const AY_EN = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+function wikiZaman(tarih, saat){
+  let y, a, g, m; const t = wikiTemizle(tarih);
+  if((m = /\{\{\s*start date[^|]*\|\s*(\d{4})\s*\|\s*(\d{1,2})\s*\|\s*(\d{1,2})/i.exec(tarih))){ y = +m[1]; a = +m[2]; g = +m[3]; }
+  else if((m = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/.exec(t)) && AY_EN[m[2].toLowerCase()]){ y = +m[3]; a = AY_EN[m[2].toLowerCase()]; g = +m[1]; }
+  else if((m = /([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/.exec(t)) && AY_EN[m[1].toLowerCase()]){ y = +m[3]; a = AY_EN[m[1].toLowerCase()]; g = +m[2]; }
+  else if((m = /(\d{4})-(\d{2})-(\d{2})/.exec(t))){ y = +m[1]; a = +m[2]; g = +m[3]; }
+  else return null;
+  const s = /(\d{1,2})[:.](\d{2})/.exec(wikiTemizle(saat || '')); const hh = s ? +s[1] : 12, mm = s ? +s[2] : 0;
+  return { z: new Date(Date.UTC(y, a - 1, g, hh - 3, mm)).toISOString(), saatYok: !s };   // Türkiye saati (UTC+3)
+}
+function wikiGoller(x, taraf){
+  const o = []; if(!x) return o;
+  x.split(/<br\s*\/?>|\n/i).forEach(sat => {
+    const ad = wikiTemizle(sat.replace(/\{\{[\s\S]*?\}\}/g, '')).replace(/[,;]+$/, '').trim();
+    sablonlar(sat, 'goal|own goal|pengoal|og|penalty goal').forEach(z => { const ic = z.t.replace(/^\{\{\s*/, '').replace(/\}\}$/, '').split('|'); const tur0 = ic[0].trim().toLowerCase();
+      const dk = ic.slice(1).filter(p => /^\s*\d+(\+\d+)?\s*'?\s*$/.test(p));
+      const tip = (/own|^og$/.test(tur0) || ic.some(p => /^o\.?g\.?$/i.test(p.trim()))) ? 'og' : ((/pen/.test(tur0) || ic.some(p => /^pen\.?$/i.test(p.trim()))) ? 'pen_goal' : 'goal');
+      dk.forEach(d => { const mm = /(\d+)(?:\+(\d+))?/.exec(d); o.push({ type: tip, min: +mm[1] + (mm[2] ? +mm[2] : 0), team: taraf, player: ad }); }); });
+  });
+  return o;
+}
+function kutularOku(wt){
+  const bas = []; let m; const hr = /^(={2,4})\s*([^=\n]+?)\s*\1\s*$/gm; while((m = hr.exec(wt))) bas.push({ i: m.index, ad: wikiTemizle(m[2]) });
+  const turAdi = i => { let a = ''; bas.forEach(b => { if(b.i < i) a = b.ad; }); return a; };
+  const mac = [];
+  sablonlar(wt, 'Football box collapsible|Football box|Footballbox collapsible|Footballbox').forEach(k => {
+    const f = sablonAlan(k.t), zz = wikiZaman(f.date || '', f.time || ''); if(!zz) return;
+    const t1 = wikiTemizle(f.team1), t2 = wikiTemizle(f.team2); if(!t1 || !t2 || /^TBD|winner|loser/i.test(t1 + ' ' + t2)) return;
+    const skH = wikiTemizle(f.score), sk = skH.replace(/[–—]/g, '-'); const sm = /^(\d+)\s*-\s*(\d+)/.exec(sk);
+    const pen = wikiTemizle(f.penaltyscore || '').replace(/[–—]/g, '-'); const pm = /^(\d+)\s*-\s*(\d+)/.exec(pen);
+    const id = 'w' + require('crypto').createHash('md5').update(zz.z.slice(0, 10) + '|' + norm(t1) + '|' + norm(t2)).digest('hex').slice(0, 10);
+    mac.push({ id, r: turAdi(k.i), z: zz.z, saatYok: zz.saatYok, ev: norm(t1).replace(/ /g, '_'), dep: norm(t2).replace(/ /g, '_'), evAd: t1, depAd: t2, evLogo: '', depLogo: '',
+      evG: sm ? +sm[1] : null, depG: sm ? +sm[2] : null, d: sm ? 'FT' : '', st: [wikiTemizle(f.stadium), wikiTemizle(f.location)].filter(Boolean).join(', '),
+      hakem: wikiTemizle(f.referee) || '', pen: pm ? pm[1] + '-' + pm[2] : '', uz: /a\.?e\.?t/i.test(skH + ' ' + (f.aet || '')),
+      olay: wikiGoller(f.goals1, 'home').concat(wikiGoller(f.goals2, 'away')).sort((a, b) => a.min - b.min) });
+  });
+  return mac;
+}
+async function wikiSayfa(baslik){ const j = await al('https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext&format=json&redirects=1&page=' + encodeURIComponent(baslik)); return (j && j.parse && j.parse.wikitext && j.parse.wikitext['*']) || ''; }
+const KUL_EK = /\b(fk|sk|jk|as|spor kulubu|futbol kulubu|a s|football|s k|f k|j k)\b/g;
+async function wikiLig(L, eski){
+  const s = new Date(), y = s.getUTCMonth() >= 6 ? s.getUTCFullYear() : s.getUTCFullYear() - 1;
+  const adaylar = L.slug === 'tur.super' ? [String(y + 1) + ' Turkish Super Cup', String(y) + ' Turkish Super Cup']
+    : [y + '–' + String((y + 1) % 100).padStart(2, '0') + ' Turkish Cup', (y - 1) + '–' + String(y % 100).padStart(2, '0') + ' Turkish Cup'];
+  let mac = [], sezonAdi = '', yil = y;
+  for(const b of adaylar){ const wt = await wikiSayfa(b); const m2 = wt ? kutularOku(wt) : []; if(m2.length){ mac = m2; sezonAdi = b.replace(/ Turkish (Super )?Cup$/, ''); yil = parseInt(b, 10); break; } }
+  // Logo, Türkçe ad ve Wikidata kaydı: aynı kulübün Süper Lig / TFF ligi dosyasından
+  const dizin = {}, anah = a => norm(a).replace(KUL_EK, ' ').replace(/\s+/g, ' ').trim();
+  for(const sl of ['tur.1', 'tur.2', 'tur.3']){ try{ const j = JSON.parse(fs.readFileSync(path.join(VERI, sl + '.json'), 'utf8'));
+    Object.values(j.takim || {}).forEach(t => { [t.ad, t.adTr, t.wdAd, t.kisa].filter(Boolean).forEach(a => { const k = anah(a); if(k && !dizin[k]) dizin[k] = t; }); }); }catch(e){} }
+  const takim = {};
+  mac.forEach(m => { [[m.ev, m.evAd], [m.dep, m.depAd]].forEach(([id, ad]) => { if(takim[id]) return; const k = dizin[anah(ad)] || null;
+    takim[id] = { ad: (k && (k.adTr || k.ad)) || ad, kisa: ad, yer: '', logo: (k && k.logo) || '' }; if(k && k.wd) takim[id].wd = k.wd; }); });
+  mac.forEach(m => { m.evLogo = takim[m.ev].logo; m.depLogo = takim[m.dep].logo; m.evAd = takim[m.ev].ad; m.depAd = takim[m.dep].ad; });
+  return { yil, sezonAdi, takim, gecmis: {}, mac, kaynak: 'Vikipedi' };
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   if(HIZLI && !L.tsdb) return;
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
-  const temel = L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
+  const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
@@ -338,7 +421,7 @@ async function ligIsle(L){
       fotoT = Date.now();
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
-    if(L.tsdb && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
+    if(L.tsdb && L.tsdb !== 'wiki' && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
   } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
   if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {
