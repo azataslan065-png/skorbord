@@ -1,17 +1,16 @@
-// Deneme 39: TheSportsDB (anahtar 123) basketbol / voleybol ligleri ve uç noktaları
-const al = async u => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124' }, signal: AbortSignal.timeout(30000) }); return { s: r.status, j: await r.json().catch(() => null) }; }catch(e){ return { s: 'HATA ' + e.message }; } };
-const T = 'https://www.thesportsdb.com/api/v1/json/123/';
+// Deneme 40: TheSportsDB yavaş deneme (hız sınırı) — basketbol tur verisi, voleybol ligleri; Euroleague resmi API; TBF
+const al = async (u, h) => { try{ const r = await fetch(u, { headers: Object.assign({ 'User-Agent': 'Mozilla/5.0 Chrome/124' }, h || {}), signal: AbortSignal.timeout(30000) }); const t = await r.text(); let j = null; try{ j = JSON.parse(t); }catch(e){} return { s: r.status, j, t }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
+const bek = ms => new Promise(r => setTimeout(r, ms)); const T = 'https://www.thesportsdb.com/api/v1/json/123/';
 (async () => {
-  const bul = [];
-  for (const sp of ['Basketball', 'Volleyball']) for (const c of ['Turkey', 'Spain', 'Italy', 'Greece', 'France', 'Germany', 'Lithuania', 'Israel', 'Serbia', 'Poland', 'United Kingdom', 'England', 'Australia', 'China', 'Japan', 'Philippines', 'South Korea', 'Argentina', 'Brazil', 'Canada', 'Mexico', 'Puerto Rico', 'Russia', 'Belgium', 'Netherlands', 'Estonia', 'Latvia', 'USA', 'Worldwide', 'Europe', 'Africa', 'Asia', 'South America', 'Iran', 'Slovenia', 'Croatia']) {
-    const r = await al(T + 'search_all_leagues.php?s=' + sp + '&c=' + encodeURIComponent(c)); const l = (r.j && (r.j.countries || r.j.countrys)) || [];
-    if (l.length) console.log('L', sp, c, l.map(x => x.idLeague + ':' + x.strLeague + (x.strCurrentSeason ? '(' + x.strCurrentSeason + ')' : '')).join(' ; '));
-    l.forEach(x => bul.push([x.idLeague, x.strLeague, x.strCurrentSeason]));
+  for (const [id, s] of [['4475', '2026-2027'], ['4408', '2026-2027'], ['4546', '2026-2027']]) {
+    for (const r of [1, 5, 8]) { const x = await al(T + 'eventsround.php?id=' + id + '&r=' + r + '&s=' + s); const e = (x.j && x.j.events) || []; console.log('TUR', id, r, x.s, e.length, e.slice(0, 2).map(v => v.strEvent + ' ' + v.dateEvent + ' ' + v.intHomeScore + '-' + v.intAwayScore + ' ' + v.strStatus).join(' | ')); await bek(2500); }
+    const t = await al(T + 'lookuptable.php?l=' + id + '&s=' + s); console.log('TABLO', id, t.s, ((t.j && t.j.table) || []).length); await bek(2500);
+    const lg = await al(T + 'lookupleague.php?id=' + id); const L = lg.j && lg.j.leagues && lg.j.leagues[0]; console.log('LIG', id, L && L.strLeague, L && L.strSport); await bek(2500);
   }
-  console.log('TOPLAM', bul.length);
-  for (const [id, ad, sz] of bul.slice(0, 200)) {
-    const n = await al(T + 'eventsnextleague.php?id=' + id), p = await al(T + 'eventspastleague.php?id=' + id), s = await al(T + 'eventsseason.php?id=' + id + '&s=' + encodeURIComponent(sz || '2026-2027')), t = await al(T + 'lookuptable.php?l=' + id + '&s=' + encodeURIComponent(sz || ''));
-    const say = x => (x.j && (x.j.events || x.j.table)) ? (x.j.events || x.j.table).length : 0;
-    console.log('U', id, ad, 'sezon', sz, '| next', say(n), '| past', say(p), '| season', say(s), '| table', say(t));
-  }
+  for (const c of ['Turkey', 'Italy', 'Poland', 'Brazil', 'Japan', 'Russia', 'Iran', 'Worldwide', 'Europe']) { const r = await al(T + 'search_all_leagues.php?s=Volleyball&c=' + encodeURIComponent(c)); const l = (r.j && (r.j.countries || r.j.countrys)) || []; console.log('VOL', c, r.s, l.map(x => x.idLeague + ':' + x.strLeague + '(' + x.strCurrentSeason + ')').join(' ; ')); await bek(2500); }
+  for (const c of ['Australia', 'China', 'Japan', 'Philippines', 'South Korea', 'Argentina', 'Brazil', 'Canada', 'Mexico', 'Puerto Rico', 'Russia', 'Worldwide', 'Europe', 'Belgium', 'United Kingdom', 'Estonia', 'Croatia']) { const r = await al(T + 'search_all_leagues.php?s=Basketball&c=' + encodeURIComponent(c)); const l = (r.j && (r.j.countries || r.j.countrys)) || []; console.log('BAS', c, r.s, l.map(x => x.idLeague + ':' + x.strLeague + '(' + x.strCurrentSeason + ')').join(' ; ')); await bek(2500); }
+  // Euroleague resmi akış
+  for (const u of ['https://feeds.incrowdsports.com/provider/euroleague-feeds/v2/competitions/E/seasons/E2026/games?teamCode=&phaseTypeCode=RS', 'https://feeds.incrowdsports.com/provider/euroleague-feeds/v3/competitions/E/seasons/E2026/rounds/10/basicstandings', 'https://api-live.euroleague.net/v1/schedules?seasonCode=E2026', 'https://feeds.incrowdsports.com/provider/euroleague-feeds/v2/competitions/U/seasons/U2026/games']) { const x = await al(u); console.log('EL', x.s, u.split('/').slice(-4).join('/'), x.t.length, x.t.slice(0, 300).replace(/\s+/g, ' ')); }
+  // TBF / TVF
+  for (const u of ['https://www.tbf.org.tr/ligler/bsl-2026-2027/puan-cetveli', 'https://www.tbf.org.tr/ligler', 'https://www.tvf.org.tr/ligler', 'https://en.volleyballworld.com/', 'https://www.cev.eu/']) { const x = await al(u); console.log('SITE', x.s, u, x.t.length, (x.t.match(/https?:\/\/[a-z0-9.-]*(api|feed|json)[a-z0-9.-]*\/[^"' ]{0,80}/gi) || []).slice(0, 5).join(' ')); }
 })();
