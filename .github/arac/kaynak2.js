@@ -1,10 +1,9 @@
-// Deneme 35: Commons dosya araması (güncel sponsorlu lig logoları)
-const al = async u => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'SkorbordBot/1.0 (github.com/skorbord)' }, signal: AbortSignal.timeout(30000) }); return await r.json(); }catch(e){ return null; } };
+// Deneme 36: TFF lig sayfalarındaki lig logosu görselleri
 (async () => {
-  for (const q of ['Trendyol 1. Lig logo', 'Nesine 2. Lig logo', 'Nesine 3. Lig logo', 'Turkcell Süper Kupa logo', 'TFF 2. Lig logo', 'TFF 3. Lig logo', 'UEFA Euro 2028 logo', 'FIFA World Cup 2026 logo', 'Copa America logo', 'Belgian Pro League logo', 'J1 League logo', 'A-League Men logo', 'Liga FPD logo', 'Bolivia División Profesional logo', 'Turkish Super Cup logo']) {
-    for (const site of ['commons.wikimedia.org', 'tr.wikipedia.org', 'en.wikipedia.org']) {
-      const j = await al('https://' + site + '/w/api.php?action=query&format=json&list=search&srnamespace=6&srlimit=6&srsearch=' + encodeURIComponent(q));
-      console.log('ARA', site.split('.')[0], q, '→', ((j && j.query && j.query.search) || []).map(x => x.title).join(' | '));
-    }
+  for (const [s, id] of Object.entries({ 'tur.1': 198, 'tur.2': 142, 'tur.3': 976, 'tur.4': 971, 'kupa': 140 })) {
+    const r = await fetch('https://www.tff.org/default.aspx?pageID=' + id, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/124 Mobile Safari/537.36' } });
+    const t = new TextDecoder('windows-1254').decode(Buffer.from(await r.arrayBuffer()));
+    const im = [...new Set([...t.matchAll(/<img[^>]+src="([^"]+)"[^>]*>/gi)].map(m => m[0].replace(/\s+/g, ' ').slice(0, 260)))].filter(x => !/kulup|Kulup|Logo\/\d|haber|Haber/.test(x));
+    console.log('TFF', s, r.status, t.length); im.slice(0, 30).forEach(x => console.log('   ', x));
   }
 })();
