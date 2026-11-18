@@ -8654,6 +8654,7 @@ window._ptActiveUploads=0;
 function scheduleChatRenderSafely(){
   clearTimeout(_chatRenderSafeTimer);
   _chatRenderSafeTimer=setTimeout(()=>{
+    if(typeof _chatOpen!=='undefined'&&!_chatOpen)return;   // sohbet kapalı: açık menünün yerine sohbet çizilmesin
     // HATA DÜZELTMESİ: Şu an oynayan bir video varsa, bu otomatik yeniden çizim TAMAMEN
     // ATLANIR - aksi halde video, veri modelinden yeniden kurulan listede "Videoyu
     // Göster" placeholder'ına dönüp aniden kapanırdı. Video bitince/duraklatılınca
@@ -8675,6 +8676,7 @@ function scheduleChatRenderSafely(){
 // kullanılır, AMA yine de o an oynayan bir videoyu veya süren bir dokunuşu asla kesintiye
 // uğratmaz.
 function renderChatScreenSafe(){
+  if(typeof _chatOpen!=='undefined'&&!_chatOpen)return;   // sohbet kapalı: açık menünün yerine sohbet çizilmesin
   // KLAVYE KORUMASI: Sohbet canlı olarak yenileniyor (yeni mesaj, tepki vb.). Kullanıcı o
   // sırada arama kutusuna yazıyorsa, tam çizim kutuyu yok edip klavyeyi kapatır - aramayı
   // düzeltsek bile arka plandaki yenileme aynı sorunu geri getirirdi.
@@ -18520,7 +18522,7 @@ function sohbetHesapDinle(){
     _sohbetHesapRef=db.ref('paylasilan/sohbetHesaplari');
     _sohbetHesapRef.on('value',function(sn){
       _sohbetHesap=sn.val()||{};
-      try{ if(typeof renderChatScreenSafe==='function')renderChatScreenSafe(); }catch(e){self.__ds&&self.__ds(17724,e)}
+      try{ if(typeof renderChatScreenSafe==='function'&&typeof _chatOpen!=='undefined'&&_chatOpen)renderChatScreenSafe(); }catch(e){self.__ds&&self.__ds(17724,e)}
     },function(e){
       try{DiagSil('sohbetHesapDinle',e,{anlami:'Sohbet hesapları/rozetler okunamadı; birkaç saniye sonra yeniden denenecek.'});}catch(_d){}
       setTimeout(sohbetHesapDinle,4000);
@@ -40214,6 +40216,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=e1d29a89"></script>
+<script src="gercek.js?v=dcef08da"></script>
 </body>
 </html>

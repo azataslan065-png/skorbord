@@ -189,3 +189,24 @@ isle('index.html', [
   ('video listesi yalnız kendi menüsünde', degis("""try{ if(typeof renderVideoScreenList==='function'&&document.getElementById('sheetWrap')&&document.getElementById('sheetWrap').classList.contains('open')) renderVideoScreenList(); }""",
     """try{ if(typeof renderVideoScreenList==='function'&&document.getElementById('sheetWrap')&&document.getElementById('sheetWrap').classList.contains('open')&&document.getElementById('videoScreenList')&&(!window.PTSheetNav||!PTSheetNav.currentKey||PTSheetNav.currentKey()==='videoList')) renderVideoScreenList(); }""")),
 ])
+# Aynı sorun sohbette: sohbet hesapları dinleyicisi sohbet kapalıyken de sohbet ekranını çiziyor, açık menünün (sıralamalar, maç...) yerine geçiyordu.
+isle('index.html', [
+  ('sohbet yalnız açıkken', degis("""      try{ if(typeof renderChatScreenSafe==='function')renderChatScreenSafe(); }catch(e){self.__ds&&self.__ds(17724,e)}""",
+    """      try{ if(typeof renderChatScreenSafe==='function'&&typeof _chatOpen!=='undefined'&&_chatOpen)renderChatScreenSafe(); }catch(e){self.__ds&&self.__ds(17724,e)}""")),
+])
+# Kök sebep tek yerde: sohbet ekranını çizen iki ortak yardımcı, sohbet KAPALIYKEN de çiziyordu (ortak sohbet dinleyicisi, lig senkronu...).
+# Sohbet ekranı çizilince açık menü gizlenip sohbet öne geçiyordu. Sohbet kapalıyken çizim atlanır; açılınca zaten baştan çizilir.
+isle('index.html', [
+  ('sohbet kapalıyken çizilmez 1', degis("""function scheduleChatRenderSafely(){
+  clearTimeout(_chatRenderSafeTimer);
+  _chatRenderSafeTimer=setTimeout(()=>{
+""", """function scheduleChatRenderSafely(){
+  clearTimeout(_chatRenderSafeTimer);
+  _chatRenderSafeTimer=setTimeout(()=>{
+    if(typeof _chatOpen!=='undefined'&&!_chatOpen)return;   // sohbet kapalı: açık menünün yerine sohbet çizilmesin
+""")),
+  ('sohbet kapalıyken çizilmez 2', degis("""function renderChatScreenSafe(){
+""", """function renderChatScreenSafe(){
+  if(typeof _chatOpen!=='undefined'&&!_chatOpen)return;   // sohbet kapalı: açık menünün yerine sohbet çizilmesin
+""")),
+])
