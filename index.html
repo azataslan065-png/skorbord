@@ -8299,6 +8299,7 @@ function calcS(teams,matches,filter){
   }
   arr.sort((a,b)=>{
     if(D.sbSirala==='yuzde'){ const pa=a.O?a.G/a.O:-1, pb=b.O?b.G/b.O:-1; if(pb!==pa)return pb-pa; if(b.G!==a.G)return b.G-a.G; }   /* Skorbord: basketbol */
+    if(D.sbSirala==='galibiyet'&&b.G!==a.G)return b.G-a.G;   /* Skorbord: TVF / FIVB / CEV voleybol — önce galibiyet sayısı */
     if(b.P!==a.P)return b.P-a.P;
     if(D.sbSpor==='voleybol'){ if(b.G!==a.G)return b.G-a.G; const ra=a.YG?a.AG/a.YG:a.AG*100, rb=b.YG?b.AG/b.YG:b.AG*100; if(rb!==ra)return rb-ra; }
     if(b.AV!==a.AV)return b.AV-a.AV;
@@ -40231,6 +40232,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=f32528bb"></script>
+<script src="gercek.js?v=cd3bf189"></script>
 </body>
 </html>

@@ -312,6 +312,7 @@ isle('index.html', [
   ('çok spor sıralama', degis("""  arr.sort((a,b)=>{
     if(b.P!==a.P)return b.P-a.P;""", """  arr.sort((a,b)=>{
     if(D.sbSirala==='yuzde'){ const pa=a.O?a.G/a.O:-1, pb=b.O?b.G/b.O:-1; if(pb!==pa)return pb-pa; if(b.G!==a.G)return b.G-a.G; }   /* Skorbord: basketbol */
+    if(D.sbSirala==='galibiyet'&&b.G!==a.G)return b.G-a.G;   /* Skorbord: TVF / FIVB / CEV voleybol — önce galibiyet sayısı */
     if(b.P!==a.P)return b.P-a.P;
     if(D.sbSpor==='voleybol'){ if(b.G!==a.G)return b.G-a.G; const ra=a.YG?a.AG/a.YG:a.AG*100, rb=b.YG?b.AG/b.YG:b.AG*100; if(rb!==ra)return rb-ra; }""")),
   ('çok spor B başlık', rx(r"""\$\{stAlignStyle\('b'\)\}">B</span>""", lambda m: """${stAlignStyle('b')}">${D.sbSpor==='basketbol'?'%':D.sbSpor==='voleybol'?'':'B'}</span>""", "D.sbSpor==='voleybol'?'':'B'}</span>")),

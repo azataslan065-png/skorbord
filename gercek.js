@@ -687,7 +687,7 @@ window.__sbAdSigdir=adSigdir;
 /* Spor kuralları (bkz. bag-kes "BASKETBOL / VOLEYBOL PUAN DURUMU"): FIBA usulü 2-1 puanlı basketbol ligleri; diğerleri galibiyet yüzdesi. */
 var BSK_21=/^bsk\.(tur|gre|isr|srb|pol|int\.(aba|bcl|fec|bal|bcla|lsa|easl|wasl|bclasia))\b/;
 function sporKurali(slug){ var sp=sporu(slug);
-  if(sp==='voleybol') return {cfg:{winPts:3, drawPts:0, lossPts:0}, sira:''};
+  if(sp==='voleybol') return {cfg:{winPts:3, drawPts:0, lossPts:0}, sira:/^vlb\.(tur|int)\./.test(slug)?'galibiyet':''};   // TVF, FIVB ve CEV: önce galibiyet sayısı
   if(sp==='basketbol') return BSK_21.test(slug)?{cfg:{winPts:2, drawPts:0, lossPts:1}, sira:''}:{cfg:{winPts:1, drawPts:0, lossPts:0}, sira:'yuzde'};
   return {cfg:{winPts:3, drawPts:1}, sira:''}; }
 function ligBelgesi(v){

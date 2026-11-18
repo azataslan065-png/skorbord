@@ -727,7 +727,9 @@ async function ekipTopla(tum){
 const TVF_UA = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36';
 function lwCoz(x){ if(Array.isArray(x)){ if(x.length === 2 && x[1] && typeof x[1] === 'object' && x[1].s) return lwCoz(x[0]); return x.map(lwCoz); }
   if(x && typeof x === 'object'){ const o = {}; Object.keys(x).forEach(k => { o[k] = lwCoz(x[k]); }); return o; } return x; }
-function trBaslik(a){ return String(a || '').trim().toLocaleLowerCase('tr-TR').replace(/(^|[\s(\/-])(\S)/g, (m, b, c) => b + c.toLocaleUpperCase('tr-TR')); }
+// TVF adları Türkçe büyük harfle (İ / I ayrımı doğru); yabancı marka adları noktasız I ile yazıldığı için birkaç istisna
+const TR_ISTISNA = { MEDICANA: 'Medicana', DAIKIN: 'Daikin', HDI: 'HDI', TVF: 'TVF', SMS: 'SMS', AXA: 'AXA', THY: 'THY', ISTANBUL: 'İstanbul', BBSK: 'BBSK', GSK: 'GSK', BK: 'BK', SK: 'SK', PTT: 'PTT', TED: 'TED', ODTÜ: 'ODTÜ', MKE: 'MKE', 'İBB': 'İBB' };
+function trBaslik(a){ return String(a || '').trim().split(/(\s+|[()\/-])/).map(w => { if(TR_ISTISNA[w]) return TR_ISTISNA[w]; const l = w.toLocaleLowerCase('tr-TR'); return l.charAt(0).toLocaleUpperCase('tr-TR') + l.slice(1); }).join(''); }
 async function tvfLig(L, eski){
   const sayfa = L.tsdb.slice(4), adres = 'https://tvf.org.tr/lig/' + sayfa;
   const r = await fetch(adres, { headers: { 'User-Agent': TVF_UA, 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(45000) });
