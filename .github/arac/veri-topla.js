@@ -799,10 +799,11 @@ async function tvfLig(L, eski){
 // zemini siliyor, üstelik başka sitelerin görsellerinde tarayıcı piksel okuyamıyor (CORS). ŞİMDİ logo burada indirilir: köşelerden
 // başlayarak zemin rengi (kenara bağlı, düz renk) saydamlaştırılır, boşluk kırpılır, 128 px PNG olarak veri/takim-logo/ altına yazılır.
 const TL_KLAS = path.join(VERI, 'takim-logo'); let TL_DIZIN = null, _sharp;
-function tlDizin(){ if(!TL_DIZIN){ try{ TL_DIZIN = JSON.parse(fs.readFileSync(path.join(TL_KLAS, 'dizin.json'), 'utf8')); }catch(e){ TL_DIZIN = {}; } } return TL_DIZIN; }
+function tlDizin(){ if(!TL_DIZIN) TL_DIZIN = {}; return TL_DIZIN; }   // yalnız bu çalışmadaki başarısız indirmeler
 async function logoTemizle(url){
-  if(!url || !/^https?:/.test(url)) return url; const D = tlDizin(); if(D[url] && fs.existsSync(path.join(TL_KLAS, D[url]))) return 'veri/takim-logo/' + D[url];
-  if(D[url] === '') return url;   // daha önce işlenemedi: kaynağın kendi adresi kalır
+  if(!url || !/^https?:/.test(url)) return url; const D = tlDizin(), ad = require('crypto').createHash('md5').update(url).digest('hex').slice(0, 16) + '.png';
+  if(fs.existsSync(path.join(TL_KLAS, ad))) return 'veri/takim-logo/' + ad;   // dosya adı adresin özeti: dizin dosyasına gerek yok (paralel işler birbirini ezmez)
+  if(D[url] === '') return url;   // bu çalışmada işlenemedi: kaynağın kendi adresi kalır
   if(_sharp === undefined){ try{ _sharp = require('sharp'); }catch(e){ _sharp = null; } } if(!_sharp) return url;
   try{
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) }); if(!r.ok) throw new Error('HTTP ' + r.status);
@@ -821,8 +822,7 @@ async function logoTemizle(url){
     let cik = _sharp(data, { raw: { width: W, height: H, channels: 4 } });
     try{ cik = _sharp(await cik.png().toBuffer()).trim({ threshold: 1 }); }catch(e){}
     const png = await cik.resize(128, 128, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png({ compressionLevel: 9 }).toBuffer();
-    fs.mkdirSync(TL_KLAS, { recursive: true }); const ad = require('crypto').createHash('md5').update(url).digest('hex').slice(0, 16) + '.png';
-    fs.writeFileSync(path.join(TL_KLAS, ad), png); D[url] = ad; fs.writeFileSync(path.join(TL_KLAS, 'dizin.json'), JSON.stringify(D)); return 'veri/takim-logo/' + ad;
+    fs.mkdirSync(TL_KLAS, { recursive: true }); fs.writeFileSync(path.join(TL_KLAS, ad), png); return 'veri/takim-logo/' + ad;
   }catch(e){ D[url] = ''; return url; }
 }
 async function logolariTemizle(temel){
