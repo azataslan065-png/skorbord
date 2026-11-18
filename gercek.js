@@ -1009,7 +1009,8 @@ function anaCiz(){
     if(l.length) dolu.push(anaKart(s, l, fav, c.logo)); else bos.push(s); });
   var bekleyen=sira.filter(function(s){ var c=ANA.kume[s+'|'+ofs]; return !c||!c.t; }).length;
   var h='<div class="sba-ust"><img src="app-icon-192.png" alt="" class="sba-logo"><b>Skorbord</b><span style="flex:1"></span>'
-    +'<button type="button" class="sba-btn" title="Sıralamalar" aria-label="Sıralamalar" onclick="Gercek.siralama()"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></button><button type="button" class="sba-btn" title="Yenile" onclick="Gercek.anaYenile()">⟳</button><button type="button" class="sba-btn" title="Ayarlar" onclick="try{openSettings()}catch(e){}">⚙</button></div>'
+    +'<button type="button" class="sba-btn" id="sbAnaTv" title="TV / Canlı Yayın" aria-label="TV / Canlı Yayın" onclick="try{openVideoScreen(\'tv\')}catch(e){}"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8 3l4 4 4-4"/></svg></button>'
+    +'<button type="button" class="sba-btn" id="sbAnaSira" title="Sıralamalar" aria-label="Sıralamalar" onclick="Gercek.siralama()"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></button><button type="button" class="sba-btn" title="Yenile" onclick="Gercek.anaYenile()">⟳</button><button type="button" class="sba-btn" id="sbAnaAyar" title="Ayarlar" onclick="try{openSettings()}catch(e){}">⚙</button></div>'
     +anaTarihSeridi(ofs)+'<div class="sba-ic">';
   if(favMac.length) h+='<div class="sba-kart fav"><div class="sba-bas"><span class="sba-bay yildiz">★</span><span class="sba-ad">Favorilerim</span></div>'+favMac.map(function(x){ return anaSatir(x[1], x[0], fav); }).join('')+'</div>';
   h+=dolu.join('');
@@ -1051,6 +1052,30 @@ function anaMacAc(slug, rid){
 function anaFavLig(slug){ var f=favOku(); if(f.lig[slug]) delete f.lig[slug]; else f.lig[slug]=1; favYaz(f); anaCiz(); }
 function anaFavMac(rid){ var f=favOku(); if(f.mac[rid]) delete f.mac[rid]; else f.mac[rid]=Date.now(); var s=Date.now()-14*864e5; Object.keys(f.mac).forEach(function(k){ if(f.mac[k]<s) delete f.mac[k]; }); favYaz(f); anaCiz(); }
 function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); }
+/* ═══ TANITIM TURU (2026-11-18, kullanıcı: "Tanıtım turu puan tablosu sistemine ait olduğu için skorboard doğru gösterilmiyor").
+   Lig sayfasının turu (Ana bölümler, Sohbet...) ana ekranın arkasında kalan düğmeleri gösteriyordu. Skorbord'un kendi turu: ana ekran. */
+var SB_TUR=[
+  {hedef:null, baslik:'Skorbord\'a hoş geldiniz', metin:'Gerçek liglerin canlı skorları, puan durumları ve maç bilgileri burada. Kısa turu istediğiniz an "Atla" ile kapatabilir, Ayarlar\'dan yeniden başlatabilirsiniz.'},
+  {hedef:'#sbAna .sba-takvim', baslik:'Günler ve takvim', metin:'Günler arasında buradan geçersiniz; bugün yeşil görünür. Sağdaki takvim düğmesiyle istediğiniz günü seçebilirsiniz.'},
+  {hedef:'#sbAna .sba-ic .sba-kart:not(.fav) .sba-bas', baslik:'Lig kartları', metin:'Ligin adına dokunun: puan durumu, fikstür, sonuçlar ve istatistikler açılır. Sağdaki yıldız ligi listenin en üstüne sabitler.'},
+  {hedef:'#sbAna .sba-ic .sba-mac', baslik:'Maç bilgisi', metin:'Maça dokunun: skor, olaylar, kadrolar, hakemler, yayın kanalı, spiker, yorumcu ve hava durumu.'},
+  {hedef:'#sbAna .sba-ic .sba-mac .sba-yil', baslik:'Favori maçlar', metin:'Yıldızladığınız maçlar en üstte "Favorilerim" kartında toplanır.'},
+  {hedef:'#sbAnaTv', baslik:'TV ve canlı yayın', metin:'Canlı yayınlar ve YouTube\'dan yayınlanan maçlar burada; dokununca uygulamanın içinde oynar.'},
+  {hedef:'#sbAnaSira', baslik:'Sıralamalar', metin:'UEFA ülke ve kulüp puanları ile FIFA dünya sıralaması.'},
+  {hedef:'#sbAnaAyar', baslik:'Ayarlar', metin:'Tema, yazı boyutu ve diğer tercihler. Bu turu da buradan yeniden başlatabilirsiniz.'}
+];
+(function(){
+  var kur=function(){ try{ window.TUR_ADIMLARI=SB_TUR; }catch(e){}
+    var ob=window.turBaslat; if(typeof ob!=='function'||ob._sb) return;
+    window.turBaslat=function(elle){ var n=0; window.TUR_ADIMLARI=SB_TUR;
+      (function dene(){ var a=document.getElementById('sbAna'), hazir=a&&a.style.display!=='none'&&a.querySelector('.sba-ic .sba-bas');
+        if(!hazir&&a&&a.style.display==='none'&&elle){ try{ anaGoster(); }catch(e){} }
+        if(hazir||n++>20) ob.call(window, elle); else setTimeout(dene, 700); })(); };
+    window.turBaslat._sb=1; };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', kur); else kur();
+  setTimeout(kur, 0);
+})();
+
 /* ═══ TAKVİM (2026-11-18, kullanıcı: "Takvim sistemini puan durumu gibi yap"): lig sayfasının Fikstür / Sonuçlar tarih şeridiyle aynı görünüm -
    "18 Kas" biçiminde tarih çipleri (bugün yeşil, seçili gün vurgu rengi), sağda takvim düğmesi → "Tarih Seç" sayfası (uzun tarih, o gün maçı olan lig sayısı). */
 var GUN_KISA=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
