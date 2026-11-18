@@ -356,6 +356,7 @@ window.__sbKupaHtml=function(tid){
     var e=esc, md=function(n){ return n+'.'; };
     var h='';
     // kulüp kimliği
+    if(v.kur&&v.kur.k==='Federasyon'&&/^(UEFA|FIFA|CONMEBOL|CAF|AFC|CONCACAF|OFC|Union of European)/i.test(v.kur.fed||'')) delete v.kur;   // kıta federasyonu ulusal federasyon sanılmasın
     var kur=kurulusYaz(v.kur), bilgi=[];
     if(kur) bilgi.push('<span><small>'+(v.kur&&v.kur.k==='Federasyon'?'Federasyon kuruluşu':'Kuruluş')+'</small><b>'+e(kur)+'</b></span>');
     if(v.stad) bilgi.push('<span><small>Stadyum</small><b>'+e(v.stad)+(v.kap?' · '+v.kap.toLocaleString('tr-TR'):'')+'</b></span>');

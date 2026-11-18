@@ -217,7 +217,7 @@ async function kulupBilgi(wdIds, eski){
   // Kuruluş günü/ayı: önceki dosyada tam tarih varsa yeniden okunmaz
   for(const c of ids){
     const k = o[c] || (o[c] = {}); const e = eski[c];
-    if(e && e.kur && e.kur.g){ k.kur = e.kur; continue; }
+    if(e && e.kur && e.kur.g && e.kur.k !== 'Federasyon'){ k.kur = e.kur; continue; }
     let t = await wikiKurulus(k.trw, 'tr'); if(!(t && t.g)){ const t2 = await wikiKurulus(k.enw, 'en'); if(t2 && (!t || t2.g || (!t.a && t2.a))) t = t2; }
     const w = k.wdT;
     if(t && w && w.y && Math.abs(t.y - w.y) > 1 && !(t.g && !w.g)) t = null;     // Vikipedi ile Wikidata çok farklıysa Wikidata'ya güven
@@ -227,8 +227,8 @@ async function kulupBilgi(wdIds, eski){
   // Milli takımlarda Wikidata'da kuruluş yok: takıma bağlı federasyonun kuruluş tarihi kullanılır ("federasyon" diye işaretlenir)
   const fedYok = ids.filter(c => !(o[c] && o[c].kur));
   for(const p of parca(fedYok, 40)){
-    const b = await sparql('SELECT ?c ?inc ?pre ?fl WHERE { VALUES ?c { ' + p.map(x => 'wd:' + x).join(' ') + ' } ?c wdt:P31/wdt:P279* wd:Q6979593 . ?c ?prop ?f . ?f p:P571/psv:P571 [ wikibase:timeValue ?inc ; wikibase:timePrecision ?pre ] . '
-      + '?f rdfs:label ?fl FILTER(lang(?fl)="en" && REGEX(?fl, "(Federation|Association|Football Union|Federación|Federação|Fédération|Football Board)", "i")) }');
+    const b = await sparql('SELECT ?c ?inc ?pre ?fl WHERE { VALUES ?c { ' + p.map(x => 'wd:' + x).join(' ') + ' } ?c wdt:P31/wdt:P279* wd:Q6979593 ; wdt:P17 ?ulke . ?c ?prop ?f . ?f wdt:P17 ?ulke . ?f p:P571/psv:P571 [ wikibase:timeValue ?inc ; wikibase:timePrecision ?pre ] . '
+      + '?f rdfs:label ?fl FILTER(lang(?fl)="en" && REGEX(?fl, "(Federation|Association|Football Union|Federación|Federação|Fédération|Football Board)", "i") && !REGEX(?fl, "^(UEFA|FIFA|CONMEBOL|CAF|AFC|CONCACAF|OFC|Union of European)", "i")) }');
     b.forEach(x => { const c = qid(v(x, 'c')); const k = o[c] || (o[c] = {}); if(k.kur) return; const m = /^(-?\d+)-(\d\d)-(\d\d)/.exec(v(x, 'inc').replace(/^\+/, '')); const pr = +v(x, 'pre');
       if(m) k.kur = { k: 'Federasyon', y: +m[1], a: pr >= 10 ? +m[2] : 0, g: pr >= 11 ? +m[3] : 0, fed: v(x, 'fl') }; });
   }
