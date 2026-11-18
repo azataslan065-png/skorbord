@@ -1,15 +1,14 @@
-// Deneme 2: TFF sayfa içerikleri (windows-1254), beIN yayın akışı verisi
+// Deneme 3: TFF fikstür satır yapısı, beIN yayın akışı verisi
 const al = async (u) => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36', 'Accept-Language': 'tr-TR,tr' } }); const b = Buffer.from(await r.arrayBuffer());
   const ct = r.headers.get('content-type') || ''; const t = /utf-8/i.test(ct) ? b.toString('utf8') : new TextDecoder('windows-1254').decode(b); return { s: r.status, t, ct }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
-const ent = s => s.replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-const temiz = h => ent(h.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
 (async () => {
-  for(const u of ['https://www.tff.org/Default.aspx?pageID=29&macID=315426', 'https://www.tff.org/Default.aspx?pageID=29&macID=319258', 'https://www.tff.org/default.aspx?pageID=976', 'https://www.tff.org/Default.aspx?pageID=971']){
-    const r = await al(u); const t = temiz(r.t); console.log('=====', u, r.s, r.ct);
-    const k = t.indexOf('Diğer Haberler Temsilciler'); const g = t.slice(t.indexOf('MİLLİ TAKIMLAR') > 0 ? 0 : 0);
-    for(const w of ['Hakemler', 'Hakem', 'Grup', 'Puan Durumu', 'Hafta', 'Stad']){ let i = -1, n = 0; while((i = t.indexOf(w, i + 1)) >= 0 && n < 40){ n++; if(i > 9000){ console.log('[' + w + '@' + i + ']', t.slice(i - 100, i + 500)); break; } } }
-    const h = r.t; const mi = h.search(/Hakem/i); const sonH = h.lastIndexOf('Hakem'); console.log('HAM son Hakem', ent(h.slice(sonH - 1500, sonH + 1500)).replace(/\s+/g, ' ').slice(0, 3000));
+  for(const id of [976, 198]){
+    const r = await al('https://www.tff.org/default.aspx?pageID=' + id); const h = r.t;
+    const i = h.search(/macId=\d+/i); console.log('===== TFF', id, 'ilk maç çevresi'); console.log(h.slice(i - 2500, i + 1200).replace(/\s+/g, ' '));
+    const g = h.search(/Kırmızı Grup|Beyaz Grup|Sezon 2026-2027/); console.log('--- grup başlığı çevresi'); console.log(h.slice(g - 800, g + 400).replace(/\s+/g, ' '));
+    const sel = h.match(/<select[\s\S]*?<\/select>/gi) || []; console.log('--- select', sel.length); sel.slice(0, 4).forEach(s => console.log(s.replace(/\s+/g, ' ').slice(0, 900)));
   }
-  const b = await al('https://beinsports.com.tr/yayin-akisi/beinsports/carsamba'); const nd = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(b.t);
-  if(nd){ const j = JSON.parse(nd[1]); const pp = j.props && j.props.pageProps; console.log('beIN pageProps anahtarları', Object.keys(pp || {})); console.log('beIN', JSON.stringify(pp).slice(0, 3000)); }
+  const b = await al('https://beinsports.com.tr/yayin-akisi/beinsports/cumartesi'); const nd = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(b.t);
+  if(nd){ const j = JSON.parse(nd[1]); const pp = j.props.pageProps; console.log('===== beIN days', JSON.stringify(pp.days).slice(0, 800)); console.log('beIN data', JSON.stringify(pp.data).slice(0, 4000)); console.log('beIN activeLeagues', JSON.stringify(pp.activeLeagues).slice(0, 600)); }
+  const m = await al('https://beinsports.com.tr/lig/super-lig/fikstur'); const nd2 = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(m.t); console.log('===== beIN fikstür', m.s, nd2 ? JSON.stringify(JSON.parse(nd2[1]).props.pageProps).slice(0, 3000) : '');
 })();
