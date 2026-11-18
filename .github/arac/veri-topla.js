@@ -717,6 +717,43 @@ async function ekipTopla(tum){
   console.log('EKİP', 'aday', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.ev + '-' + x.dep + ': ' + [x.spiker, (x.yorumcu || []).join('+'), x.kanal].join(' / ')).join(' | ').slice(0, 900), 'bulunamayan', ATLA.slice(0, 8).join(', '));
 }
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
+
+// ── TVF (Türkiye Voleybol Federasyonu): Sultanlar Ligi, Efeler Ligi, Kupa Voley ───────────────────────────────────────────────
+// (2026-11-18-L) TheSportsDB'de Sultanlar Ligi yok, Efeler eksik. TVF'nin lig sayfası (tvf.org.tr/lig/<lig>) fikstürü kendi "Fikstür"
+// sekmesinde sitenin Livewire çağrısıyla getirir; aynı çağrı yapılır (herkese açık sayfa). Maç: tarih / saat (TR), salon, set sonuçları,
+// yayın kanalı, takım logoları.
+const TVF_UA = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36';
+function lwCoz(x){ if(Array.isArray(x)){ if(x.length === 2 && x[1] && typeof x[1] === 'object' && x[1].s) return lwCoz(x[0]); return x.map(lwCoz); }
+  if(x && typeof x === 'object'){ const o = {}; Object.keys(x).forEach(k => { o[k] = lwCoz(x[k]); }); return o; } return x; }
+function trBaslik(a){ return String(a || '').trim().toLocaleLowerCase('tr-TR').replace(/(^|[\s(\/-])(\S)/g, (m, b, c) => b + c.toLocaleUpperCase('tr-TR')); }
+async function tvfLig(L, eski){
+  const sayfa = L.tsdb.slice(4), adres = 'https://tvf.org.tr/lig/' + sayfa;
+  const r = await fetch(adres, { headers: { 'User-Agent': TVF_UA, 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(45000) });
+  const ck = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map(c => c.split(';')[0]).join('; ');
+  const t = await r.text(); const de = x => x.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
+  const snm = /wire:snapshot="([^"]+)"/.exec(t), tok = (/data-csrf="([^"]+)"/.exec(t) || [])[1];
+  if(!snm || !tok) throw new Error('TVF sayfası okunamadı');
+  const u = await fetch('https://tvf.org.tr/livewire/update', { method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', 'X-Livewire': '', 'X-CSRF-TOKEN': tok, 'Cookie': ck, 'User-Agent': TVF_UA, 'Referer': adres },
+    body: JSON.stringify({ _token: tok, components: [{ snapshot: de(snm[1]), updates: {}, calls: [{ path: '', method: 'setActiveTab', params: ['fikstur'] }] }] }) });
+  const k = await u.json(); const d = lwCoz(JSON.parse(k.components[0].snapshot).data || {});
+  const fx = d.leagueFixture || [], liste = [];
+  (Array.isArray(fx) ? fx : [fx]).forEach(g => { if(g && typeof g === 'object') Object.keys(g).forEach(h => { (g[h] || []).forEach(m => { if(m && m.ATAKIMI) liste.push(m); }); }); });
+  const takim = {}, mac = [];
+  liste.forEach(m => {
+    const tm = /(\d{2})\.(\d{2})\.(\d{4})/.exec(m.TARIH || ''); if(!tm) return;
+    const z = tm[3] + '-' + tm[2] + '-' + tm[1] + 'T' + ((/^\d{1,2}:\d{2}$/.test(m.SAAT || '') ? m.SAAT.padStart(5, '0') : '00:00')) + ':00+03:00';
+    const a = String(m.ATAKIMIID || m.ATAKIMI), b = String(m.BTAKIMIID || m.BTAKIMI);
+    takim[a] = takim[a] || { ad: trBaslik(m.ATAKIMI), kisa: trBaslik(m.ATAKIMI), yer: '', logo: m.ALOGONAME || '' };
+    takim[b] = takim[b] || { ad: trBaslik(m.BTAKIMI), kisa: trBaslik(m.BTAKIMI), yer: '', logo: m.BLOGONAME || '' };
+    const sa = m.SETA === '' || m.SETA == null ? null : +m.SETA, sb = m.SETB === '' || m.SETB == null ? null : +m.SETB;
+    const bitti = sa != null && sb != null && (Math.max(sa, sb) >= 3 || m.HUKMEN === '1');
+    mac.push({ id: 'tvf' + sayfa.replace(/[^a-z]/g, '') + '_' + (m.HAFTA || 0) + '_' + (m.MACNO || mac.length), r: +m.HAFTA || 1, z, ev: a, dep: b, evAd: takim[a].ad, depAd: takim[b].ad, evLogo: takim[a].logo, depLogo: takim[b].logo,
+      evG: bitti ? sa : null, depG: bitti ? sb : null, d: bitti ? 'FT' : '', st: trBaslik(m.YER || '') + (m.IL ? ' (' + trBaslik(m.IL) + ')' : ''), tv: (m.TVKANAL || '').trim(), setler: (m.SETSONUCLARI || '').trim() });
+  });
+  if(!mac.length) throw new Error('TVF fikstürü boş');
+  const sezon = (liste[0] && String(liste[0].SEZON || '').trim()) || ((eski && eski.sezonAdi) || '');
+  return { yil: parseInt(sezon, 10) || new Date().getFullYear(), sezonAdi: sezon, takim, gecmis: {}, mac, kaynak: 'TVF' };
+}
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
@@ -724,7 +761,7 @@ async function ligIsle(L){
   if(/^espn:/.test(L.tsdb || '')) return;   // ESPN basketbol / voleybol ligleri: uygulama doğrudan ESPN'den okur, ek dosya yok
   const FUTBOL = !/^(bsk|vlb)\./.test(L.slug);   // basketbol / voleybol: kulüp eşleşmesi, kadro, geçmiş sezon futbol kaynaklarına göre; atlanır
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
-  const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb === 'tff' ? await tffLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
+  const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb === 'tff' ? await tffLig(L, eski) : /^tvf:/.test(L.tsdb) ? await tvfLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
@@ -744,7 +781,7 @@ async function ligIsle(L){
       fotoT = Date.now();
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
-    if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
+    if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && !/^tvf:/.test(L.tsdb) && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
   } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd', 'koord'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
   if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {

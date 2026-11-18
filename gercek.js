@@ -66,7 +66,8 @@ var LIGLER_SPOR=[
  ['bsk.gre.gbl','Greek Basket League','Yunanistan','4452'],['bsk.fra.lnb','LNB Élite','Fransa','4423'],['bsk.ger.bbl','Basketball Bundesliga','Almanya','4441'],['bsk.ltu.lkl','LKL','Litvanya','4478'],
  ['bsk.isr.bpl','İsrail Basketbol Premier Ligi','İsrail','4474'],['bsk.srb.kls','KLS','Sırbistan','5121'],['bsk.pol.plk','PLK','Polonya','4578'],['bsk.gbr.sbl','Super League Basketball','Birleşik Krallık','4431'],
  ['bsk.aus.nbl','NBL','Avustralya','espn:basketball/nbl'],['bsk.chn.cba','CBA','Çin','4442'],['bsk.jpn.bleague','B.League','Japonya','4977'],['bsk.kor.kbl','KBL','Güney Kore','5124'],['bsk.arg.lnb','LNB','Arjantin','4734'],
- ['vlb.tur.efeler','Efeler Ligi','Türkiye','4543'],['vlb.ita.superlega','SuperLega','İtalya','4544'],['vlb.ita.a1k','Serie A1 Kadınlar','İtalya','4584'],['vlb.pol.plusliga','PlusLiga','Polonya','5619'],
+ ['vlb.tur.sultanlar','Vodafone Sultanlar Ligi','Türkiye','tvf:sultanlar-ligi'],['vlb.tur.efeler','SMS Grup Efeler Ligi','Türkiye','tvf:efeler-ligi'],
+ ['vlb.tur.kupak','Kupa Voley (Kadınlar)','Türkiye','tvf:kupa-voley-kadinlar'],['vlb.tur.kupae','Kupa Voley (Erkekler)','Türkiye','tvf:erkekler-axa-sigorta-kupa-voley'],['vlb.ita.superlega','SuperLega','İtalya','4544'],['vlb.ita.a1k','Serie A1 Kadınlar','İtalya','4584'],['vlb.pol.plusliga','PlusLiga','Polonya','5619'],
  ['vlb.rus.superliga','Rusya Süper Ligi','Rusya','4545'],['vlb.fra.liguea','Ligue A (Erkekler)','Fransa','4582'],['vlb.ger.bundesliga','Voleybol Bundesliga','Almanya','5618'],['vlb.gre.a1','A1 Ethniki','Yunanistan','4542'],
  ['vlb.bel.liga','Volleyliga','Belçika','5617'],['vlb.kor.vleague','V-League (Erkekler)','Güney Kore','5757'],['vlb.kor.vleaguek','V-League (Kadınlar)','Güney Kore','5756'],
  ['vlb.int.cevsl','CEV Şampiyonlar Ligi (Erkekler)','Avrupa','5616'],['vlb.int.cevkupa','CEV Kupası','Avrupa','5615'],['vlb.int.challenge','CEV Challenge Kupası','Avrupa','5614'],
@@ -118,7 +119,7 @@ function tsdbYukle(slug, k){
     var teams={}, matches={};
     var _ad=function(x){ return sporAdi(slug, trAd(x)); };
     Object.keys(j.takim||{}).forEach(function(id){ var t=j.takim[id]; teams['t'+id]={id:'t'+id, name:_ad(t.ad), shortName:_ad(t.kisa||t.ad), logo:t.logo||'', color:'', tsdb:id}; });
-    j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; matches['m'+e.rid]=o; });
+    j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; if(m.tv) o.tv=m.tv; matches['m'+e.rid]=o; });
     var turAd=null, ELEME={100:'Play-off',125:'Çeyrek Final',150:'Yarı Final',160:'Üçüncülük Maçı',170:'Play-off',180:'Play-off',200:'Final',300:'Play-off',400:'Play-off',500:'Eleme Turu'};
     j.mac.forEach(function(m){ if(m.tur&&m.r){ (turAd=turAd||{})[m.r]=m.tur; } else if(m.r>=100&&ELEME[m.r]){ (turAd=turAd||{})[m.r]=ELEME[m.r]; } });
     var gr={}; j.mac.forEach(function(m){ if(!m.grup) return; var g=gr[m.grup]||(gr[m.grup]={}); g['t'+m.ev]=1; g['t'+m.dep]=1; });
