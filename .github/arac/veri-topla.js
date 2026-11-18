@@ -365,7 +365,7 @@ function wikiGoller(x, taraf){
 function kutularOku(wt){
   const bas = []; let m; const hr = /^(={2,4})\s*([^=\n]+?)\s*\1\s*$/gm; while((m = hr.exec(wt))) bas.push({ i: m.index, ad: wikiTemizle(m[2]) });
   // tur adı: maç kutusunun üstündeki en yakın anlamlı başlık ("Matches", "Seedings" gibi genel başlıklar atlanır), Türkçeye çevrilir
-  const GENEL = /^(matches|results|fixtures|summary|bracket|draw|seedings?|upsets|venue|qualified teams|qualification|rounds|top scorers|see also|references)$/i;
+  const GENEL = /^(matches|match|match details|details|results|fixtures|summary|bracket|draw|seedings?|upsets|venue|teams|route to the final|qualified teams|qualification|rounds|top scorers|see also|notes|references)$/i;
   const TUR_TR = a => { let m; const s = a.trim();
     if((m = /^(first|second|third|fourth|fifth|sixth|seventh)\s+round$/i.exec(s))) return ({ first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7 })[m[1].toLowerCase()] + '. Tur';
     if((m = /^round\s+(\d+)$/i.exec(s))) return m[1] + '. Tur';
@@ -377,7 +377,7 @@ function kutularOku(wt){
   sablonlar(wt, 'Football box collapsible|Football box|Footballbox collapsible|Footballbox').forEach(k => {
     const f = sablonAlan(k.t), zz = wikiZaman(f.date || '', f.time || ''); if(!zz) return;
     const t1 = wikiTemizle(f.team1), t2 = wikiTemizle(f.team2); if(!t1 || !t2 || /^TBD|winner|loser/i.test(t1 + ' ' + t2)) return;
-    const skH = wikiTemizle(f.score), sk = skH.replace(/[–—]/g, '-'); const sm = /^(\d+)\s*-\s*(\d+)/.exec(sk);
+    const skH = wikiTemizle(f.score) || (f.score1 != null && String(f.score1).trim() !== '' && f.score2 != null && String(f.score2).trim() !== '' ? wikiTemizle(f.score1) + '–' + wikiTemizle(f.score2) : ''), sk = skH.replace(/[–—]/g, '-'); const sm = /^(\d+)\s*-\s*(\d+)/.exec(sk);
     const pen = wikiTemizle(f.penaltyscore || '').replace(/[–—]/g, '-'); const pm = /^(\d+)\s*-\s*(\d+)/.exec(pen);
     const id = 'w' + require('crypto').createHash('md5').update(zz.z.slice(0, 10) + '|' + norm(t1) + '|' + norm(t2)).digest('hex').slice(0, 10);
     mac.push({ id, r: turAdi(k.i), z: zz.z, saatYok: zz.saatYok, ev: norm(t1).replace(/ /g, '_'), dep: norm(t2).replace(/ /g, '_'), evAd: t1, depAd: t2, evLogo: '', depLogo: '',

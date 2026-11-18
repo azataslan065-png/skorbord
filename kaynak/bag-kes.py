@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-C'
+SB_BUILD = '2026-11-18-D'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -168,4 +168,24 @@ for _y in ('index.html', 'gercek.js', 'ortak/ortak.js'):
 isle('index.html', [
   ('kupa dolabı', lambda s: s if 'window.__sbKupaHtml' in s else s.replace("function ptKupaDolabiHtml(tid){", "function ptKupaDolabiHtml(tid){\n  if(window.__sbKupaHtml){ var _sbK=window.__sbKupaHtml(tid); if(_sbK!=null) return _sbK; }   /* Skorbord: veri dosyasından (gercek.js) */", 1)),
   ('foto kaynağı', lambda s: s if 'sb-foto-not' in s else s.replace("""      ${p.photo?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/>`:""", """      ${p.photo&&p.photoCredit?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/><div class="sb-foto-not">Fotoğraf: ${p.photoSource?`<a href="${escAttr(p.photoSource)}" target="_blank" rel="noopener">`:''}${escHtml(p.photoCredit)}${p.photoSource?'</a>':''}</div>`:p.photo?`<img src="${p.photo}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid ${c};margin:0 auto .6rem"/>`:""", 1)),
+])
+
+# Kupalar (Ziraat Türkiye Kupası, Turkcell Süper Kupa) eleme usulü: puan durumu ve fikstürdeki puan durumu özeti gösterilmez (bkz. gercek.js sbKupa).
+isle('index.html', [
+  ('kupa puan durumu', degis("""  const teams=(window.__sbGrupTakim?window.__sbGrupTakim(D.teams||{}):(D.teams||{})),matches=getEffectiveMatches();
+""", """  const teams=(window.__sbGrupTakim?window.__sbGrupTakim(D.teams||{}):(D.teams||{})),matches=getEffectiveMatches();
+  if(D&&D.sbKupa&&el){ el.innerHTML='<div style="text-align:center;color:var(--mu);padding:2.5rem 1.2rem;font-size:.84rem;line-height:1.6"><div style="font-weight:900;color:var(--tx);font-size:1rem;margin-bottom:.35rem">Eleme usulü turnuva</div>Bu turnuvada puan durumu yok; maçlar tur tur Fikstür ve Sonuçlar sekmelerinde.</div>'; return; }
+""")),
+  ('kupa özet kartı', degis("""function renderStandingsPreviewCard(highlightTeamIds,fullList,liveOverrideMatch){
+""", """function renderStandingsPreviewCard(highlightTeamIds,fullList,liveOverrideMatch){
+  if(D&&D.sbKupa)return '';
+""")),
+])
+
+# Açık olan HER menünün (maç ayrıntısı, sıralamalar, takvim...) üstüne "Video / Canlı Yayın" listesi çiziliyordu: canlı maç kartı arka planı
+# dinleyicisi, menü açık mı diye bakıyor ama açık menünün video listesi olup olmadığına bakmıyordu. Skorbord'da uzak kök her bildirimde
+# dinleyicileri yeniden çalıştırdığı için maç ayrıntısı birkaç saniyede bir video listesine dönüyordu. Artık yalnız video listesi açıksa çizilir.
+isle('index.html', [
+  ('video listesi yalnız kendi menüsünde', degis("""try{ if(typeof renderVideoScreenList==='function'&&document.getElementById('sheetWrap')&&document.getElementById('sheetWrap').classList.contains('open')) renderVideoScreenList(); }""",
+    """try{ if(typeof renderVideoScreenList==='function'&&document.getElementById('sheetWrap')&&document.getElementById('sheetWrap').classList.contains('open')&&document.getElementById('videoScreenList')&&(!window.PTSheetNav||!PTSheetNav.currentKey||PTSheetNav.currentKey()==='videoList')) renderVideoScreenList(); }""")),
 ])

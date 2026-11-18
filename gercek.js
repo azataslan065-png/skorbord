@@ -444,7 +444,7 @@ function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
   gorevliDinle();
   return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||null, teams:v.teams, matches:v.matches,
-    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbGercek:{slug:v.slug, t:Date.now()}};
+    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbKupa:TSDB_LIG[v.slug]==='wiki'||null, sbGercek:{slug:v.slug, t:Date.now()}};
 }
 function agacaYaz(v){
   var id=ligKimlik(v.slug), eski=YerelVT.ham('leagues/'+id)||{}, b=ligBelgesi(v);
@@ -895,7 +895,10 @@ function anaCiz(){
       return '<div class="sba-bas ince" onclick="Gercek.anaLigAc(\''+esc(s)+'\')">'+(b?'<img class="sba-bay" src="'+esc(b)+'" alt="" onerror="this.style.visibility=\'hidden\'">':'<span class="sba-bay"></span>')+'<span class="sba-ad">'+esc(ligBaslik(s))+'</span><span class="sba-ok">›</span></div>'; }).join('')+'</div>';
   h+='<div style="height:5rem"></div></div>';
   var kay=el.querySelector('.sba-ic'), y=kay?kay.scrollTop:0;
+  var gs0=el.querySelector('.sba-gunler'), gx=gs0?gs0.scrollLeft:null;
   el.innerHTML=h; var k2=el.querySelector('.sba-ic'); if(k2) k2.scrollTop=y;
+  // tarih şeridi: yeniden çizimde kaydırma yeri korunur; gün değişince / ilk açılışta seçili gün ortaya alınır
+  var gs=el.querySelector('.sba-gunler'); if(gs){ if(gx!=null && ANA.gsGun===ofs) gs.scrollLeft=gx; else { var on=gs.querySelector('.sba-gun.on'); if(on) gs.scrollLeft=Math.max(0, on.offsetLeft-gs.offsetLeft-(gs.clientWidth-on.offsetWidth)/2); } ANA.gsGun=ofs; }
 }
 function anaGoster(){
   var el=document.getElementById('sbAna');
@@ -923,8 +926,8 @@ function anaMacAc(slug, rid){
 }
 function anaFavLig(slug){ var f=favOku(); if(f.lig[slug]) delete f.lig[slug]; else f.lig[slug]=1; favYaz(f); anaCiz(); }
 function anaFavMac(rid){ var f=favOku(); if(f.mac[rid]) delete f.mac[rid]; else f.mac[rid]=Date.now(); var s=Date.now()-14*864e5; Object.keys(f.mac).forEach(function(k){ if(f.mac[k]<s) delete f.mac[k]; }); favYaz(f); anaCiz(); }
-function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); setTimeout(function(){ try{ var b=document.querySelector('#sbAna .sba-gun.on'); if(b&&b.scrollIntoView) b.scrollIntoView({inline:'center',block:'nearest'}); }catch(e){} }, 0); }
-/* ═══ TAKVİM (2026-11-18, kullanıcı: "Takvim sistemini puan tablosu gibi yap"): lig sayfasının Fikstür / Sonuçlar tarih şeridiyle aynı görünüm -
+function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); }
+/* ═══ TAKVİM (2026-11-18, kullanıcı: "Takvim sistemini puan durumu gibi yap"): lig sayfasının Fikstür / Sonuçlar tarih şeridiyle aynı görünüm -
    "18 Kas" biçiminde tarih çipleri (bugün yeşil, seçili gün vurgu rengi), sağda takvim düğmesi → "Tarih Seç" sayfası (uzun tarih, o gün maçı olan lig sayısı). */
 var GUN_KISA=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 var TAKVIM_SVG='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
@@ -960,7 +963,7 @@ try{ SIRA.sekme=localStorage.getItem('sb_siraSekme')||'ulke'; }catch(e){}
 var ULKE3={TUR:'Türkiye',ENG:'İngiltere',ESP:'İspanya',ITA:'İtalya',GER:'Almanya',FRA:'Fransa',NED:'Hollanda',POR:'Portekiz',BEL:'Belçika',SCO:'İskoçya',GRE:'Yunanistan',RUS:'Rusya',AUT:'Avusturya',SUI:'İsviçre',DEN:'Danimarka',NOR:'Norveç',SWE:'İsveç',CZE:'Çekya',POL:'Polonya',CRO:'Hırvatistan',SRB:'Sırbistan',UKR:'Ukrayna',ISR:'İsrail',CYP:'Kıbrıs',HUN:'Macaristan',ROU:'Romanya',BUL:'Bulgaristan',SVK:'Slovakya',SVN:'Slovenya',AZE:'Azerbaycan',KAZ:'Kazakistan',BLR:'Belarus',MDA:'Moldova',GEO:'Gürcistan',ARM:'Ermenistan',ALB:'Arnavutluk',KOS:'Kosova',MKD:'Kuzey Makedonya',MNE:'Karadağ',BIH:'Bosna Hersek',IRL:'İrlanda',NIR:'Kuzey İrlanda',WAL:'Galler',ISL:'İzlanda',FIN:'Finlandiya',EST:'Estonya',LVA:'Letonya',LTU:'Litvanya',LUX:'Lüksemburg',MLT:'Malta',FRO:'Faroe Adaları',AND:'Andorra',SMR:'San Marino',GIB:'Cebelitarık',LIE:'Lihtenştayn'};
 function siraUlke(kod, ad){ return ULKE3[kod]||trAd(ad)||ad||kod||''; }
 function siraP(x){ return x==null||x===''?'-':(typeof x==='number'?x.toLocaleString('tr-TR',{minimumFractionDigits:3,maximumFractionDigits:3}):String(x)); }
-function siraEgilim(n){ n=+n||0; return n>0?'<span class="sbs-up">▲'+n+'</span>':n<0?'<span class="sbs-dn">▼'+(-n)+'</span>':'<span class="sbs-eq">–</span>'; }
+function siraEgilim(n){ if(/^UP/i.test(n)) return '<span class="sbs-up">▲</span>'; if(/^DOWN/i.test(n)) return '<span class="sbs-dn">▼</span>'; n=+n||0; return n>0?'<span class="sbs-up">▲'+n+'</span>':n<0?'<span class="sbs-dn">▼'+(-n)+'</span>':'<span class="sbs-eq">–</span>'; }
 function siralamaAc(){
   var sc=document.getElementById('sheetContent'), sw=document.getElementById('sheetWrap'); if(!sc||!sw) return;
   sc.innerHTML='<div class="sheet-handle"></div><div class="sbs-yuk">Sıralamalar yükleniyor…</div>'; sw.classList.add('open');
@@ -1009,7 +1012,7 @@ function siraSekme(s){ SIRA.sekme=s; SIRA.ara=''; try{ localStorage.setItem('sb_
 function siraAra(v){ SIRA.ara=v; SIRA.odak=true; siralamaCiz(); }
 function siraTr(){ SIRA.tr=!SIRA.tr; siralamaCiz(); }
 (function(){ try{ var st=document.createElement('style'); st.textContent=''
-  +'.sba-takvim{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border-bottom:1px solid var(--br)}.sba-takvim .sba-gunler{flex:1;padding:.15rem 0;border:0}'
+  +'.sba-takvim{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border-bottom:1px solid var(--br)}.sba-takvim .sba-gunler{flex:1;min-width:0;padding:.15rem 0;border:0}'
   +'.sba-takvim .sba-gun{display:flex;flex-direction:column;align-items:center;gap:.05rem;border-radius:10px;padding:.3rem .62rem;background:#1a1a1a;border:1.5px solid rgba(255,255,255,.1);color:#fff;font-size:.68rem;white-space:nowrap}'
   +'.sba-takvim .sba-gun small{font-size:.56rem;font-weight:600;opacity:.7}.sba-takvim .sba-gun.bugun{background:#15803d;border-color:#22c55e}.sba-takvim .sba-gun.on{background:var(--ac);border-color:var(--ac)}'
   +'.sba-tbtn{flex-shrink:0;background:#1a1a1a;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;cursor:pointer}.sba-tbtn.kirmizi{border-color:rgba(239,68,68,.4);color:#f87171}'
