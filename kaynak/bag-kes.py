@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-G'
+SB_BUILD = '2026-11-18-H'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -220,4 +220,28 @@ isle('index.html', [
   try{ if(window._ptOrtakTv) D.videoLinks = window._ptOrtakTv; }catch(e){self.__ds&&self.__ds(6478,e)}
   try{ if(window.__sbYoutubeListe){ var _yt=window.__sbYoutubeListe(); D.videoLinks=((D.videoLinks)||[]).filter(function(x){ return !(x&&x.sbYoutube); }).concat(_yt); } }catch(e){self.__ds&&self.__ds(6479,e)}
 }""")),
+])
+
+# Kadro sekmesindeki ısı / şut haritası sayfaları (2026-11-18, kullanıcı: "kadro sekmesinde ısı haritası hiçbir maç için desteklenmiyor ...
+# duruma göre yer kaplamasın"). Bu veriler yalnız SAHA'nın oyun içinde ürettiği konum kayıtlarından gelir; gerçek maç kaynaklarında yok.
+# Skorbord'da: ısı verisi yoksa ısı sayfası hiç eklenmez; şut / gol konumu da yoksa kaydırmalı sayfa kurulmaz, kadro tek başına kalır.
+isle('index.html', [
+  ('ısı haritası yalnız veri varsa', degis("""function ptKayVar(m){ return !!(m&&(m.played||m.sahaMode||ptIsiVar(m))); }""",
+    """function ptSutVarSb(m){ try{ if(!m) return false; if(m.sahaSutlar) return true; return (Array.isArray(m.events)?m.events:Object.values(m.events||{})).some(function(e){ return e&&e.type==='goal'&&e.k; }); }catch(e){ return false; } }
+function ptKayVar(m){ return !!(m&&(ptIsiVar(m)||ptSutVarSb(m))); }   /* Skorbord: yalnız gerçekten harita verisi olan maçta */""")),
+  ('ısı sayfası yoksa atla', rx(r"""  if\(!ptIsiVar\(m\)\) return '</div><div class="isi-say"><div class="isi-kart"[\s\S]*?Kaydır: ⟷ Kadro / Isı / Şut haritası</span></div>';""",
+    lambda m: """  if(!ptIsiVar(m)) return '</div>'+ptSutSayfa(m,h,a)+'</div><div class="isi-nokta"><i class="on"></i><i></i><span>Kaydır: ⟷ Kadro / Şut haritası</span></div>';""",
+    "Kaydır: ⟷ Kadro / Şut haritası")),
+])
+# Kadrosu hiç gelmeyen maçta (kaynak kadro vermiyor) boş saha çizilmez; kısa bir not yeterli.
+_KBOS = """if(!homeData.count&&!awayData.count) return '<div style="padding:1.6rem 1rem;text-align:center;color:var(--mu);font-size:.8rem;line-height:1.6"><b style="color:var(--tx);font-size:.9rem">Kadro bilgisi yok</b><br>'+(m&&m.played?'Bu maçın ilk 11\\'leri kaynakta yayımlanmadı.':'İlk 11\\'ler maçtan önce açıklanınca burada görünür.')+'</div>';"""
+isle('index.html', [
+  ('boş kadro dik', degis("""    const awayData=renderHalfPitch(a,'bottom',true,liveEvents,'away');
+""", """    const awayData=renderHalfPitch(a,'bottom',true,liveEvents,'away');
+    """ + _KBOS + """
+""")),
+  ('boş kadro yatay', degis("""    const awayData=renderHalfPitch(a,'right',false,liveEvents2,'away');
+""", """    const awayData=renderHalfPitch(a,'right',false,liveEvents2,'away');
+    """ + _KBOS + """
+""")),
 ])

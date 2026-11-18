@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-18-G';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-18-H';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -15720,6 +15720,7 @@ function renderMdKadro(id,m,h,a){
     const liveEvents=m.events||[];
     const homeData=renderHalfPitch(h,'top',true,liveEvents,'home');
     const awayData=renderHalfPitch(a,'bottom',true,liveEvents,'away');
+    if(!homeData.count&&!awayData.count) return '<div style="padding:1.6rem 1rem;text-align:center;color:var(--mu);font-size:.8rem;line-height:1.6"><b style="color:var(--tx);font-size:.9rem">Kadro bilgisi yok</b><br>'+(m&&m.played?'Bu maçın ilk 11\'leri kaynakta yayımlanmadı.':'İlk 11\'ler maçtan önce açıklanınca burada görünür.')+'</div>';
     return `<div style="padding:.85rem .9rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
         <div style="display:flex;align-items:center;gap:.3rem">
@@ -15768,6 +15769,7 @@ function renderMdKadro(id,m,h,a){
     const liveEvents2=m.events||[];
     const homeData=renderHalfPitch(h,'left',false,liveEvents2,'home');
     const awayData=renderHalfPitch(a,'right',false,liveEvents2,'away');
+    if(!homeData.count&&!awayData.count) return '<div style="padding:1.6rem 1rem;text-align:center;color:var(--mu);font-size:.8rem;line-height:1.6"><b style="color:var(--tx);font-size:.9rem">Kadro bilgisi yok</b><br>'+(m&&m.played?'Bu maçın ilk 11\'leri kaynakta yayımlanmadı.':'İlk 11\'ler maçtan önce açıklanınca burada görünür.')+'</div>';
     return `<div style="padding:.85rem .9rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
         <div style="display:flex;align-items:center;gap:.3rem">
@@ -15821,7 +15823,8 @@ function ptIsiVar(m){ return !!(m&&m.sahaIsi&&m.sahaIsi.home&&m.sahaIsi.away); }
    olmayan maçta (SAHA dışında oynanan / bu özellikten önce oynanan / yazımı reddedilen) kadro sabit kalıyor, kaydırınca hiçbir
    şey çıkmıyordu; gol haritası ise yalnızca takım detayındaydı. ŞİMDİ oynanmış (ya da SAHA'da canlı) her maçta kadro üç
    sayfalı: Kadro ⟷ Isı haritası ⟷ Gol haritası. Veri yoksa sayfada nedeni yazar. */
-function ptKayVar(m){ return !!(m&&(m.played||m.sahaMode||ptIsiVar(m))); }
+function ptSutVarSb(m){ try{ if(!m) return false; if(m.sahaSutlar) return true; return (Array.isArray(m.events)?m.events:Object.values(m.events||{})).some(function(e){ return e&&e.type==='goal'&&e.k; }); }catch(e){ return false; } }
+function ptKayVar(m){ return !!(m&&(ptIsiVar(m)||ptSutVarSb(m))); }   /* Skorbord: yalnız gerçekten harita verisi olan maçta */
 function ptIsiBas(m){ return ptKayVar(m)?'<div class="isi-kay" onscroll="ptIsiKaydirildi(this)"><div class="isi-say">':''; }
 /* ŞUT HARİTASI (2026-10-18-B, kullanıcı örnek görseli: perspektif yarı alan, kale üstte, şutun atıldığı yer forma numarasıyla, varsa
    asist numarası ve pas çizgisi, okla kaleye; altta Hepsi / Gol / İsabetli / İsabetsiz / Engellenen filtreleri, renkli çizgiler ve
@@ -15971,9 +15974,7 @@ function ptMacGolSayfa(m,h,a){
 }
 function ptIsiSon(m,h,a){
   if(!ptKayVar(m)) return '';
-  if(!ptIsiVar(m)) return '</div><div class="isi-say"><div class="isi-kart" style="padding:1.2rem .8rem;text-align:center"><div style="font-size:1.6rem"></div><b style="font-size:.78rem">Isı haritası yok</b>'
-    +'<div class="isi-not" style="margin-top:.35rem;line-height:1.5">Bu maç için ısı haritası verisi yok.</div></div></div>'
-    +ptSutSayfa(m,h,a)+'</div><div class="isi-nokta"><i class="on"></i><i></i><i></i><span>Kaydır: ⟷ Kadro / Isı / Şut haritası</span></div>';
+  if(!ptIsiVar(m)) return '</div>'+ptSutSayfa(m,h,a)+'</div><div class="isi-nokta"><i class="on"></i><i></i><span>Kaydır: ⟷ Kadro / Şut haritası</span></div>';
   var I=m.sahaIsi, kart=function(t,veri,renk){ return '<div class="isi-kart"><div class="isi-bas"><span style="background:'+renk+'"></span><b>'+escHtml(t.name||'?')+'</b><small>hücum yönü →</small></div>'
     +'<img class="isi-img" alt="Isı haritası" src="'+ptIsiGorsel(m.id||(h.id+'_'+a.id)+'_'+String(veri).length, veri, I.w||24, I.h||16)+'"></div>'; };
   return '</div><div class="isi-say">'+kart(h,I.home,'#ef4444')+kart(a,I.away,'#3b82f6')
