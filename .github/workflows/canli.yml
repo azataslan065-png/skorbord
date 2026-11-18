@@ -30,9 +30,9 @@ jobs:
           BIT=$(( $(date +%s) + 330*60 ))
           while [ $(date +%s) -lt $BIT ]; do
             T0=$(date +%s)
-            git pull -q --rebase || true
+            git pull -q --rebase -X theirs || { git rebase --abort 2>/dev/null; git reset -q --hard origin/main; }
             timeout 20m node .github/arac/veri-topla.js --hizli || echo "tur hatası"
-            git add veri && (git diff --cached --quiet || (git commit -qm "Canlı veri $(date -u +%FT%TZ)" && for i in 1 2 3 4 5; do git pull -q --rebase && git push -q && break; sleep 7; done))
+            git add veri && (git diff --cached --quiet || (git commit -qm "Canlı veri $(date -u +%FT%TZ)" && for i in 1 2 3 4 5; do if git pull -q --rebase -X theirs; then git push -q && break; else git rebase --abort 2>/dev/null; fi; sleep 7; done))
             G=$(( $(date +%s) - T0 )); [ $G -lt 360 ] && sleep $(( 360 - G ))
           done
       - name: Yeniden başlat

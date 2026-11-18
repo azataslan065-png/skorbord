@@ -45,4 +45,4 @@ jobs:
         if: steps.k.outputs.atla != '1'
         run: |
           git config user.name github-actions && git config user.email actions@github.com
-          git add veri && (git diff --cached --quiet || (git commit -qm "Veri $(date -u +%FT%TZ) grup ${{ matrix.grup }}" && for i in 1 2 3 4 5 6; do git pull -q --rebase && git push -q && break; sleep $((RANDOM % 10 + 5)); done))
+          git add veri && (git diff --cached --quiet || (git commit -qm "Veri $(date -u +%FT%TZ) grup ${{ matrix.grup }}" && for i in 1 2 3 4 5 6; do if git pull -q --rebase -X theirs; then git push -q && break; else git rebase --abort 2>/dev/null; fi; sleep $((RANDOM % 10 + 5)); done))
