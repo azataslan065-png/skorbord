@@ -1,13 +1,15 @@
-// Deneme 49: TVF Sultanlar Ligi fikstür sekmesi (sitenin kendi Livewire çağrısı)
+// Deneme 50: TVF lig açıklamaları (leagueDescriptions) ve puan tablosu renk satırları
 const de = s => s.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
+function lwCoz(x){ if(Array.isArray(x)){ if(x.length === 2 && x[1] && typeof x[1] === 'object' && x[1].s) return lwCoz(x[0]); return x.map(lwCoz); } if(x && typeof x === 'object'){ const o = {}; Object.keys(x).forEach(k => { o[k] = lwCoz(x[k]); }); return o; } return x; }
 (async () => {
   if (process.env.PARCA !== '0') return;
-  const r = await fetch('https://tvf.org.tr/lig/sultanlar-ligi', { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/124 Mobile Safari/537.36' } });
-  const ck = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map(c => c.split(';')[0]).join('; ');
-  const t = await r.text(); const sn = de(/wire:snapshot="([^"]+)"/.exec(t)[1]); const tok = /data-csrf="([^"]+)"/.exec(t)[1];
-  const j0 = JSON.parse(sn); console.log('ÖNCE leagueFixture', JSON.stringify(j0.data.leagueFixture).slice(0, 300), 'currentWeek', JSON.stringify(j0.data.currentWeek));
-  const body = { _token: tok, components: [{ snapshot: sn, updates: {}, calls: [{ path: '', method: 'setActiveTab', params: ['fikstur'] }] }] };
-  const u = await fetch('https://tvf.org.tr/livewire/update', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Livewire': '', 'X-CSRF-TOKEN': tok, 'Cookie': ck, 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/124 Mobile Safari/537.36', 'Referer': 'https://tvf.org.tr/lig/sultanlar-ligi' }, body: JSON.stringify(body) });
-  const x = await u.text(); console.log('UPDATE', u.status, x.length);
-  try{ const k = JSON.parse(x); const s2 = JSON.parse(k.components[0].snapshot); const f = JSON.stringify(s2.data.leagueFixture); console.log('FIKSTUR', f.length, f.slice(0, 3000)); console.log('HTML', (k.components[0].effects.html || '').replace(/<[^>]+>/g, '|').replace(/\s+/g, ' ').replace(/(\|\s*)+/g, '|').slice(0, 2500)); }catch(e){ console.log('HAM', x.slice(0, 800)); }
+  for (const s of ['sultanlar-ligi', 'efeler-ligi']) {
+    const t = await (await fetch('https://tvf.org.tr/lig/' + s, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124' } })).text();
+    const sn = [...t.matchAll(/wire:snapshot="([^"]+)"/g)].map(m => de(m[1])).find(x => /league-detail/.test(x));
+    const d = lwCoz(JSON.parse(sn).data);
+    console.log('==', s, 'AÇIKLAMA', JSON.stringify(d.leagueDescriptions).slice(0, 1500));
+    const p = d.leaguePoints; console.log('   PUAN', JSON.stringify(p).slice(0, 300));
+    const sat = JSON.stringify(p).match(/"TEAMCOLORROW":\[[^\]]*\]/g) || []; console.log('   RENK', [...new Set(sat)].slice(0, 20).join(' '));
+    const i = t.indexOf('legend'); console.log('   HTML', t.replace(/<script[\s\S]*?<\/script>/g, '').replace(/\s+/g, ' ').match(/(Play[- ]?Off|Küme|düş|Lig Etab)[^<]{0,120}/gi)?.slice(0, 12).join(' || '));
+  }
 })();
