@@ -1,9 +1,12 @@
-// Deneme 46: Sultanlar Ligi kaynağı (TVF) — sayfa / API izleri
-const al = async u => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/124 Mobile Safari/537.36', 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(30000) }); const t = await r.text(); return { s: r.status, t, u: r.url }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
+// Deneme 47: TVF Sultanlar Ligi sayfa yapısı
+const al = async u => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/124 Mobile Safari/537.36', 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(30000) }); return { s: r.status, t: await r.text(), u: r.url }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
 (async () => {
   if (process.env.PARCA !== '0') return;
-  for (const u of ['https://www.tvf.org.tr/', 'https://www.tvf.org.tr/sultanlar-ligi', 'https://www.tvf.org.tr/ligler/sultanlar-ligi', 'https://fixture.tvf.org.tr/', 'https://www.sultanlarligi.org/', 'https://tvf.org.tr/organizasyonlar']) {
-    const x = await al(u); const links = [...new Set((x.t.match(/href="([^"]*(sultan|fikst|puan|lig)[^"]*)"/gi) || []))].slice(0, 15).join(' ');
-    console.log('T', x.s, u, '→', x.u, x.t.length, '| api:', [...new Set(x.t.match(/https?:\/\/[a-z0-9.-]*\/(api|ajax|wp-json)[^"' ]{0,80}/gi) || [])].slice(0, 6).join(' '), '| bağlantı:', links);
+  for (const u of ['https://tvf.org.tr/lig/sultanlar-ligi', 'https://tvf.org.tr/lig-fikstur/sultanlar-ligi', 'https://tvf.org.tr/lig-fikstur/efeler-ligi']) {
+    const x = await al(u); const t = x.t.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+    console.log('=====', x.s, u, '→', x.u, x.t.length);
+    const i = t.search(/Fenerbah|Vak[ıi]fBank|Eczac/i); console.log('HTML', t.slice(Math.max(0, i - 2500), i + 2500).replace(/\s+/g, ' '));
+    const metin = t.replace(/<[^>]+>/g, '|').replace(/\s+/g, ' ').replace(/(\|\s*)+/g, '|'); const k = metin.search(/Fenerbah|Vak[ıi]fBank/i); console.log('METIN', metin.slice(Math.max(0, k - 800), k + 2500));
+    console.log('VERI', [...new Set(x.t.match(/(data-[a-z-]+="[^"]{0,60}"|\/api\/[^"' ]{0,80}|\.json[^"' ]{0,40})/gi) || [])].slice(0, 25).join(' '));
   }
 })();
