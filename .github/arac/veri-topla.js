@@ -488,6 +488,7 @@ const adDuzelt = s => tffEnt(s).toLocaleLowerCase('tr-TR').replace(/(^|[\s\-'(.]
 function tffMacOku(h){
   const o = {}, duz = h.replace(/<[^>]+>/g, ' '), mk = Math.max(0, duz.indexOf('Maç Kodu')); const t = /(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2}):(\d{2})/.exec(duz.slice(mk));
   if(t) o.z = new Date(Date.UTC(+t[3], +t[2] - 1, +t[1], +t[4] - 3, +t[5])).toISOString();   // Türkiye saati
+  else { const g = /(\d{2})\.(\d{2})\.(\d{4})/.exec(duz.slice(mk, mk + 400)); if(g){ o.z = new Date(Date.UTC(+g[3], +g[2] - 1, +g[1], 9, 0)).toISOString(); o.saatYok = true; } }   // saati henüz açıklanmamış
   const hk = {}; for(const m of h.matchAll(/lnkHakem"[^>]*>([^<]+?)\(([^()<]+)\)<\/a>/g)){ const r = TFF_ROL[tffEnt(m[2])]; if(r && !hk[r]) hk[r] = adDuzelt(m[1]); }
   if(Object.keys(hk).length) o.hk = hk;
   const lg = [...h.matchAll(/src="(https:\/\/fys\.tff\.org\/TFFUploadFolder\/KulupLogolari[^"]+)"/g)].map(m => m[1].replace(/\\/g, '/'));
@@ -502,10 +503,10 @@ async function tffTopla(){
     const h = await tffAl('https://www.tff.org/default.aspx?pageID=' + sayfa); const liste = h ? tffListe(h) : [];
     if(!liste.length){ ozet.push(slug + ' liste yok'); continue; }
     const once = {}; (eski.mac || []).forEach(m => { once[m.id] = m; });
-    const mac = liste.map(m => { const e = once[m.id] || {}; return Object.assign({}, m, { z: e.z, hk: e.hk, st: e.st, evLogo: e.evLogo, depLogo: e.depLogo, t: e.t || 0 }); });
+    const mac = liste.map(m => { const e = once[m.id] || {}; return Object.assign({}, m, { z: e.z, saatYok: e.saatYok, hk: e.hk, st: e.st, evLogo: e.evLogo, depLogo: e.depLogo, t: e.t || 0 }); });
     // hangi maçların sayfası okunur: tarihi bilinmeyen (ilk kez), yakın (-1..+4 gün, 3 saatte bir), görevlisi eksik oynanmış maç (arşiv, bir kez)
     const yakin = m => m.z && Math.abs(Date.parse(m.z) - simdi) < 4 * 864e5;
-    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
+    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || ((!m.z || m.saatYok) && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
     sira.sort((a, b) => (yakin(b) ? 1 : 0) - (yakin(a) ? 1 : 0));
     const sinir = HIZLI ? 80 : 700; let n = 0;
     for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); if(!d) continue; Object.assign(m, tffMacOku(d)); m.t = simdi; n++; await bek(150); }
@@ -525,8 +526,14 @@ async function tffLig(L, eski){
     do{ y = x; x = x.replace(/\s+(A\.?\s?Ş\.?|Futbol Kulübü|Spor Kulübü|Kulübü|Futbol Spor|Spor Faaliyetleri|Faaliyetleri|Futbol Yatırımları|Futbol|Anonim Şirketi)$/i, '').trim(); }while(x !== y && x.length > 3);
     return x; };
   j.mac.forEach(m => { [[m.evK, m.ev, m.evLogo], [m.depK, m.dep, m.depLogo]].forEach(([k, a, lg]) => { const t = takim[k] || (takim[k] = { ad: kisa(a), kisa: kisa(a), logo: '' }); if(lg && !t.logo) t.logo = lg; }); });
+  // TFF resmî adları sponsorlu yazar ("Kızılkaya Tarım Şanlıurfaspor", "GMG Kastamonuspor"); TheSportsDB'nin sponsorsuz adı varsa o gösterilir
+  const TSDB_ID = { 'tur.3': '4679' }; if(TSDB_ID[L.slug] && !HIZLI){ const tj = await tsdb('lookup_all_teams.php?id=' + TSDB_ID[L.slug]); const tl = ((tj && tj.teams) || []).map(t => t.strTeam).filter(Boolean);
+    const P = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|kulubu|futbol|spor)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
+    const ben = (a, b) => { const A = P(a), B = P(b); if(!A.length || !B.length) return 0; return A.filter(x => B.some(y => y === x || (x.length >= 4 && y.length >= 4 && (y.startsWith(x) || x.startsWith(y))))).length / Math.min(A.length, B.length); };
+    const kul = {}; Object.values(takim).forEach(t => { let en = null, ep = 0; tl.forEach(n => { if(kul[n]) return; const p = ben(t.ad, n); if(p > ep){ ep = p; en = n; } }); if(en && ep >= 1 && P(en).length < P(t.ad).length){ kul[en] = 1; t.tffAd = t.ad; t.ad = t.kisa = TR_AD[en] || en; } }); }
+  else if(eski && eski.takim) Object.entries(takim).forEach(([k, t]) => { const e = eski.takim[k]; if(e && e.tffAd && e.tffAd === t.ad){ t.tffAd = e.tffAd; t.ad = t.kisa = e.ad; } });
   const mac = j.mac.filter(m => m.z).map(m => ({ id: m.id, r: m.h, z: m.z, ev: m.evK, dep: m.depK, evAd: takim[m.evK].ad, depAd: takim[m.depK].ad, evLogo: takim[m.evK].logo, depLogo: takim[m.depK].logo,
-    evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
+    evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', saatYok: m.saatYok || undefined, hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
   return { yil: y, sezonAdi: y + '-' + (y + 1), takim, gecmis: {}, mac, kaynak: 'TFF' };
 }
 
