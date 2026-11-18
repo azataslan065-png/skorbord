@@ -486,9 +486,9 @@ function tffListe(h){
 const TFF_ROL = { 'Hakem': 'referee', '1. Yardımcı Hakem': 'assistRef1', '2. Yardımcı Hakem': 'assistRef2', 'Dördüncü Hakem': 'fourthRef', 'VAR': 'varRef', 'AVAR': 'avarRef' };
 const adDuzelt = s => tffEnt(s).toLocaleLowerCase('tr-TR').replace(/(^|[\s\-'(.])(\p{L})/gu, (a, b, c) => b + c.toLocaleUpperCase('tr-TR'));
 function tffMacOku(h){
-  const o = {}, duz = h.replace(/<[^>]+>/g, ' '), mk = Math.max(0, duz.indexOf('Maç Kodu')); const t = /(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2}):(\d{2})/.exec(duz.slice(mk));
+  const o = {}, duz = h.replace(/<[^>]+>/g, ' '), mk = Math.max(0, duz.indexOf('Maç Kodu')); const lt = /lblTarih">([^<]+)</.exec(h); const t = /(\d{1,2})\.(\d{1,2})\.(\d{4})\s*-\s*(\d{1,2}):(\d{2})/.exec(lt ? lt[1] : duz.slice(mk));   // gün tek haneli olabilir: 6.09.2026
   if(t) o.z = new Date(Date.UTC(+t[3], +t[2] - 1, +t[1], +t[4] - 3, +t[5])).toISOString();   // Türkiye saati
-  else { const g = /(\d{2})\.(\d{2})\.(\d{4})/.exec(duz.slice(mk, mk + 400)); if(g){ o.z = new Date(Date.UTC(+g[3], +g[2] - 1, +g[1], 9, 0)).toISOString(); o.saatYok = true; } }   // saati henüz açıklanmamış
+  else { const g = /(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(lt ? lt[1] : duz.slice(mk, mk + 400)); if(g){ o.z = new Date(Date.UTC(+g[3], +g[2] - 1, +g[1], 9, 0)).toISOString(); o.saatYok = true; } }   // saati henüz açıklanmamış
   const hk = {}; for(const m of h.matchAll(/lnkHakem"[^>]*>([^<]+?)\(([^()<]+)\)<\/a>/g)){ const r = TFF_ROL[tffEnt(m[2])]; if(r && !hk[r]) hk[r] = adDuzelt(m[1]); }
   if(Object.keys(hk).length) o.hk = hk;
   const lg = [...h.matchAll(/src="(https:\/\/fys\.tff\.org\/TFFUploadFolder\/KulupLogolari[^"]+)"/g)].map(m => m[1].replace(/\\/g, '/'));
@@ -530,10 +530,10 @@ async function tffLig(L, eski){
     return x; };
   j.mac.forEach(m => { [[m.evK, m.ev, m.evLogo], [m.depK, m.dep, m.depLogo]].forEach(([k, a, lg]) => { const t = takim[k] || (takim[k] = { ad: kisa(a), kisa: kisa(a), logo: '' }); if(lg && !t.logo) t.logo = lg; }); });
   // TFF resmî adları sponsorlu yazar ("Kızılkaya Tarım Şanlıurfaspor", "GMG Kastamonuspor"); TheSportsDB'nin sponsorsuz adı varsa o gösterilir
-  const TSDB_ID = { 'tur.3': '4679' }; if(TSDB_ID[L.slug] && !HIZLI){ const tj = await tsdb('lookup_all_teams.php?id=' + TSDB_ID[L.slug]); const tl = ((tj && tj.teams) || []).map(t => t.strTeam).filter(Boolean);
+  let AD = {}; try{ AD = JSON.parse(fs.readFileSync(path.join(__dirname, 'tff-adlar.json'), 'utf8')); }catch(e){} if(AD[L.slug]){ const tl = AD[L.slug];   // eski TheSportsDB dosyasındaki sponsorsuz adlar (tff-adlar.json)
     const P = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|kulubu|futbol|spor)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
     const ben = (a, b) => { const A = P(a), B = P(b); if(!A.length || !B.length) return 0; return A.filter(x => B.some(y => y === x || (x.length >= 4 && y.length >= 4 && (y.startsWith(x) || x.startsWith(y))))).length / Math.min(A.length, B.length); };
-    const kul = {}; Object.values(takim).forEach(t => { let en = null, ep = 0; tl.forEach(n => { if(kul[n]) return; const p = ben(t.ad, n); if(p > ep){ ep = p; en = n; } }); if(en && ep >= 1 && P(en).length < P(t.ad).length){ kul[en] = 1; t.tffAd = t.ad; t.ad = t.kisa = TR_AD[en] || en; } }); console.log('  ' + L.slug + ' TheSportsDB adları', tl.length, 'değişen', Object.keys(kul).length, tl.slice(0, 5).join('/')); }
+    const kul = {}; Object.values(takim).forEach(t => { let en = null, ep = 0; tl.forEach(n => { if(kul[n]) return; const p = ben(t.ad, n); if(p > ep){ ep = p; en = n; } }); if(en && ep >= 1 && P(en).length < P(t.ad).length){ kul[en] = 1; t.tffAd = t.ad; t.ad = t.kisa = TR_AD[en] || en; } }); console.log('  ' + L.slug + ' sponsorsuz ad listesi', tl.length, 'değişen', Object.keys(kul).length, tl.slice(0, 5).join('/')); }
   else if(eski && eski.takim) Object.entries(takim).forEach(([k, t]) => { const e = eski.takim[k]; if(e && e.tffAd && e.tffAd === t.ad){ t.tffAd = e.tffAd; t.ad = t.kisa = e.ad; } });
   const mac = j.mac.filter(m => m.z).map(m => ({ id: m.id, r: m.h, z: m.z, ev: m.evK, dep: m.depK, evAd: takim[m.evK].ad, depAd: takim[m.depK].ad, evLogo: takim[m.evK].logo, depLogo: takim[m.depK].logo,
     evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', saatYok: m.saatYok || undefined, hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
