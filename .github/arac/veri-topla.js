@@ -521,7 +521,9 @@ async function tffLig(L, eski){
   let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, 'tff-' + L.slug + '.json'), 'utf8')); }catch(e){}
   if(!j || !j.mac) return { yil: 0, sezonAdi: '', takim: (eski && eski.takim) || {}, gecmis: {}, mac: (eski && eski.mac) || [], kaynak: 'TFF' };
   const s = new Date(), y = s.getUTCMonth() >= 6 ? s.getUTCFullYear() : s.getUTCFullYear() - 1;
-  const takim = {}, kisa = a => adDuzelt(a).replace(/\s+(A\.?\s?Ş\.?|Futbol Kulübü|Spor Kulübü|Kulübü|Futbol Spor Kulübü|Spor Faaliyetleri A\.?Ş\.?)$/i, '').trim();
+  const takim = {}, kisa = a => { let x = adDuzelt(a).replace(/\b(Fk|Sk|Jk|Bk|Gsk|Fsk|As)\b/g, k => k.toUpperCase()), y;
+    do{ y = x; x = x.replace(/\s+(A\.?\s?Ş\.?|Futbol Kulübü|Spor Kulübü|Kulübü|Futbol Spor|Spor Faaliyetleri|Faaliyetleri|Futbol Yatırımları|Futbol|Anonim Şirketi)$/i, '').trim(); }while(x !== y && x.length > 3);
+    return x; };
   j.mac.forEach(m => { [[m.evK, m.ev, m.evLogo], [m.depK, m.dep, m.depLogo]].forEach(([k, a, lg]) => { const t = takim[k] || (takim[k] = { ad: kisa(a), kisa: kisa(a), logo: '' }); if(lg && !t.logo) t.logo = lg; }); });
   const mac = j.mac.filter(m => m.z).map(m => ({ id: m.id, r: m.h, z: m.z, ev: m.evK, dep: m.depK, evAd: takim[m.evK].ad, depAd: takim[m.depK].ad, evLogo: takim[m.evK].logo, depLogo: takim[m.depK].logo,
     evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
