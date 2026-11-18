@@ -361,7 +361,9 @@ window.__sbKupaHtml=function(tid){
     if(v.stad) bilgi.push('<span><small>Stadyum</small><b>'+e(v.stad)+(v.kap?' · '+v.kap.toLocaleString('tr-TR'):'')+'</b></span>');
     if(bilgi.length) h+='<div class="sb-kulup">'+bilgi.join('')+'</div>';
     // raf: turnuva turnuva kupalar
-    var kupa=(v.kupa||[]).filter(function(x){ return x.sz&&x.sz.length; }), topKupa=kupa.reduce(function(a,x){ return a+x.sz.length; },0);
+    // Yaş grubu / olimpiyat turnuvaları A takımının kupası değildir (Wikidata'da bazen A takımına bağlanmış)
+    var GENC=/(\d\d\s*Yaş|\bU-?\d\d\b|Under-?\s?\d\d|Youth|Gençl|Olimpiyat|Olympic|Kadın|Women)/i;
+    var kupa=(v.kupa||[]).filter(function(x){ return x.sz&&x.sz.length&&!GENC.test(x.ad); }), topKupa=kupa.reduce(function(a,x){ return a+x.sz.length; },0);
     h+='<div class="ptk-raf">'+(kupa.length?kupa.map(function(x){
         return '<details class="sb-kupa"><summary><span class="sb-kupa-n">'+x.sz.length+'</span><b>'+e(x.ad)+'</b></summary><div class="sb-kupa-sz">'+x.sz.slice().reverse().map(e).join(' · ')+'</div></details>';
       }).join(''):'<div style="opacity:.8;font-size:.72rem;padding:.6rem;text-align:center;width:100%;color:#fff">'+(v.wd?'Kayıtlı kupa bulunamadı.':'Bu kulübün kupa bilgisi bulunamadı.')+'</div>')+'</div>';

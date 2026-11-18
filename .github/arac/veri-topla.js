@@ -240,7 +240,8 @@ async function kulupBilgi(wdIds, eski){
     const g = {};
     b.forEach(x => { const c = qid(v(x, 'c')), comp = qid(v(x, 'comp')), s = qid(v(x, 's')); const k = (g[c] || (g[c] = {})); const kk = k[comp] || (k[comp] = { ad: v(x, 'compTr') || v(x, 'compEn') || comp, sz: {} });
       if(!kk.sz[s]){ const ad = v(x, 'sTr') || v(x, 'sEn') || ''; const yy = (/(\d{4})/.exec(ad) || /(\d{4})/.exec(v(x, 't')) || [])[1]; kk.sz[s] = { ad, y: yy ? +yy : 0 }; } });
-    Object.keys(g).forEach(c => { o[c] = o[c] || {}; o[c].kupa = Object.values(g[c]).map(k => ({ ad: k.ad, sz: Object.values(k.sz).sort((a, b) => a.y - b.y).map(z => (z.ad.replace(/\s*\(.*?\)\s*/g, ' ').trim()) || String(z.y)), y: Object.values(k.sz).map(z => z.y) }))
+    const GENC = /(\d\d\s*Yaş|\bU-?\d\d\b|Under-?\s?\d\d|Youth|Gençl|Olimpiyat|Olympic|Kadın|Women)/i;
+    Object.keys(g).forEach(c => { o[c] = o[c] || {}; o[c].kupa = Object.values(g[c]).filter(k => !GENC.test(k.ad)).map(k => ({ ad: k.ad, sz: Object.values(k.sz).sort((a, b) => a.y - b.y).map(z => (z.ad.replace(/\s*\(.*?\)\s*/g, ' ').trim()) || String(z.y)), y: Object.values(k.sz).map(z => z.y) }))
       .sort((a, b) => b.sz.length - a.sz.length); });
   }
   return o;
