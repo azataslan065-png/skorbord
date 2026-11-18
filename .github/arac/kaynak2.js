@@ -1,13 +1,10 @@
-// Deneme 24: Bing Haberler RSS (doğrudan makale bağlantısı) ve makale metninde spiker / yorumcu cümleleri
-const al = async (u) => { try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36', 'Accept-Language': 'tr-TR,tr' }, redirect: 'follow', signal: AbortSignal.timeout(20000) }); return { s: r.status, t: await r.text(), u: r.url }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
-const ent = s => String(s || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+// Deneme 25: yayıncıların YouTube kanalları (A Spor, ATV, Tivibu Spor, Sıfır TV)
+const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36', 'Accept-Language': 'tr-TR,tr;q=0.9', 'Cookie': 'CONSENT=YES+1; SOCS=CAI' };
 (async () => {
-  for(const q of ['Konyaspor Galatasaray maçını kim anlatıyor', 'Türkiye Belçika maçı spikeri kim', 'Galatasaray Barcelona maçını kim anlatıyor']){
-    const r = await al('https://www.bing.com/news/search?q=' + encodeURIComponent(q) + '&format=rss&setlang=tr&cc=tr'); const it = [...r.t.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);
-    console.log('=====', q, r.s, r.t.length, it.length);
-    for(const x of it.slice(0, 4)){ const t = ent((/<title>([\s\S]*?)<\/title>/.exec(x) || [])[1]); let l = ent((/<link>([\s\S]*?)<\/link>/.exec(x) || [])[1]); const m = /[?&]url=([^&]+)/.exec(l); if(m) l = decodeURIComponent(m[1]);
-      const a = await al(l); const body = ent(a.t.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<(nav|header|footer)[\s\S]*?<\/\1>/gi, ''));
-      const cumle = (body.match(/[^.!?]{0,220}(spiker|anlatac|anlatım|anlatıyor|yorumcu|yorumlayac|mikrofon)[^.!?]{0,220}[.!?]/gi) || []).slice(0, 6);
-      console.log('  -', t, '|', a.s, l.slice(0, 80)); cumle.forEach(c => console.log('     >', c.trim().slice(0, 300))); }
+  for(const k of ['@aspor', '@ASpor', '@atv', '@atvcomtr', '@TivibuSpor', '@tivibuspor', '@tivibu', '@SifirTV', '@sifirtv', '@TRTSpor', '@tabiispor']){
+    try{ const r = await fetch('https://www.youtube.com/' + k + '/streams', { headers: UA }); const t = await r.text();
+      const id = /"externalId":"(UC[^"]+)"/.exec(t), ad = /<meta property="og:title" content="([^"]+)"/.exec(t), onay = /BADGE_STYLE_TYPE_VERIFIED/.test(t), n = (t.match(/"lockupViewModel":\{/g) || []).length;
+      const bas = [...t.matchAll(/"lockupMetadataViewModel":\{"title":\{"content":"([^"]+)"/g)].slice(0, 4).map(m => m[1]);
+      console.log('=====', k, r.status, id && id[1], ad && ad[1], 'onay', onay, 'yayın', n, bas.join(' | ')); }catch(e){ console.log('=====', k, 'HATA', e.message); }
   }
 })();
