@@ -413,14 +413,14 @@ window.__sbKupaHtml=function(tid){
    ESPN ve TheSportsDB lig maçlarında hakem / yayın ekibi vermiyor (boş geliyor); bu yüzden admin girer: Admin › Skorbord › Maç görevlileri →
    skorbord/macBilgi/<lig>/<maç>. Kupa maçlarının hakemi Vikipedi'den gelir. Girilen adlar maç bilgisine (Hakem, Yardımcılar, VAR, Spiker,
    Yorumcu, Yayın) ve hakem ayrıntı ekranına (hakemin bu ligdeki maçları, kart / penaltı ortalamaları) işlenir. */
-var GOREVLI_ALAN=['spiker','yorumcu','referee','assistRef1','assistRef2','fourthRef','varRef','avarRef','tv'];
+var GOREVLI_ALAN=['spiker','yorumcu','referee','assistRef1','assistRef2','fourthRef','varRef','avarRef','tv','weather','temp'];
 function gorevliUygula(slug, mid, m){
   var g=null; try{ g=YerelVT.uzak('macBilgi/'+String(slug).replace(/\./g,'_')+'/'+String(mid).replace(/^m/,'')); }catch(e){}
   var oto=OTO[slug]&&OTO[slug][mid]; if(oto){ var b={}; Object.keys(oto).forEach(function(k){ b[k]=oto[k]; }); if(g) Object.keys(g).forEach(function(k){ if(g[k]&&String(g[k]).trim()) b[k]=g[k]; }); g=b; }
   var once=m._gorevliA||{};
-  GOREVLI_ALAN.forEach(function(k){ var v=g&&g[k]&&String(g[k]).trim(); if(v){ m[k]=v; } else if(once[k]){ delete m[k]; } });
+  GOREVLI_ALAN.forEach(function(k){ var v=g&&g[k]!=null&&String(g[k]).trim(); if(v){ m[k]=(k==='temp')?+v:v; } else if(once[k]){ delete m[k]; } });
   if(g&&g.referee) m._gorevli=1; else delete m._gorevli;   // (hakem verisi otomatik ya da elle geldi: ESPN / Vikipedi hakemi üstüne yazmasın)
-  var a={}; GOREVLI_ALAN.forEach(function(k){ if(g&&g[k]&&String(g[k]).trim()) a[k]=1; }); if(Object.keys(a).length) m._gorevliA=a; else delete m._gorevliA;
+  var a={}; GOREVLI_ALAN.forEach(function(k){ if(g&&g[k]!=null&&String(g[k]).trim()) a[k]=1; }); if(Object.keys(a).length) m._gorevliA=a; else delete m._gorevliA;
   return m;
 }
 var _gorevliDinle=false;
@@ -467,11 +467,32 @@ function adBenzer(a, b){
   return ort/Math.min(A.length, B.length);
 }
 function takimAdi(v, id){ var t=v.teams[id]||{}; return [t.name, t.shortName].filter(Boolean).join(' '); }
+/* HAVA DURUMU (2026-11-18): ev sahibinin stadının konumu (Wikidata) → Open-Meteo saatlik tahmini; maç saatindeki sıcaklık ve hava.
+   Yalnızca dün - önümüzdeki 7 gün arasındaki maçlar (tahmin süresi). Sonuç maç bilgisinde "Hava Durumu" satırında. */
+var WMO_TR={0:'Açık',1:'Az bulutlu',2:'Parçalı bulutlu',3:'Kapalı',45:'Sisli',48:'Kırağılı sis',51:'Hafif çisenti',53:'Çisenti',55:'Yoğun çisenti',56:'Donan çisenti',57:'Donan çisenti',61:'Hafif yağmurlu',63:'Yağmurlu',65:'Kuvvetli yağmur',66:'Donan yağmur',67:'Donan yağmur',71:'Hafif kar',73:'Kar yağışlı',75:'Yoğun kar',77:'Kar taneleri',80:'Hafif sağanak',81:'Sağanak yağmur',82:'Şiddetli sağanak',85:'Kar sağanağı',86:'Yoğun kar sağanağı',95:'Gök gürültülü fırtına',96:'Dolu ile fırtına',99:'Şiddetli dolu fırtınası'};
+var HAVA_ON={};
+function havaYukle(slug, v, lj){
+  try{
+    var T=(lj&&lj.takim)||{}, simdi=Date.now(), grup={};
+    Object.keys(v.matches).forEach(function(mid){ var m=v.matches[mid]; if(!m.date||!m.time) return; var z=new Date(m.date+'T'+m.time+':00');
+      if(isNaN(z)||z<simdi-24*3600e3||z>simdi+7*864e5) return; var t=T[String(m.homeId).slice(1)], k=t&&t.koord; if(!k) return;
+      var a=k[0].toFixed(2)+','+k[1].toFixed(2); (grup[a]=grup[a]||[]).push(mid); });
+    Object.keys(grup).forEach(function(a){
+      var c=HAVA_ON[a]; var p=(c&&Date.now()-c.t<3*3600e3)?Promise.resolve(c.j):fetch('https://api.open-meteo.com/v1/forecast?latitude='+a.split(',')[0]+'&longitude='+a.split(',')[1]+'&hourly=temperature_2m,weather_code&timezone=Europe%2FIstanbul&past_days=1&forecast_days=8').then(function(r){ return r.ok?r.json():null; }).then(function(j){ if(j) HAVA_ON[a]={t:Date.now(), j:j}; return j; });
+      p.then(function(j){ if(!j||!j.hourly) return; var H=j.hourly, id=ligKimlik(slug), o=OTO[slug]=OTO[slug]||{};
+        grup[a].forEach(function(mid){ var m=v.matches[mid]; if(!m) return; var s=m.date+'T'+m.time.slice(0,2)+':00', i=H.time.indexOf(s); if(i<0) return;
+          var e=o[mid]=o[mid]||{}; e.temp=Math.round(H.temperature_2m[i]); e.weather=WMO_TR[H.weather_code[i]]||'';
+          var once=JSON.stringify(m); gorevliUygula(slug, mid, m); if(JSON.stringify(m)!==once&&slug===A.lig) YerelVT.yaz('leagues/'+id+'/matches/'+mid, m); }); }, function(){});
+    });
+  }catch(e){}
+}
 function otoYukle(slug, v){
   var isler=[veriAl('yayin').catch(function(){ return null; })];
   isler.push(TFF_LIG[slug]?veriAl('tff-'+slug).catch(function(){ return null; }):Promise.resolve(null));
+  isler.push(veriAl('ekip').catch(function(){ return null; }));
+  isler.push(veriAl(slug).catch(function(){ return null; }));
   return Promise.all(isler).then(function(r){
-    var yay=r[0], tff=r[1], o={}, gun=function(m){ return m.date; };
+    var yay=r[0], tff=r[1], ekip=r[2], lj=r[3], o={}, gun=function(m){ return m.date; };
     var mlist=Object.keys(v.matches).map(function(k){ return [k, v.matches[k]]; });
     var esle=function(ev, dep, suz){ var en=null, ep=0; mlist.forEach(function(x){ var m=x[1]; if(!suz(m)) return;
       var p=adBenzer(ev, takimAdi(v, m.homeId))+adBenzer(dep, takimAdi(v, m.awayId)); if(p>ep){ ep=p; en=x[0]; } }); return ep>=1.2?en:null; };
@@ -495,7 +516,11 @@ function otoYukle(slug, v){
     if(yay&&yay.liste) yay.liste.forEach(function(y){ var p=String(y.ad).split(' - '); if(p.length!==2) return;
       var mid=esle(p[0], p[1], function(m){ if(m.date!==y.g||!m.time) return false; var a=+m.time.slice(0,2)*60+ +m.time.slice(3,5), b=+y.s.slice(0,2)*60+ +y.s.slice(3,5); return Math.abs(a-b)<=15; });
       if(mid){ var x=o[mid]=o[mid]||{}; if(!x.tv) x.tv=y.k; else if(x.tv.indexOf(y.k)<0) x.tv+=', '+y.k; } });
+    // Yayın ekibi (haberlerden): spiker, yorumcu, kanal
+    if(ekip&&ekip.liste) ekip.liste.forEach(function(x){ if(x.lig!==slug) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var e=o[mid]=o[mid]||{};
+      if(x.spiker) e.spiker=x.spiker; if(x.yorumcu&&x.yorumcu.length) e.yorumcu=x.yorumcu.join(', '); if(x.kanal&&!e.tv) e.tv=x.kanal; });
     OTO[slug]=o;
+    havaYukle(slug, v, lj);
     var n=Object.keys(o).length; if(n) gunluk('otomatik maç bilgisi', slug, n+' maç');
     Object.keys(o).forEach(function(mid){ if(v.matches[mid]) gorevliUygula(slug, mid, v.matches[mid]); });
     return v;

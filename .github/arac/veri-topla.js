@@ -205,14 +205,15 @@ async function kulupBilgi(wdIds, eski){
   const o = {};
   const ids = [...new Set(wdIds.filter(Boolean))];
   for(const p of parca(ids, 60)){
-    const b = await sparql('SELECT ?c ?cTr ?cEn ?inc ?pre ?stTr ?stEn ?cap ?tr ?en ?resmi WHERE { VALUES ?c { ' + p.map(x => 'wd:' + x).join(' ') + ' } '
+    const b = await sparql('SELECT ?c ?cTr ?cEn ?inc ?pre ?stTr ?stEn ?cap ?kd ?tr ?en ?resmi WHERE { VALUES ?c { ' + p.map(x => 'wd:' + x).join(' ') + ' } '
       + 'OPTIONAL { ?c rdfs:label ?cTr FILTER(lang(?cTr)="tr") } OPTIONAL { ?c rdfs:label ?cEn FILTER(lang(?cEn)="en") } '
       + 'OPTIONAL { ?c p:P571/psv:P571 [ wikibase:timeValue ?inc ; wikibase:timePrecision ?pre ] } '
-      + 'OPTIONAL { ?c wdt:P115 ?st . OPTIONAL { ?st rdfs:label ?stTr FILTER(lang(?stTr)="tr") } OPTIONAL { ?st rdfs:label ?stEn FILTER(lang(?stEn)="en") } OPTIONAL { ?st wdt:P1083 ?cap } } '
+      + 'OPTIONAL { ?c wdt:P115 ?st . OPTIONAL { ?st rdfs:label ?stTr FILTER(lang(?stTr)="tr") } OPTIONAL { ?st rdfs:label ?stEn FILTER(lang(?stEn)="en") } OPTIONAL { ?st wdt:P1083 ?cap } OPTIONAL { ?st wdt:P625 ?kd } } '
       + 'OPTIONAL { ?trw schema:about ?c ; schema:isPartOf <https://tr.wikipedia.org/> ; schema:name ?tr } OPTIONAL { ?enw schema:about ?c ; schema:isPartOf <https://en.wikipedia.org/> ; schema:name ?en } }');
     b.forEach(x => { const c = qid(v(x, 'c')); const k = o[c] || (o[c] = { ad: v(x, 'cTr') || v(x, 'cEn') });
       if(v(x, 'inc') && !k.wdT){ const d = v(x, 'inc').replace(/^\+/, ''), pr = +v(x, 'pre'); const m = /^(-?\d+)-(\d\d)-(\d\d)/.exec(d); if(m) k.wdT = { y: +m[1], a: pr >= 10 ? +m[2] : 0, g: pr >= 11 ? +m[3] : 0 }; }
       if(v(x, 'stTr') || v(x, 'stEn')){ k.stad = v(x, 'stTr') || v(x, 'stEn'); if(v(x, 'cap')) k.kap = Math.round(+v(x, 'cap')); }
+      { const km = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(v(x, 'kd') || ''); if(km && !k.koord) k.koord = [+(+km[2]).toFixed(4), +(+km[1]).toFixed(4)]; }   // stadın konumu: hava durumu için
       if(v(x, 'tr')) k.trw = v(x, 'tr'); if(v(x, 'en')) k.enw = v(x, 'en'); });
   }
   // Kuruluş günü/ayı: önceki dosyada tam tarih varsa yeniden okunmaz
@@ -625,6 +626,69 @@ async function youtubeTopla(tum){
   fs.writeFileSync(dosya, JSON.stringify({ t: simdi, kaynak: 'YouTube', liste }));
   console.log('YOUTUBE', 'kanal yayını', kanalYayin.length, kanalYayin.slice(0, 6).map(v => (v.canli ? 'CANLI ' : 'PLAN ') + v.b).join(' | ').slice(0, 400), 'aday maç', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.lig + ' ' + x.ev + '-' + x.dep + ' @' + x.k).join(' | ').slice(0, 600));
 }
+
+// ── YAYIN EKİBİ HABERLERDEN (2026-11-18, kullanıcı: "az dan az çoktan çok ... şimdilik birkaç maç ... spiker ve yorumcu yayıncı").
+//    Spiker / yorumcu adını yayımlayan herkese açık bir veri kaynağı yok (Maçkolik talebi reddetti). Büyük maçlardan önce haber siteleri
+//    "maçı kim anlatıyor" haberleri yazıyor: Bing Haberler'de aranır, haber metinlerinden kesin ifadeler okunur ("maçın spikeri X",
+//    "X anlatacak", "yorumcu koltuğunda X ve Y"). Soru biçimindeki tahminler ("X mi anlatıyor?") alınmaz. Türk takımlarının maçları.
+//    Çıktı: veri/ekip.json (uygulama maç bilgisine işler; admin'in elle girdiği önce gelir).
+const TR_KULUP = /galatasaray|fenerbah|be[sş]ikta[sş]|trabzon|ba[sş]ak[sş]ehir|samsun|g[oö]ztepe|kasımpa[sş]a|kasimpasa|konya|antalya|alanya|kayseri|rize|sivas|gaziantep|kocaeli|ey[uü]p|amed|g[eç]n[cç]lerbirli|karag[uü]mr[uü]k|[cç]orum|erzurum|t[uü]rkiye|turkey/i;
+const EKIP_KANAL = /(beIN SPORTS(?: (?:[1-5]|MAX ?\d?|HABER))?|TRT 1|TRT Spor Yıldız|TRT Spor|ATV|TV8,5|TV8|S Sport Plus|S Sport 2|S Sport|Exxen(?:spor)?|A Spor|Tivibu Spor|Tabii|TOD)/;
+const AD = '([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})';
+const EKIP_RED_K = new Set('süper lig ligi maç maçı maçın maçta maçını milli türkiye kupa kupası spor sports kim spiker spikeri yorumcu yorumcular saat kanal hakem teknik direktör haber haberler gazete galatasaray fenerbahçe beşiktaş trabzonspor avrupa şampiyonlar uluslar konferans futbol karşılaşma karşılaşmayı mücadele mücadeleyi yayın bu o'.split(' '));
+const EKIP_RED = { test: a => String(a).split(/\s+/).some(w => EKIP_RED_K.has(w.toLocaleLowerCase('tr-TR'))) };
+function ekipCikar(metinler, takimlar){
+  const sp = {}, yr = {}, kn = {}, ekle = (o, ad, p) => { let w = ad.trim().split(/\s+/); while(w.length && EKIP_RED.test(w[0])) w.shift(); ad = w.join(' '); if(w.length < 2 || EKIP_RED.test(ad) || takimlar.some(t => norm(t) && norm(ad).includes(norm(t)))) return; o[ad] = (o[ad] || 0) + p; };
+  const soru = (m, t) => /^\s*(mı|mi|mu|mü|mıdır|midir)\b/i.test(t.slice(m.index + m[0].length, m.index + m[0].length + 8));
+  metinler.forEach(t => {
+    const cumleler = t.split(/(?<=[.!?])\s+/).filter(c => !/\?\s*$/.test(c.trim()) || /kimdir/i.test(c));   // soru cümleleri tahmindir ("kimdir?" hariç)
+    cumleler.forEach(c => {
+      for(const m of c.matchAll(new RegExp('[Ss]piker(?:i|liğini|liğinde|liği|\\s+koltuğunda)?\\s+(?:olarak\\s+)?' + AD, 'g'))) if(!soru(m, c)) ekle(sp, m[1], 2);
+      for(const m of c.matchAll(new RegExp(AD + '(?:\\s+[a-zçğıöşü]+)?\\s+(?:anlatacak|anlatıyor|anlatacağı|mikrofon başında|mikrofonda olacak)', 'g'))) if(!soru(m, c)) ekle(sp, m[1], 2);
+      for(const m of c.matchAll(new RegExp('(?:[Yy]orumcu(?:luk|lar|ları|su)?(?:\\s+koltuğunda|\\s+olarak)?|[Yy]orumlarıyla)\\s+' + AD + '(?:\\s*(?:,|ve)\\s*' + AD + ')?(?:\\s*(?:,|ve)\\s*' + AD + ')?', 'g'))) if(!soru(m, c)) [m[1], m[2], m[3]].filter(Boolean).forEach(a => ekle(yr, a, 2));
+      for(const m of c.matchAll(new RegExp(AD + '(?:\\s*(?:,|ve)\\s*' + AD + ')?\\s+(?:yorumlayacak|yorumcu olarak|yorumculuk yapacak)', 'g'))) if(!soru(m, c)) [m[1], m[2]].filter(Boolean).forEach(a => ekle(yr, a, 2));
+      if(/kanal|yayınlan|ekran|canlı/i.test(c)){ const k = EKIP_KANAL.exec(c); if(k) kn[k[1]] = (kn[k[1]] || 0) + 1; }
+    });
+  });
+  const en = o => Object.entries(o).sort((a, b) => b[1] - a[1]);
+  const s = en(sp)[0], y = en(yr).filter(x => !s || x[0] !== s[0]).slice(0, 3).map(x => x[0]), k = en(kn)[0];
+  return { spiker: s ? s[0] : '', yorumcu: y, kanal: k ? k[0] : '' };
+}
+async function ekipTopla(tum){
+  const dosya = path.join(VERI, 'ekip.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+  const simdi = Date.now(), aday = [], gun = o => new Date(simdi + 3 * 3600e3 + o * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
+  for(const L of tum){
+    if(!/^tur\.|^uefa\.|^fifa\.|^conmebol\.america/.test(L.slug)) continue;
+    let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, L.slug + '.json'), 'utf8')); }catch(e){}
+    const ekle = (rid, ev, dep, z) => { if(z - simdi > 3 * 864e5 || simdi - z > 3 * 3600e3) return; if(!/^tur\./.test(L.slug) && !TR_KULUP.test(ev + ' ' + dep)) return; aday.push({ lig: L.slug, rid, ev, dep, z }); };
+    if(L.tsdb){ if(j && j.mac && /^tur\.(1|2|cup|super)$/.test(L.slug)) j.mac.forEach(m => ekle('ts' + m.id, m.evAd || (j.takim[m.ev] || {}).ad, m.depAd || (j.takim[m.dep] || {}).ad, Date.parse(m.z))); continue; }
+    const s = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + L.slug + '/scoreboard?dates=' + gun(0) + '-' + gun(3), { deneme: 2 });
+    ((s && s.events) || []).forEach(ev => { const c = ev.competitions && ev.competitions[0]; if(!c) return; const t = h => { const x = (c.competitors || []).find(k => k.homeAway === h) || {}; const n = (x.team && (x.team.displayName || x.team.shortDisplayName)) || ''; return TR_AD[n] || n; };
+      ekle(String(ev.id), t('home'), t('away'), Date.parse(ev.date)); });
+  }
+  const once = {}; (eski.liste || []).forEach(x => { once[x.lig + '|' + x.rid] = x; });
+  const liste = [], ATLA = []; let arama = 0;
+  for(const a of aday){
+    const k = a.lig + '|' + a.rid, e = once[k];
+    if(e && simdi - (e.t || 0) < (e.spiker ? 8 : 4) * 3600e3){ liste.push(e); continue; }   // bulunduysa 8, bulunmadıysa 4 saatte bir yeniden aranır
+    if(arama >= 25){ if(e) liste.push(e); continue; }
+    const q = a.ev + ' ' + a.dep + ' maçını kim anlatıyor'; arama++;
+    const r = await al('https://www.bing.com/news/search?q=' + encodeURIComponent(q) + '&format=rss&setlang=tr&cc=tr', { metin: true, accept: 'application/rss+xml,text/xml' });
+    const it = [...String(r || '').matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);
+    const ent = x => String(x || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const ilgili = it.map(x => ({ b: ent((/<title>([\s\S]*?)<\/title>/.exec(x) || [])[1]), l: ent((/<link>([\s\S]*?)<\/link>/.exec(x) || [])[1]), z: Date.parse(ent((/<pubDate>([\s\S]*?)<\/pubDate>/.exec(x) || [])[1])) || 0 }))
+      .filter(x => ytIcerir(x.b, a.ev) && ytIcerir(x.b, a.dep) && /spiker|anlat|yorum|kanal/i.test(x.b) && a.z - x.z < 6 * 864e5 && x.z - a.z < 864e5).slice(0, 4);
+    const metin = [], kaynak = [];
+    for(const x of ilgili){ let u = x.l; const m = /[?&]url=([^&]+)/.exec(u); if(m) u = decodeURIComponent(m[1]);
+      try{ const rr = await fetch(u, { headers: { 'User-Agent': YT_UA['User-Agent'], 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(20000) }); if(!rr.ok) continue; const h = await rr.text();
+        metin.push(ent(h.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<(nav|header|footer|aside)[\s\S]*?<\/\1>/gi, ' '))); kaynak.push(u); }catch(e){} await bek(300); }
+    const c = ekipCikar(metin, [a.ev, a.dep]);
+    const o = Object.assign({}, a, { t: simdi, spiker: c.spiker || (e && e.spiker) || '', yorumcu: c.yorumcu.length ? c.yorumcu : ((e && e.yorumcu) || []), kanal: c.kanal || (e && e.kanal) || '', kaynak: kaynak.slice(0, 3) });
+    if(o.spiker || o.yorumcu.length || o.kanal) liste.push(o); else ATLA.push(a.ev + '-' + a.dep);
+  }
+  fs.writeFileSync(dosya, JSON.stringify({ t: simdi, kaynak: 'Haberler (Bing Haberler)', liste }));
+  console.log('EKİP', 'aday', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.ev + '-' + x.dep + ': ' + [x.spiker, (x.yorumcu || []).join('+'), x.kanal].join(' / ')).join(' | ').slice(0, 900), 'bulunamayan', ATLA.slice(0, 8).join(', '));
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
@@ -640,7 +704,7 @@ async function ligIsle(L){
     const eskiKulup = {}; Object.values((eski && eski.takim) || {}).forEach(t => { if(t.wd) eskiKulup[t.wd] = t; });
     ad('eşleşme'); const bilgi = await kulupBilgi(Object.values(wd), eskiKulup); ad('kulüp');
     Object.keys(takim).forEach(id => { const c = wd[id]; takim[id].wd = c || null; const k = c && bilgi[c];
-      if(k){ if(k.kur) takim[id].kur = k.kur; if(k.stad) takim[id].stad = k.stad; if(k.kap) takim[id].kap = k.kap; if(k.kupa) takim[id].kupa = k.kupa; if(k.ad) takim[id].wdAd = k.ad; } });
+      if(k){ if(k.kur) takim[id].kur = k.kur; if(k.stad) takim[id].stad = k.stad; if(k.kap) takim[id].kap = k.kap; if(k.kupa) takim[id].kupa = k.kupa; if(k.ad) takim[id].wdAd = k.ad; if(k.koord) takim[id].koord = k.koord; } });
     if(!L.tsdb && Date.now() - fotoT > 6 * 864e5){
       const kadro = await espnKadrolar(L, temel.takim);
       const wdK = {}; Object.keys(takim).forEach(id => { wdK[id] = takim[id].wd; });
@@ -652,7 +716,7 @@ async function ligIsle(L){
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
     if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
-  } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
+  } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd', 'koord'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
   if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {
     const C = Object.keys(temel.gecmis).map(Number).filter(y => (temel.gecmis[y].satir || []).some(r => r.t === id && r.s === 1 && !r.g));
@@ -685,6 +749,7 @@ async function ligIsle(L){
   if(SECILI.includes('tff') || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
   if(SECILI.includes('yayin') || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
+  if(SECILI.includes('ekip') || ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
   if(SECILI.includes('youtube') || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
