@@ -454,13 +454,106 @@ async function siralamaTopla(){
   fs.writeFileSync(dosya, JSON.stringify(o));
   console.log('SIRALAMA', 'uefa ülke', o.uefaUlke ? o.uefaUlke.liste.length : 0, 'uefa kulüp', o.uefaKulup ? o.uefaKulup.liste.length : 0, 'fifa', o.fifa ? o.fifa.liste.length + ' ' + o.fifa.guncel + ' ' + o.fifa.id : 0);
 }
+
+// ── TFF (2026-11-18, kullanıcı: "bazı ligler kırmızı grup, beyaz grup veya 1., 2., 3. grup olarak adlandırılır ... araştırıp ona göre düzenle";
+//    "spiker, yorumcu ve TV bilgisi dahil verileri otomatik olarak doğru bir kaynağa bağlarsan"). Türk liglerinin resmî kaynağı tff.org:
+//    sezonun bütün fikstürü (grup grup: "Kırmızı Grup", "Beyaz Grup", "01 Grup"...), maç kodları ve her maçın sayfasındaki görevliler
+//    (hakem, 1./2. yardımcı, dördüncü hakem, VAR, AVAR), tarih, saat, stat, takım logoları. Çıktı: veri/tff-<lig>.json.
+//    Görevliler maçtan 1-3 gün önce açıklanır: yakın maçlar her çalışmada, oynanmış maçlar bir kez (arşiv) okunur.
+const TFF_SAYFA = { 'tur.1': 198, 'tur.2': 142, 'tur.3': 976, 'tur.4': 971 };
+async function tffAl(u){
+  for(let i = 0; i < 3; i++){
+    try{ const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36', 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(40000) });
+      if(r.status >= 500 || r.status === 429){ await bek(3000 * (i + 1)); continue; } if(!r.ok) return '';
+      const b = Buffer.from(await r.arrayBuffer()); return /utf-8/i.test(r.headers.get('content-type') || '') ? b.toString('utf8') : new TextDecoder('windows-1254').decode(b); }catch(e){ await bek(2000 * (i + 1)); }
+  }
+  return '';
+}
+const tffEnt = s => String(s || '').replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/&nbsp;?/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
+const GRUP_AD = g => { g = tffEnt(g); const m = /^0?(\d+)\.?\s*Grup$/i.exec(g); return m ? m[1] + '. Grup' : g; };
+function tffListe(h){
+  // Bölümler: <span ...font-size:11pt...>Lig<br/>Grup<br/>Sezon ...</span> ardından haftalar ("1.Hafta") ve satırlar
+  const out = []; const re = /<span style="display:inline-block;font-size:11pt[^>]*>([\s\S]*?)<\/span>|>(\d+)\.Hafta<|kulupId=(\d+)">([^<]+)<\/a><\/td>\s*<td[^>]*><a href="\/Default\.aspx\?pageID=29&macId=(\d+)">([^<]*)<\/a><\/td>\s*<td[^>]*><a href="\/Default\.aspx\?pageID=28&kulupId=(\d+)">([^<]+)</gi;
+  let m, grup = '', hafta = 0;
+  while((m = re.exec(h))){
+    if(m[1] != null){ const p = m[1].split(/<br\s*\/?>/i).map(tffEnt).filter(Boolean); grup = (p.length >= 3 && /grup/i.test(p[1])) ? GRUP_AD(p[1]) : ''; hafta = 0; continue; }
+    if(m[2] != null){ hafta = +m[2]; continue; }
+    const sk = /(\d+)\s*-\s*(\d+)/.exec(m[6] || '');
+    out.push({ id: m[5], h: hafta, g: grup, evK: m[3], ev: tffEnt(m[4]), depK: m[7], dep: tffEnt(m[8]), evG: sk ? +sk[1] : null, depG: sk ? +sk[2] : null });
+  }
+  return out;
+}
+const TFF_ROL = { 'Hakem': 'referee', '1. Yardımcı Hakem': 'assistRef1', '2. Yardımcı Hakem': 'assistRef2', 'Dördüncü Hakem': 'fourthRef', 'VAR': 'varRef', 'AVAR': 'avarRef' };
+const adDuzelt = s => tffEnt(s).toLocaleLowerCase('tr-TR').replace(/(^|[\s\-'(.])(\p{L})/gu, (a, b, c) => b + c.toLocaleUpperCase('tr-TR'));
+function tffMacOku(h){
+  const o = {}, duz = h.replace(/<[^>]+>/g, ' '), mk = Math.max(0, duz.indexOf('Maç Kodu')); const t = /(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2}):(\d{2})/.exec(duz.slice(mk));
+  if(t) o.z = new Date(Date.UTC(+t[3], +t[2] - 1, +t[1], +t[4] - 3, +t[5])).toISOString();   // Türkiye saati
+  const hk = {}; for(const m of h.matchAll(/lnkHakem"[^>]*>([^<]+?)\(([^()<]+)\)<\/a>/g)){ const r = TFF_ROL[tffEnt(m[2])]; if(r && !hk[r]) hk[r] = adDuzelt(m[1]); }
+  if(Object.keys(hk).length) o.hk = hk;
+  const lg = [...h.matchAll(/src="(https:\/\/fys\.tff\.org\/TFFUploadFolder\/KulupLogolari[^"]+)"/g)].map(m => m[1].replace(/\\/g, '/'));
+  if(lg.length >= 2){ o.evLogo = lg[0]; o.depLogo = lg[1]; }
+  const st = /lnkStad"[^>]*>([^<]+)</.exec(h); if(st) o.st = adDuzelt(st[1]);
+  return o;
+}
+async function tffTopla(){
+  const simdi = Date.now(), ozet = [];
+  for(const [slug, sayfa] of Object.entries(TFF_SAYFA)){
+    const dosya = path.join(VERI, 'tff-' + slug + '.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+    const h = await tffAl('https://www.tff.org/default.aspx?pageID=' + sayfa); const liste = h ? tffListe(h) : [];
+    if(!liste.length){ ozet.push(slug + ' liste yok'); continue; }
+    const once = {}; (eski.mac || []).forEach(m => { once[m.id] = m; });
+    const mac = liste.map(m => { const e = once[m.id] || {}; return Object.assign({}, m, { z: e.z, hk: e.hk, st: e.st, evLogo: e.evLogo, depLogo: e.depLogo, t: e.t || 0 }); });
+    // hangi maçların sayfası okunur: tarihi bilinmeyen (ilk kez), yakın (-1..+4 gün, 3 saatte bir), görevlisi eksik oynanmış maç (arşiv, bir kez)
+    const yakin = m => m.z && Math.abs(Date.parse(m.z) - simdi) < 4 * 864e5;
+    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
+    sira.sort((a, b) => (yakin(b) ? 1 : 0) - (yakin(a) ? 1 : 0));
+    const sinir = HIZLI ? 80 : 700; let n = 0;
+    for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); if(!d) continue; Object.assign(m, tffMacOku(d)); m.t = simdi; n++; await bek(150); }
+    const gruplar = {}; mac.forEach(m => { if(!m.g) return; const g = gruplar[m.g] || (gruplar[m.g] = {}); g[m.evK] = m.ev; g[m.depK] = m.dep; });
+    const cikti = { lig: slug, kaynak: 'TFF', t: simdi, gruplar: Object.keys(gruplar).length ? gruplar : null, mac: mac.map(m => { const o = Object.assign({}, m); Object.keys(o).forEach(k => { if(o[k] == null || o[k] === '') delete o[k]; }); return o; }) };
+    fs.writeFileSync(dosya, JSON.stringify(cikti));
+    ozet.push(slug + ' maç ' + mac.length + ' okunan ' + n + ' görevlili ' + mac.filter(m => m.hk).length + ' grup ' + Object.keys(gruplar).join('/'));
+  }
+  console.log('TFF', ozet.join(' | '));
+}
+// TFF 3. Lig gibi yalnız TFF'de olan ligler: maçlar ve takımlar TFF dosyasından (logolar TFF'nin kulüp logoları)
+async function tffLig(L, eski){
+  let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, 'tff-' + L.slug + '.json'), 'utf8')); }catch(e){}
+  if(!j || !j.mac) return { yil: 0, sezonAdi: '', takim: (eski && eski.takim) || {}, gecmis: {}, mac: (eski && eski.mac) || [], kaynak: 'TFF' };
+  const s = new Date(), y = s.getUTCMonth() >= 6 ? s.getUTCFullYear() : s.getUTCFullYear() - 1;
+  const takim = {}, kisa = a => adDuzelt(a).replace(/\s+(A\.?\s?Ş\.?|Futbol Kulübü|Spor Kulübü|Kulübü|Futbol Spor Kulübü|Spor Faaliyetleri A\.?Ş\.?)$/i, '').trim();
+  j.mac.forEach(m => { [[m.evK, m.ev, m.evLogo], [m.depK, m.dep, m.depLogo]].forEach(([k, a, lg]) => { const t = takim[k] || (takim[k] = { ad: kisa(a), kisa: kisa(a), logo: '' }); if(lg && !t.logo) t.logo = lg; }); });
+  const mac = j.mac.filter(m => m.z).map(m => ({ id: m.id, r: m.h, z: m.z, ev: m.evK, dep: m.depK, evAd: takim[m.evK].ad, depAd: takim[m.depK].ad, evLogo: takim[m.evK].logo, depLogo: takim[m.depK].logo,
+    evG: m.evG, depG: m.depG, d: m.evG != null ? 'FT' : '', st: m.st || '', hakem: (m.hk && m.hk.referee) || '', grup: m.g || '' }));
+  return { yil: y, sezonAdi: y + '-' + (y + 1), takim, gecmis: {}, mac, kaynak: 'TFF' };
+}
+
+// ── TV: beIN SPORTS yayın akışı (bugün ve yarın; beIN 1-4). Canlı maçın kanalı, maç saatinde başlayan "Ev - Deplasman" satırından bulunur.
+//    Spiker / yorumcu adı beIN'in hiçbir sayfasında ve veri servisinde yok (maç servisi hakemleri veriyor, yayın ekibini vermiyor).
+async function yayinTopla(){
+  const dosya = path.join(VERI, 'yayin.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+  const KANAL = [['beinsports', 'beIN SPORTS 1'], ['beinsports-2', 'beIN SPORTS 2'], ['beinsports-3', 'beIN SPORTS 3'], ['beinsports-4', 'beIN SPORTS 4']];
+  const GUN = ['pazar', 'pazartesi', 'sali', 'carsamba', 'persembe', 'cuma', 'cumartesi'];
+  const tr = new Date(Date.now() + 3 * 3600e3), gunler = [GUN[tr.getUTCDay()], GUN[(tr.getUTCDay() + 1) % 7]];
+  const yeni = []; let okunan = 0;
+  for(const [yol, ad] of KANAL) for(const g of gunler){
+    const h = await tffAl('https://beinsports.com.tr/yayin-akisi/' + yol + '/' + g); const m = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(h || ''); if(!m) continue;
+    let d = null; try{ d = JSON.parse(m[1]).props.pageProps.data; }catch(e){} const l = (d && d.listTvGuides) || []; if(!l.length) continue; okunan++;
+    l.forEach(x => { const t = /(\d+)\/(\d+)\/(\d{4})/.exec(x.event_date || ''), s = /^(\d{2}):(\d{2})/.exec(x.event_time || ''); if(!t || !s || !/ - /.test(x.name || '')) return;
+      yeni.push({ g: t[3] + '-' + t[1].padStart(2, '0') + '-' + t[2].padStart(2, '0'), s: s[1] + ':' + s[2], ad: x.name, k: ad, mid: x.related_match_id || undefined }); });
+  }
+  const sinir = Date.now() - 12 * 864e5, anah = x => x.g + '|' + x.s + '|' + x.k + '|' + x.ad, gor = {};
+  const tum = yeni.concat(eski.liste || []).filter(x => { if(Date.parse(x.g) < sinir || gor[anah(x)]) return false; gor[anah(x)] = 1; return true; });
+  fs.writeFileSync(dosya, JSON.stringify({ t: Date.now(), kaynak: 'beIN SPORTS yayın akışı', liste: tum }));
+  console.log('YAYIN', 'okunan sayfa', okunan, 'yeni satır', yeni.length, 'toplam', tum.length);
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   if(HIZLI && !L.tsdb) return;
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
-  const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
+  const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb === 'tff' ? await tffLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
@@ -480,7 +573,7 @@ async function ligIsle(L){
       fotoT = Date.now();
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
-    if(L.tsdb && L.tsdb !== 'wiki' && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
+    if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
   } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
   if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {
@@ -510,6 +603,9 @@ async function ligIsle(L){
   const tum = ligleriOku();
   const ligler = tum.filter((l, i) => (!SECILI.length || SECILI.includes(l.slug)) && (!(GRUP.length === 2 && GRUP[1] > 0) || i % GRUP[1] === GRUP[0]));
   if(!HIZLI && (SECILI.includes('siralama') || (!SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0)))){ try{ await siralamaTopla(); }catch(e){ console.log('HATA sıralama', e && e.stack || e); } }
+  const ana = !SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0);   // tek iş (grup 0) ortak dosyaları yazar
+  if(SECILI.includes('tff') || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
+  if(SECILI.includes('yayin') || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));

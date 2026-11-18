@@ -20,7 +20,7 @@ function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call
    · Suudi Arabistan'ın ESPN adı "ksa.1" (eskisi "sau.1" hata veriyordu).
    · Ek ligler: ESPN'in futbol listesindeki diğer ulusal ligler ve büyük turnuvalar; TFF 2. Lig TheSportsDB'den. */
 var LIGLER=[
- ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],['tur.cup','Ziraat Türkiye Kupası','Türkiye','wiki'],['tur.super','Turkcell Süper Kupa','Türkiye','wiki'],
+ ['tur.1','Süper Lig','Türkiye'],['tur.2','TFF 1. Lig','Türkiye','4676'],['tur.3','TFF 2. Lig','Türkiye','4679'],['tur.4','TFF 3. Lig','Türkiye','tff'],['tur.cup','Ziraat Türkiye Kupası','Türkiye','wiki'],['tur.super','Turkcell Süper Kupa','Türkiye','wiki'],
  ['uefa.champions','UEFA Şampiyonlar Ligi','Avrupa'],['uefa.europa','UEFA Avrupa Ligi','Avrupa'],['uefa.europa.conf','UEFA Konferans Ligi','Avrupa'],['uefa.super_cup','UEFA Süper Kupa','Avrupa'],
  ['eng.1','İngiltere Premier Lig','İngiltere'],['eng.2','İngiltere Championship','İngiltere'],['eng.3','İngiltere League One','İngiltere'],['eng.4','İngiltere League Two','İngiltere'],['eng.5','İngiltere National League','İngiltere'],
  ['esp.1','İspanya La Liga','İspanya'],['esp.2','İspanya La Liga 2','İspanya'],
@@ -76,7 +76,9 @@ function tsdbYukle(slug, k){
     Object.keys(j.takim||{}).forEach(function(id){ var t=j.takim[id]; teams['t'+id]={id:'t'+id, name:trAd(t.ad), shortName:trAd(t.kisa||t.ad), logo:t.logo||'', color:'', tsdb:id}; });
     j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; matches['m'+e.rid]=o; });
     var turAd=null; j.mac.forEach(function(m){ if(m.tur&&m.r){ (turAd=turAd||{})[m.r]=m.tur; } });
-    k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:null, tsdb:true, turAd:turAd};
+    var gr={}; j.mac.forEach(function(m){ if(!m.grup) return; var g=gr[m.grup]||(gr[m.grup]={}); g['t'+m.ev]=1; g['t'+m.dep]=1; });
+    var gruplar=Object.keys(gr).sort().map(function(a){ return {ad:a, takimlar:Object.keys(gr[a])}; }); if(gruplar.length<2) gruplar=null;
+    k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:gruplar, tsdb:true, turAd:turAd};
     k.t=Date.now(); k.yukleniyor=null;
     gunluk('lig yüklendi (TheSportsDB)', slug, Object.keys(teams).length+' takım', j.mac.length+' maç');
     return k.veri;
@@ -299,7 +301,10 @@ function bolgeNotlari(j){
 function grupAdi(a){
   a=String(a||'').trim(); var m;
   if((m=/^League ([A-D])\s*,?\s*Group (\d+)$/i.exec(a))) return m[1].toUpperCase()+' Ligi · '+m[2]+'. Grup';
-  if((m=/^Group ([A-Z0-9]+)$/i.exec(a))) return m[1].toUpperCase()+' Grubu';
+  if((m=/^Group (\d+)$/i.exec(a))||(m=/^0?(\d+)\.?\s*Grup$/i.exec(a))) return (+m[1])+'. Grup';
+  if((m=/^Group ([A-Z])$/i.exec(a))) return m[1].toUpperCase()+' Grubu';
+  var RENK={red:'Kırmızı',white:'Beyaz',black:'Siyah',blue:'Mavi',green:'Yeşil',yellow:'Sarı',orange:'Turuncu',purple:'Mor',north:'Kuzey',south:'Güney',east:'Doğu',west:'Batı'};
+  if((m=/^(Red|White|Black|Blue|Green|Yellow|Orange|Purple|North|South|East|West)\s+(Group|Division|Conference)$/i.exec(a))||(m=/^(Group|Division|Conference)\s+(Red|White|Black|Blue|Green|Yellow|Orange|Purple|North|South|East|West)$/i.exec(a))){ var r=/group|division|conference/i.test(m[1])?m[2]:m[1]; return RENK[r.toLowerCase()]+' Grup'; }
   if((m=/^League ([A-D])$/i.exec(a))) return m[1].toUpperCase()+' Ligi';
   return a.replace(/\bGroup\b/i,'Grup').replace(/\bLeague\b/i,'Lig');
 }
@@ -411,9 +416,10 @@ window.__sbKupaHtml=function(tid){
 var GOREVLI_ALAN=['spiker','yorumcu','referee','assistRef1','assistRef2','fourthRef','varRef','avarRef','tv'];
 function gorevliUygula(slug, mid, m){
   var g=null; try{ g=YerelVT.uzak('macBilgi/'+String(slug).replace(/\./g,'_')+'/'+String(mid).replace(/^m/,'')); }catch(e){}
+  var oto=OTO[slug]&&OTO[slug][mid]; if(oto){ var b={}; Object.keys(oto).forEach(function(k){ b[k]=oto[k]; }); if(g) Object.keys(g).forEach(function(k){ if(g[k]&&String(g[k]).trim()) b[k]=g[k]; }); g=b; }
   var once=m._gorevliA||{};
   GOREVLI_ALAN.forEach(function(k){ var v=g&&g[k]&&String(g[k]).trim(); if(v){ m[k]=v; } else if(once[k]){ delete m[k]; } });
-  if(g&&g.referee) m._gorevli=1; else delete m._gorevli;
+  if(g&&g.referee) m._gorevli=1; else delete m._gorevli;   // (hakem verisi otomatik ya da elle geldi: ESPN / Vikipedi hakemi üstüne yazmasın)
   var a={}; GOREVLI_ALAN.forEach(function(k){ if(g&&g[k]&&String(g[k]).trim()) a[k]=1; }); if(Object.keys(a).length) m._gorevliA=a; else delete m._gorevliA;
   return m;
 }
@@ -441,6 +447,54 @@ function gorevliDinle(){ if(_gorevliDinle) return; _gorevliDinle=true;
   if(document.body) kur(); else document.addEventListener('DOMContentLoaded', kur);
 })();
 
+/* ═══ OTOMATİK MAÇ BİLGİSİ (2026-11-18, kullanıcı: "bazı ligler kırmızı grup, beyaz grup veya 1., 2., 3. grup olarak adlandırılır ... araştırıp
+   ona göre düzenle"; "spiker, yorumcu ve TV bilgisi dahil verileri otomatik olarak doğru bir kaynağa bağlarsan daha verimli olur").
+   · TFF (tff.org, resmî kaynak): Türk liglerinin grupları (TFF 2. Lig Kırmızı / Beyaz Grup, TFF 3. Lig 1. / 2. / 3. Grup) ve her maçın
+     görevlileri (hakem, yardımcılar, dördüncü hakem, VAR, AVAR) → veri/tff-<lig>.json (günlük iş, yakın maçlar 30 dk'da bir).
+   · TV kanalı: beIN SPORTS yayın akışı → veri/yayin.json (maç saatinde başlayan "Ev - Deplasman" yayını).
+   · Admin'in elle girdiği (Maç görevlileri kartı) her zaman önce gelir; otomatik bilgi yalnızca boş alanları doldurur.
+   TFF ve beIN takım adlarını farklı yazar ("KCT 1461 TRABZON FK" / "1461 Trabzon", "T. Konyaspor"); eşleştirme ad parçalarıyla,
+   aynı gün / aynı hafta ve iki takımın birlikte tutması şartıyla yapılır. */
+var OTO={}, TFF_LIG={'tur.1':1,'tur.2':1,'tur.3':1,'tur.4':1};
+var AD_GURULTU=/^(a|s|as|fk|sk|jk|bk|gsk|ffk|kulubu|futbol|spor|faaliyetleri|yatirimlari|ve|ticaret|sanayi|anonim|sirketi|club|cf|fc|the|of)$/;
+function adParca(a){
+  var s=String(a||'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/a\.\s?s\./g,' ').replace(/[^a-z0-9 ]+/g,' ');
+  return s.split(/\s+/).filter(function(x){ return x && !AD_GURULTU.test(x) && x.length>1; }).map(function(x){ return x.length>6?x.replace(/spor$/,''):x; });
+}
+function adBenzer(a, b){
+  var A=adParca(a), B=adParca(b); if(!A.length||!B.length) return 0;
+  var ort=0; A.forEach(function(x){ if(B.some(function(y){ return y===x||(x.length>=4&&y.length>=4&&(y.indexOf(x)===0||x.indexOf(y)===0)); })) ort++; });
+  return ort/Math.min(A.length, B.length);
+}
+function takimAdi(v, id){ var t=v.teams[id]||{}; return [t.name, t.shortName].filter(Boolean).join(' '); }
+function otoYukle(slug, v){
+  var isler=[veriAl('yayin').catch(function(){ return null; })];
+  isler.push(TFF_LIG[slug]?veriAl('tff-'+slug).catch(function(){ return null; }):Promise.resolve(null));
+  return Promise.all(isler).then(function(r){
+    var yay=r[0], tff=r[1], o={}, gun=function(m){ return m.date; };
+    var mlist=Object.keys(v.matches).map(function(k){ return [k, v.matches[k]]; });
+    var esle=function(ev, dep, suz){ var en=null, ep=0; mlist.forEach(function(x){ var m=x[1]; if(!suz(m)) return;
+      var p=adBenzer(ev, takimAdi(v, m.homeId))+adBenzer(dep, takimAdi(v, m.awayId)); if(p>ep){ ep=p; en=x[0]; } }); return ep>=1.2?en:null; };
+    // TFF görevlileri
+    if(tff&&tff.mac) tff.mac.forEach(function(t){ if(!t.hk) return; var g=t.z?new Date(t.z):null, gs=g?ymd(g).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'):'';
+      var mid=esle(t.ev, t.dep, function(m){ return gs?gun(m)===gs:(+m.week===+t.h); }); if(mid) o[mid]=Object.assign(o[mid]||{}, t.hk); });
+    // TFF grupları: lig grupsuz geldiyse (TheSportsDB) TFF'nin gruplarına göre ayrılır
+    if(tff&&tff.gruplar&&!v.gruplar){ var gr=[], kul={};
+      Object.keys(tff.gruplar).sort().forEach(function(ad){ var ids=[]; Object.keys(tff.gruplar[ad]).forEach(function(k){ var n=tff.gruplar[ad][k], en=null, ep=0;
+          Object.keys(v.teams).forEach(function(id){ if(kul[id]) return; var p=adBenzer(n, takimAdi(v, id)); if(p>ep){ ep=p; en=id; } }); if(en&&ep>=0.6){ kul[en]=1; ids.push(en); } });
+        if(ids.length) gr.push({ad:ad, takimlar:ids}); });
+      if(gr.length>1) v.gruplar=gr; }
+    // TV kanalı (beIN yayın akışı): maç günü, maç saatinde (±15 dk) başlayan yayın
+    if(yay&&yay.liste) yay.liste.forEach(function(y){ var p=String(y.ad).split(' - '); if(p.length!==2) return;
+      var mid=esle(p[0], p[1], function(m){ if(m.date!==y.g||!m.time) return false; var a=+m.time.slice(0,2)*60+ +m.time.slice(3,5), b=+y.s.slice(0,2)*60+ +y.s.slice(3,5); return Math.abs(a-b)<=15; });
+      if(mid){ var x=o[mid]=o[mid]||{}; if(!x.tv) x.tv=y.k; else if(x.tv.indexOf(y.k)<0) x.tv+=', '+y.k; } });
+    OTO[slug]=o;
+    var n=Object.keys(o).length; if(n) gunluk('otomatik maç bilgisi', slug, n+' maç');
+    Object.keys(o).forEach(function(mid){ if(v.matches[mid]) gorevliUygula(slug, mid, v.matches[mid]); });
+    return v;
+  }, function(){ return v; });
+}
+
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
@@ -461,7 +515,7 @@ function metaYaz(){
   YerelVT.yaz('activeDisplayLeague', ligKimlik(A.lig));
 }
 function ligiAc(slug){
-  return ligYukle(slug).then(function(v){ agacaYaz(v); return v; });
+  return ligYukle(slug).then(function(v){ return otoYukle(slug, v); }).then(function(v){ agacaYaz(v); return v; });
 }
 
 /* ---------- giriş: ayrı uygulamada hesap yok; cihazdaki adla doğrudan açılır ---------- */
@@ -732,7 +786,7 @@ function ayarla(k,v){
 function yenile(){
   try{ showToast('Veri yenileniyor…'); }catch(e){}
   sonTam=0; B.t=0;
-  ligYukle(A.lig, true).then(function(v){ agacaYaz(v); try{ showToast('Veri güncellendi'); }catch(e){} }, function(e){ try{ showToast('Veri alınamadı: '+e.message,'er'); }catch(x){} });
+  ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(function(v){ agacaYaz(v); try{ showToast('Veri güncellendi'); }catch(e){} }, function(e){ try{ showToast('Veri alınamadı: '+e.message,'er'); }catch(x){} });
   bugunDongu();
 }
 function ayarKancasi(){
@@ -759,7 +813,7 @@ function uzakUygula(d){
     if(typeof U.seritAcikVarsayilan==='boolean'){ try{ if(localStorage.getItem('pt_liveTicker')===null){ _liveTickerEnabled=U.seritAcikVarsayilan; localStorage.setItem('pt_liveTicker', U.seritAcikVarsayilan?'on':'off'); } }catch(e){} }
   }
   try{ metaYaz(); }catch(e){}
-  if(adImza!==_adImza){ var ilk=_adImza===null; _adImza=adImza; if(!ilk||adImza!==''){ sonTam=0; ligYukle(A.lig, true).then(agacaYaz, function(){}); } }
+  if(adImza!==_adImza){ var ilk=_adImza===null; _adImza=adImza; if(!ilk||adImza!==''){ sonTam=0; ligYukle(A.lig, true).then(function(v){ return otoYukle(A.lig, v); }).then(agacaYaz, function(){}); } }
   // Görünen ligler dışında kalan lig seçiliyse ya da bu cihazda ilk açılışsa yöneticinin varsayılan ligine geçilir.
   var hedef=null;
   if(!ligAktifMi(A.lig)) hedef=(U.varsayilanLig&&ligAktifMi(U.varsayilanLig))?U.varsayilanLig:aktifLigler()[0][0];
