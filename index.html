@@ -7203,6 +7203,7 @@ function ptFormaUygula(){
 setTimeout(ptFormaDinle, 1500);
 function ptOrtakTvUygula(){
   try{ if(window._ptOrtakTv) D.videoLinks = window._ptOrtakTv; }catch(e){self.__ds&&self.__ds(6478,e)}
+  try{ if(window.__sbYoutubeListe){ var _yt=window.__sbYoutubeListe(); D.videoLinks=((D.videoLinks)||[]).filter(function(x){ return !(x&&x.sbYoutube); }).concat(_yt); } }catch(e){self.__ds&&self.__ds(6479,e)}
 }
 /* Giriş ekranındaki kaynak seçici. Kök değiştiği için seçim sayfayı yeniler -
    dinleyiciler açılışta zaten kuruluyor, onları tek tek yeniden bağlamak birini
@@ -40216,6 +40217,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=dcef08da"></script>
+<script src="gercek.js?v=0d9dcf45"></script>
 </body>
 </html>

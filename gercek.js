@@ -495,6 +495,42 @@ function otoYukle(slug, v){
   }, function(){ return v; });
 }
 
+/* ═══ YOUTUBE CANLI MAÇLARI TV SEKMESİNDE (2026-11-18, kullanıcı: "Bazı maçlar YouTube'dan canlı yayınlanıyor; öyle bir sistem kur ki o maçlar
+   TV sekmesinden izlenebilsin"). İki kaynak:
+   · otomatik: veri/youtube.json (günlük iş 30 dk'da bir başlamak üzere olan / oynanan maçları YouTube'da arar; yalnızca izinli ya da onaylı
+     kanallar, gömülü oynatılabilen yayınlar),
+   · elle: Admin › Skorbord › Maç görevlileri kartındaki "YouTube yayını" alanı (skorbord/macBilgi/<lig>/<maç>/youtube).
+   Maç başlamadan 1 saat önceden bitişinden 2,5 saat sonrasına kadar TV sekmesinde "Canlı" listede görünür; dokununca gömülü oynatıcı açılır.
+   Maçın bilgi kartında da "YouTube · kanal" yazar. */
+var YT={liste:[], t:0};
+function ytKimlik(u){ var m=/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(String(u||'')); return m?m[1]:(/^[A-Za-z0-9_-]{11}$/.test(String(u||'').trim())?String(u).trim():''); }
+function ytKayitlar(){
+  var o=[], gor={}, simdi=Date.now();
+  var ekle=function(v, lig, rid, ad, z, kanal, logo){ if(!v||gor[v]) return; if(z&&(simdi<z-60*60e3||simdi>z+150*60e3)) return; gor[v]=1;
+    o.push({id:'yt_'+v, title:ad, url:'https://www.youtube.com/watch?v='+v, isLive:true, logo:logo||'', category:'YouTube'+(kanal?' · '+kanal:''), createdAt:z||simdi, sbYoutube:{lig:lig, rid:rid}}); };
+  // elle girilenler (admin): bütün liglerden
+  try{ var mb=YerelVT.uzak('macBilgi')||{}; Object.keys(mb).forEach(function(l){ Object.keys(mb[l]||{}).forEach(function(r){ var g=mb[l][r]||{}, v=ytKimlik(g.youtube); if(v) ekle(v, l.replace(/_/g,'.'), r, g.ytAd||((LIG_AD[l.replace(/_/g,'.')]||'')+' maçı'), g.ytZ||0, g.ytKanal||'', ''); }); }); }catch(e){}
+  (YT.liste||[]).forEach(function(x){ ekle(x.v, x.lig, x.rid, trAd(x.ev)+' - '+trAd(x.dep), x.z, x.k, ''); });
+  return o;
+}
+window.__sbYoutubeListe=ytKayitlar;
+function ytTazele(){
+  return veriAl('youtube', true).then(function(j){ YT.liste=(j&&j.liste)||[]; YT.t=Date.now(); ytUygula(); }, function(){});
+}
+function ytUygula(){
+  try{ if(typeof ptOrtakTvUygula==='function') ptOrtakTvUygula(); }catch(e){}
+  try{ if(typeof updateVideoLinkBadge==='function') updateVideoLinkBadge(); }catch(e){}
+  try{ var k=window.PTSheetNav&&PTSheetNav.currentKey&&PTSheetNav.currentKey(), w=document.getElementById('sheetWrap');
+    if(k==='videoList'&&w&&w.classList.contains('open')&&document.getElementById('videoScreenList')&&typeof renderVideoScreenList==='function') renderVideoScreenList(); }catch(e){}
+  // açık ligin maçlarına "YouTube · kanal" bilgisi
+  try{ var v=L[A.lig]&&L[A.lig].veri; if(!v) return; var id=ligKimlik(A.lig), o=OTO[A.lig]=OTO[A.lig]||{};
+    (YT.liste||[]).forEach(function(x){ if(x.lig!==A.lig) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var t='YouTube'+(x.k?' · '+x.k:''), e=o[mid]=o[mid]||{};
+      if(!e.tv) e.tv=t; else if(e.tv.indexOf('YouTube')<0) e.tv+=', '+t; var once=JSON.stringify(v.matches[mid]); gorevliUygula(A.lig, mid, v.matches[mid]);
+      if(JSON.stringify(v.matches[mid])!==once) YerelVT.yaz('leagues/'+id+'/matches/'+mid, v.matches[mid]); }); }catch(e){}
+}
+setTimeout(function(){ ytTazele(); setInterval(function(){ if(!document.hidden) ytTazele(); }, 3*60000); }, 2500);
+try{ setTimeout(function(){ firebase.database().ref('macBilgi').on('value', function(){ ytUygula(); }); }, 3000); }catch(e){}
+
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
   try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}

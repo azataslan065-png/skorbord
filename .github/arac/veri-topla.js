@@ -547,6 +547,58 @@ async function yayinTopla(){
   fs.writeFileSync(dosya, JSON.stringify({ t: Date.now(), kaynak: 'beIN SPORTS yayın akışı', liste: tum }));
   console.log('YAYIN', 'okunan sayfa', okunan, 'yeni satır', yeni.length, 'toplam', tum.length);
 }
+
+// ── YOUTUBE CANLI YAYINLARI (2026-11-18, kullanıcı: "Bazı maçlar YouTube'dan canlı yayınlanıyor; öyle bir sistem kur ki o maçlar TV sekmesinden
+//    izlenebilsin"). Başlamak üzere olan / oynanan her maç için YouTube'da (anahtarsız arama sayfası) iki takımın adını taşıyan canlı ya da
+//    planlanmış yayın aranır. Korsan yayın girmesin diye yalnızca: admin'in izin verdiği kanallar (skorbord/youtube/kanallar) ya da YouTube'un
+//    doğruladığı (onay rozetli) kanallar kabul edilir; engellenen kanallar (skorbord/youtube/engel) ve özet / tahmin / oyun videoları atlanır.
+//    Gömülü oynatılamayan yayın alınmaz. Çıktı: veri/youtube.json (uygulama TV sekmesine ekler).
+const YT_UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36', 'Accept-Language': 'tr-TR,tr;q=0.9', 'Cookie': 'CONSENT=YES+1; SOCS=CAI' };
+async function ytSayfa(u){ try{ const r = await fetch(u, { headers: YT_UA, signal: AbortSignal.timeout(30000) }); return r.ok ? await r.text() : ''; }catch(e){ return ''; } }
+function ytVideolar(h){
+  const m = /var ytInitialData = (\{[\s\S]*?\});<\/script>/.exec(h); let j = null; try{ j = m ? JSON.parse(m[1]) : null; }catch(e){} const o = [];
+  const gez = x => { if(!x || typeof x !== 'object') return; if(x.videoRenderer){ const v = x.videoRenderer, s = JSON.stringify;
+      o.push({ v: v.videoId, b: ((v.title && v.title.runs) || []).map(r => r.text).join(''), k: (v.ownerText && v.ownerText.runs && v.ownerText.runs[0].text) || '',
+        kid: (v.ownerText && v.ownerText.runs && v.ownerText.runs[0].navigationEndpoint && v.ownerText.runs[0].navigationEndpoint.browseEndpoint && v.ownerText.runs[0].navigationEndpoint.browseEndpoint.browseId) || '',
+        canli: /LIVE/.test(s(v.badges || '') + s(v.thumbnailOverlays || '')), bas: v.upcomingEventData ? +v.upcomingEventData.startTime * 1000 : 0, onay: /VERIFIED/.test(s(v.ownerBadges || '')) }); return; }
+    Object.values(x).forEach(gez); };
+  gez(j); return o;
+}
+const ytParca = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|jk|fc|cf|ac|sc|kulubu|futbol|spor|club|the|de|of)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
+const ytIcerir = (baslik, takim) => { const B = norm(baslik).split(' '), T = ytParca(takim); if(!T.length) return false;
+  const n = T.filter(t => B.some(b => b === t || (t.length >= 4 && b.length >= 4 && (b.indexOf(t) === 0 || t.indexOf(b) === 0)))).length; return n / T.length >= 0.5; };
+async function youtubeTopla(tum){
+  const dosya = path.join(VERI, 'youtube.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
+  const ayar = (await al('https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/youtube.json', { deneme: 2 })) || {};
+  const izin = Object.values(ayar.kanallar || {}).map(norm), engel = Object.values(ayar.engel || {}).map(norm);
+  const simdi = Date.now(), aday = [], trGun = new Date(simdi + 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
+  for(const L of tum){
+    let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, L.slug + '.json'), 'utf8')); }catch(e){}
+    if(L.tsdb && j && j.mac){ j.mac.forEach(m => { const z = Date.parse(m.z); if(z - simdi < 75 * 60e3 && simdi - z < 120 * 60e3 && !/^ft$|finish|aet|pen/i.test(m.d || ''))
+        aday.push({ lig: L.slug, rid: 'ts' + m.id, ev: m.evAd || (j.takim[m.ev] || {}).ad, dep: m.depAd || (j.takim[m.dep] || {}).ad, z }); }); continue; }
+    if(L.tsdb) continue;
+    const s = await al('https://site.api.espn.com/apis/site/v2/sports/soccer/' + L.slug + '/scoreboard?dates=' + trGun, { deneme: 2 });
+    ((s && s.events) || []).forEach(ev => { const z = Date.parse(ev.date), c = ev.competitions && ev.competitions[0], st = (ev.status && ev.status.type) || {};
+      if(!c || st.completed || !(z - simdi < 75 * 60e3 && simdi - z < 120 * 60e3)) return; const t = h => { const x = (c.competitors || []).find(k => k.homeAway === h) || {}; return (x.team && (x.team.displayName || x.team.shortDisplayName)) || ''; };
+      const ev2 = t('home'), dep = t('away'); aday.push({ lig: L.slug, rid: String(ev.id), ev: TR_AD[ev2] || ev2, dep: TR_AD[dep] || dep, z }); });
+  }
+  aday.sort((a, b) => (/^tur\./.test(b.lig) ? 1 : 0) - (/^tur\./.test(a.lig) ? 1 : 0));
+  const once = {}; (eski.liste || []).forEach(x => { once[x.lig + '|' + x.rid] = x; });
+  const liste = [], RED = /özet|ozet|highlight|tahmin|prediction|reaction|analiz|efootball|\bpes\b|fifa ?\d{2}|\bfc ?2\d|simulat|gameplay|oyun|basın toplantısı|radyo|radio|iddaa|oran/i; let arama = 0;
+  for(const a of aday.slice(0, 90)){
+    const k = a.lig + '|' + a.rid, e = once[k];
+    if(e && e.v && simdi - (e.t || 0) < 25 * 60e3){ liste.push(e); continue; }
+    if(!a.ev || !a.dep) continue;
+    const h = await ytSayfa('https://www.youtube.com/results?search_query=' + encodeURIComponent(a.ev + ' ' + a.dep + ' canlı')); arama++; await bek(400);
+    const bul = ytVideolar(h).filter(v => (v.canli || (v.bas && Math.abs(v.bas - a.z) < 3 * 3600e3)) && !RED.test(v.b) && ytIcerir(v.b, a.ev) && ytIcerir(v.b, a.dep)
+      && !engel.includes(norm(v.k)) && (izin.includes(norm(v.k)) || v.onay));
+    let sec = null;
+    for(const v of bul.slice(0, 3)){ const w = await ytSayfa('https://www.youtube.com/watch?v=' + v.v); if(/"playableInEmbed":true/.test(w)){ sec = v; break; } }
+    if(sec) liste.push(Object.assign({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi }, sec));
+  }
+  fs.writeFileSync(dosya, JSON.stringify({ t: simdi, kaynak: 'YouTube', liste }));
+  console.log('YOUTUBE', 'aday maç', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.lig + ' ' + x.ev + '-' + x.dep + ' @' + x.k).join(' | ').slice(0, 600));
+}
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
@@ -607,6 +659,7 @@ async function ligIsle(L){
   if(SECILI.includes('tff') || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
   if(SECILI.includes('yayin') || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
   for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
+  if(SECILI.includes('youtube') || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
 })();

@@ -210,3 +210,14 @@ isle('index.html', [
   if(typeof _chatOpen!=='undefined'&&!_chatOpen)return;   // sohbet kapalı: açık menünün yerine sohbet çizilmesin
 """)),
 ])
+
+# YouTube canlı maçları TV listesine (bkz. gercek.js YOUTUBE CANLI MAÇLARI): ortak TV listesi her senkronda D.videoLinks'e yazılırken
+# Skorbord'un bulduğu / admin'in girdiği YouTube yayınları da eklenir.
+isle('index.html', [
+  ('youtube tv listesi', degis("""function ptOrtakTvUygula(){
+  try{ if(window._ptOrtakTv) D.videoLinks = window._ptOrtakTv; }catch(e){self.__ds&&self.__ds(6478,e)}
+}""", """function ptOrtakTvUygula(){
+  try{ if(window._ptOrtakTv) D.videoLinks = window._ptOrtakTv; }catch(e){self.__ds&&self.__ds(6478,e)}
+  try{ if(window.__sbYoutubeListe){ var _yt=window.__sbYoutubeListe(); D.videoLinks=((D.videoLinks)||[]).filter(function(x){ return !(x&&x.sbYoutube); }).concat(_yt); } }catch(e){self.__ds&&self.__ds(6479,e)}
+}""")),
+])
