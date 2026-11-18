@@ -1044,20 +1044,35 @@ var K={};  // takım kimliği -> {t, yukleniyor}
 var DIZILIS={'4-4-2':1,'4-3-3':1,'4-2-3-1':1,'5-3-2':1,'4-3-2-1':1};
 /* ESPN'de olmayan liglerin kadrosu: veri dosyasındaki Wikidata kadrosu (kulübün güncel oyuncuları, mevki, forma no, fotoğraf). */
 var MEVKI_WD=[[/kaleci|goalkeeper/i,'KL'],[/defans|defender|stoper|bek|back/i,'STP'],[/orta|midfield/i,'MOS'],[/forvet|forward|striker|kanat|wing/i,'SF']];
+/* basketbol / voleybol mevkileri (veri işi kısaltır; ESPN: PG, SG, SF, PF, C, G, F) */
+var SPOR_MEVKI={OK:'Oyun kurucu','ŞT':'Şutör',G:'Guard',KF:'Kısa forvet',UF:'Uzun forvet',F:'Forvet',P:'Pivot',PG:'Oyun kurucu',SG:'Şutör',SF:'Kısa forvet',PF:'Uzun forvet',C:'Pivot','G-F':'Guard / forvet','F-C':'Forvet / pivot',
+  PS:'Pasör','PÇ':'Pasör çaprazı',SM:'Smaçör',OO:'Orta oyuncu',LB:'Libero'};
+function sporKadroIste(slug, tid){   // ESPN basketbol kadrosu (NBA, WNBA, G League, NCAA, NBL…)
+  var v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(!t||!t.espn||!ESPN_YOL[slug]) return;
+  var c=K[slug+tid]||(K[slug+tid]={t:0}); if(c.yukleniyor||(c.t&&Date.now()-c.t<SEZON_TAZE)) return; c.yukleniyor=true;
+  getJSON(eSite(slug)+'/teams/'+t.espn+'/roster').then(function(j){ c.t=Date.now(); if(L[slug].veri!==v) return;
+    var ham=(j&&j.athletes)||[], l=[]; ham.forEach(function(a){ if(a&&a.items) a.items.forEach(function(x){ l.push(x); }); else l.push(a); });
+    var sira=l.map(function(a){ var pz=(a.position&&a.position.abbreviation)||''; var o={name:a.displayName||a.fullName||'?', position:SPOR_MEVKI[pz]||pz}; if(a.jersey) o.number=+a.jersey||a.jersey;
+      if(a.headshot&&a.headshot.href) o.photo=a.headshot.href; if(a.age) o.age=a.age; if(a.citizenship) o.nat=trAd(a.citizenship); return o; });
+    if(!sira.length) return; var t2=JSON.parse(JSON.stringify(v.teams[tid])); t2.squad={starting:[], bench:sira}; v.teams[tid]=t2;
+    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2);
+  }, function(){ c.t=Date.now(); }).then(function(){ c.yukleniyor=false; });
+}
 function tsdbKadro(slug, tid){
   var v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(!t||!t.tsdb) return;
   var c=K[slug+tid]||(K[slug+tid]={t:0}); if(c.yukleniyor||(c.t&&Date.now()-c.t<SEZON_TAZE)) return; c.yukleniyor=true;
   veriAl(slug).then(function(j){
     c.t=Date.now(); var l=(j&&j.kadro&&j.kadro[t.tsdb])||[]; if(!l.length||L[slug].veri!==v) return;
     var say={}, kod=function(m){ for(var i=0;i<MEVKI_WD.length;i++) if(MEVKI_WD[i][0].test(m||'')) return mevkiKod(MEVKI_WD[i][1]==='KL'?'G':MEVKI_WD[i][1]==='STP'?'CD':MEVKI_WD[i][1]==='MOS'?'CM':'F', say); return ''; };
-    var sira=l.map(function(a){ var o={name:a.ad, position:kod(a.mevki)}; if(a.no) o.number=a.no; if(a.yas) o.age=a.yas; if(a.uyruk) o.nat=trAd(a.uyruk);
+    var spor=sporu(slug)!=='futbol';
+    var sira=l.map(function(a){ var o={name:a.ad, position:spor?(SPOR_MEVKI[a.mevki]||a.mevki||''):kod(a.mevki)}; if(a.no) o.number=a.no; if(a.yas) o.age=a.yas; if(a.uyruk) o.nat=trAd(a.uyruk);
       if(a.foto&&a.foto.f){ o.photo=a.foto.f; o.photoCredit=(a.foto.y?a.foto.y+' · ':'')+(a.foto.l||'')+' · Wikimedia Commons'; o.photoSource=a.foto.u||''; } return o; });
     var t2=JSON.parse(JSON.stringify(v.teams[tid])); t2.squad={starting:[], bench:sira}; v.teams[tid]=t2;
     YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2);
   }).then(function(){ c.yukleniyor=false; }, function(){ c.yukleniyor=false; });
 }
 function kadroIste(tid){
-  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(sporu(slug)!=='futbol') return; if(t&&t.tsdb) return tsdbKadro(slug, tid); if(!t||!t.espn) return;
+  var slug=A.lig, v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(sporu(slug)!=='futbol'){ if(t&&t.tsdb) return tsdbKadro(slug, tid); return sporKadroIste(slug, tid); } if(t&&t.tsdb) return tsdbKadro(slug, tid); if(!t||!t.espn) return;
   var c=K[slug+tid]||(K[slug+tid]={t:0});
   if(c.yukleniyor || (c.t && Date.now()-c.t<SEZON_TAZE)) return;
   c.yukleniyor=true;

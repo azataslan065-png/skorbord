@@ -5,7 +5,7 @@ name: Veri topla
 on:
   schedule:
     - cron: '23 2 * * *'        # her gün 05:23 (İstanbul): bütün veri
-    - cron: '7,37 * * * *'      # her 30 dk: TheSportsDB liglerinin maçları (--hizli)
+    # (2026-11-19) 30 dakikalık hızlı toplama canli.yml döngüsüne taşındı (GitHub zamanlanmış işleri sık atlıyordu)
   workflow_dispatch:
     inputs:
       ligler: { description: 'Boşluklu lig listesi (boş = hepsi)', required: false, default: '' }

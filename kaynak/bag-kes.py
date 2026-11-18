@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-18-N'
+SB_BUILD = '2026-11-19-A'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -338,4 +338,12 @@ isle('index.html', [
     ticker.classList.remove('on');""", """  if(!weekMatches.length && !anns.length && window.__sbSeritNot){ anns.push(window.__sbSeritNot()); }   /* Skorbord: şerit hep açık */
   if(!weekMatches.length && !anns.length){
     ticker.classList.remove('on');""")),
+])
+# Takım detayı (2026-11-19): basketbol / voleybolda futbol dizilişi ve gol haritası sekmeleri gösterilmez; kadro "Oyuncular" sekmesinde.
+# Hazır temizlenmiş takım logoları (veri/takim-logo, bkz. veri-topla.js TAKIM LOGOLARI) tarayıcıda yeniden işlenmez.
+isle('index.html', [
+  ('spor takım sekmeleri', rx(r"""(      )(<button class="td-tab\$\{_tdTab==='squad'\?' active':''\}" onclick="switchTdTab\('squad'\)">[^<]*</button>)""", lambda m: m.group(1) + "${(D.sbSpor&&D.sbSpor!=='futbol')?'':`" + m.group(2) + "`}", "?'':`<button class=\"td-tab${_tdTab==='squad'")),
+  ('spor gol haritası', rx(r"""(      )(<button class="td-tab\$\{_tdTab==='golh'\?' active':''\}" onclick="switchTdTab\('golh'\)">[^<]*</button>)""", lambda m: m.group(1) + "${(D.sbSpor&&D.sbSpor!=='futbol')?'':`" + m.group(2) + "`}", "?'':`<button class=\"td-tab${_tdTab==='golh'")),
+  ('takım logosu işlenmez', degis("""    if(src.indexOf('/veri/lig-logo/')!==-1){ imgEl.style.visibility=''; return; }""",
+    """    if(src.indexOf('/veri/lig-logo/')!==-1||src.indexOf('/veri/takim-logo/')!==-1){ imgEl.style.visibility=''; return; }""")),
 ])

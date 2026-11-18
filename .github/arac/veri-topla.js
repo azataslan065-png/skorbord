@@ -106,7 +106,35 @@ function tsdbMac(x, r){
   return { id: x.idEvent, r: +x.intRound || r, z: x.strTimestamp ? x.strTimestamp + (/Z|[+-]\d\d:?\d\d$/.test(x.strTimestamp) ? '' : 'Z') : (x.dateEvent ? x.dateEvent + 'T' + (x.strTime || '00:00:00') + 'Z' : ''),
     ev: x.idHomeTeam, dep: x.idAwayTeam, evAd: x.strHomeTeam, depAd: x.strAwayTeam, evLogo: x.strHomeTeamBadge || '', depLogo: x.strAwayTeamBadge || '',
     evG: x.intHomeScore === null || x.intHomeScore === '' || x.intHomeScore === undefined ? null : +x.intHomeScore, depG: x.intAwayScore === null || x.intAwayScore === '' || x.intAwayScore === undefined ? null : +x.intAwayScore,
-    d: x.strStatus || '', st: x.strVenue || '' };
+    d: x.strStatus || '', st: x.strVenue || '', setler: tsdbPeriyot(x) };
+}
+// (2026-11-19) TheSportsDB strResult: basketbolda "Takım Quarters:<br>24 21 10 21 <br><br>Takım2 Quarters:<br>…", voleybolda
+// "Takım First:<br>25 21 <br>Second<br>29 27 …" → "(24-18) (21-25) …" (uygulama çeyrek / set tablosu olarak gösterir)
+function tsdbPeriyot(x){
+  const r = String(x.strResult || ''); if(!r) return '';
+  const h = x.intHomeScore == null || x.intHomeScore === '' ? null : +x.intHomeScore, a = x.intAwayScore == null || x.intAwayScore === '' ? null : +x.intAwayScore;
+  if(/Quarters?:/i.test(r)){ const bl = r.split(/<br>\s*<br>/i).map(b => { const m = /Quarters?:\s*<br>([\d\s]+)/i.exec(b); return m ? m[1].trim().split(/\s+/).filter(Boolean).map(Number) : null; }).filter(Boolean);
+    if(bl.length >= 2 && bl[0].length && bl[0].length === bl[1].length){ const t0 = bl[0].reduce((p, q) => p + q, 0), t1 = bl[1].reduce((p, q) => p + q, 0);
+      if(h == null || (t0 <= h && t1 <= a && h - t0 <= 30 && a - t1 <= 30)) return bl[0].map((v, i) => '(' + v + '-' + bl[1][i] + ')').join(' '); }
+    return ''; }
+  const set = [...r.matchAll(/(First|Second|Third|Fourth|Fifth|Golden)[a-z ]*:?\s*<br>\s*(\d+)\s+(\d+)/gi)].map(m => [+m[2], +m[3]]);
+  if(set.length){ const k = set.filter(q => q[0] > q[1]).length, l = set.filter(q => q[1] > q[0]).length;
+    const ters = h != null && k !== h && l === h; return set.map(q => ters ? '(' + q[1] + '-' + q[0] + ')' : '(' + q[0] + '-' + q[1] + ')').join(' '); }
+  return '';
+}
+// Basketbol / voleybol takım kadroları (TheSportsDB ücretsiz: takım başına en çok 10 oyuncu; teknik direktör ayrılır)
+const OYUNCU_MEVKI = [[/point guard/i, 'OK'], [/shooting guard/i, 'ŞT'], [/guard/i, 'G'], [/small forward/i, 'KF'], [/power forward/i, 'UF'], [/forward/i, 'F'], [/center/i, 'P'],
+  [/setter/i, 'PS'], [/opposite/i, 'PÇ'], [/outside|hitter|wing/i, 'SM'], [/middle/i, 'OO'], [/libero/i, 'LB']];
+async function tsdbOyuncular(takim){
+  const o = {};
+  for(const id of Object.keys(takim)){
+    const j = await tsdb('lookup_all_players.php?id=' + id); const l = (j && (j.player || j.players)) || [];
+    o[id] = l.filter(p => !/manager|coach|antren/i.test(p.strPosition || '')).map(p => { const m = OYUNCU_MEVKI.find(x => x[0].test(p.strPosition || ''));
+      const x = { ad: p.strPlayer || '', mevki: m ? m[1] : (p.strPosition || ''), no: p.strNumber ? +p.strNumber || p.strNumber : '', uyruk: p.strNationality || '' };
+      const f = p.strCutout || p.strThumb || p.strRender; if(f) x.foto = { f: f + (/\.(png|jpg)$/i.test(f) ? '/small' : ''), l: 'TheSportsDB', u: 'https://www.thesportsdb.com/player/' + p.idPlayer };
+      if(p.dateBorn){ const y = new Date(p.dateBorn); if(!isNaN(y)) x.yas = Math.floor((Date.now() - y) / 31557600000); } return x; });
+  }
+  return o;
 }
 async function tsdbLig(L, eski){
   const lj = await tsdb('lookupleague.php?id=' + L.tsdb); const lig = (lj && lj.leagues && lj.leagues[0]) || {};
@@ -612,13 +640,19 @@ const ytIcerir = (baslik, takim) => { const B = norm(baslik).split(' '), T = ytP
 async function youtubeTopla(tum){
   const dosya = path.join(VERI, 'youtube.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   const ayar = (await al('https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/youtube.json', { deneme: 2 })) || {};
-  const izin = Object.values(ayar.kanallar || {}).map(norm), engel = Object.values(ayar.engel || {}).map(norm);
+  const izin = Object.values(ayar.kanallar || {}).concat(['TVF VOLEYBOL TV', 'TVF Voleybol TV', 'TBF', 'FIBA - The Basketball Channel', 'EuroLeague Women', 'Basketball Champions League', 'European Volleyball', 'Volleyball World']).map(norm), engel = Object.values(ayar.engel || {}).map(norm);
   // Kanalların "Canlı yayınlar" sekmesi doğrudan okunur: TFF'nin resmî kanalı (2. Lig, 3. Lig, Ziraat Türkiye Kupası, Turkcell Süper Kupa ve TFF'nin
   // seçtiği maçlar) ve admin'in @kullanıcıadı / UC... kimliğiyle yazdığı kanallar
   // Yayın hakkı sahiplerinin resmî kanalları (2026-27): TFF; A Spor (Ziraat Türkiye Kupası, Turkcell Süper Kupa, Uluslar Ligi — ATV/A Spor);
   // TRT Spor ve tabii Spor (UEFA kupaları, milli maçlar); Sıfır TV (geçen sezon 2. ve 3. Lig'in YouTube yayıncısı)
   const KANAL = [['channel/UCVoNfzLtczc_TV8-xKjcmKg', 'Türkiye Futbol Federasyonu'], ['channel/UCJElRTCNEmLemgirqvsW63Q', 'A Spor'], ['channel/UCfYNqluOf8EbQkL44otydMw', 'TRT Spor'],
-    ['channel/UCb5OsXSwzcyqZFoKKs3Su3g', 'tabii Spor'], ['channel/UCDX7Vf8VLBHdC-HZtKG9gOQ', 'Sıfır TV']].concat(Object.values(ayar.kanallar || {}).map(x => String(x).trim()).filter(x => /^@[\w.-]+$|^UC[\w-]{20,}$/.test(x)).map(x => [x[0] === '@' ? x : 'channel/' + x, x]));
+    ['channel/UCb5OsXSwzcyqZFoKKs3Su3g', 'tabii Spor'], ['channel/UCDX7Vf8VLBHdC-HZtKG9gOQ', 'Sıfır TV'],
+    // (2026-11-19) basketbol / voleybol yayın hakkı sahiplerinin YouTube kanalları: TVF Voleybol TV (Sultanlar / Efeler Ligi, Kupa Voley — TVF fikstüründe
+    // "TVF Voleybol TV" yazan maçlar), TBF (TBL, TKBL, gençler ligleri), FIBA (FIBA Europe Cup ücretsiz canlı), EuroLeague Women (bütün maçlar, bölge kısıtı
+    // dışında), BCL, CEV (Avrupa kupalarının bir kısmı), Volleyball World (milli turnuvaların bir kısmı)
+    ['channel/UCTgQ8Bfq3AUuo1vWULdvRKw', 'TVF Voleybol TV'], ['channel/UC0BH4JA92bO7AOtqOWBNqdg', 'TBF'], ['channel/UCtInrnU3QbWqFGsdKT1GZtg', 'FIBA'],
+    ['channel/UChsN13M_uLLQQ8lFewoXxzA', 'EuroLeague Women'], ['channel/UCZUkv6tSC5OfX54gLgjV9aw', 'Basketball Champions League'], ['channel/UC8XRC858pOERvclUDb_d7rg', 'European Volleyball'],
+    ['channel/UCNMg6XDhRZI2QzL4pWOvP_w', 'Volleyball World']].concat(Object.values(ayar.kanallar || {}).map(x => String(x).trim()).filter(x => /^@[\w.-]+$|^UC[\w-]{20,}$/.test(x)).map(x => [x[0] === '@' ? x : 'channel/' + x, x]));
   const kanalYayin = [];
   for(const [yol, ad] of KANAL){ for(const sek of ['streams', 'live']){ const h = await ytSayfa('https://www.youtube.com/' + yol + '/' + sek); const l = ytVideolar(h).map(v => Object.assign(v, { k: v.k || ad, kanalan: true }));
       if(sek === 'live'){ const vid = /"videoId":"([\w-]{11})"[^]{0,400}?"isLive":true/.exec(h) || /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(h); const bas = /<meta name="title" content="([^"]+)"/.exec(h);
@@ -759,6 +793,43 @@ async function tvfLig(L, eski){
   const sezon = (liste[0] && String(liste[0].SEZON || '').trim()) || ((eski && eski.sezonAdi) || '');
   return { yil: parseInt(sezon, 10) || new Date().getFullYear(), sezonAdi: sezon, takim, gecmis: {}, mac, kaynak: 'TVF' };
 }
+
+// ── TAKIM LOGOLARI (2026-11-19, kullanıcı: "takım logolarının çoğu çerçeve içine alınmış") ─────────────────────────────────────
+// KÖK SEBEP: TheSportsDB / TVF / TFF logolarının çoğu beyaz (ya da düz renk) kare zeminli; uygulamadaki kenar temizleme yalnız siyah
+// zemini siliyor, üstelik başka sitelerin görsellerinde tarayıcı piksel okuyamıyor (CORS). ŞİMDİ logo burada indirilir: köşelerden
+// başlayarak zemin rengi (kenara bağlı, düz renk) saydamlaştırılır, boşluk kırpılır, 128 px PNG olarak veri/takim-logo/ altına yazılır.
+const TL_KLAS = path.join(VERI, 'takim-logo'); let TL_DIZIN = null, _sharp;
+function tlDizin(){ if(!TL_DIZIN){ try{ TL_DIZIN = JSON.parse(fs.readFileSync(path.join(TL_KLAS, 'dizin.json'), 'utf8')); }catch(e){ TL_DIZIN = {}; } } return TL_DIZIN; }
+async function logoTemizle(url){
+  if(!url || !/^https?:/.test(url)) return url; const D = tlDizin(); if(D[url] && fs.existsSync(path.join(TL_KLAS, D[url]))) return 'veri/takim-logo/' + D[url];
+  if(D[url] === '') return url;   // daha önce işlenemedi: kaynağın kendi adresi kalır
+  if(_sharp === undefined){ try{ _sharp = require('sharp'); }catch(e){ _sharp = null; } } if(!_sharp) return url;
+  try{
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) }); if(!r.ok) throw new Error('HTTP ' + r.status);
+    const giris = Buffer.from(await r.arrayBuffer());
+    const { data, info } = await _sharp(giris).resize(256, 256, { fit: 'inside', withoutEnlargement: true }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const W = info.width, H = info.height, px = (x, y) => (y * W + x) * 4;
+    const koseler = [[0, 0], [W - 1, 0], [0, H - 1], [W - 1, H - 1]].map(([x, y]) => data.slice(px(x, y), px(x, y) + 4));
+    const opak = koseler.filter(c => c[3] > 200);
+    if(opak.length >= 3){
+      const zem = opak[0], fark = i => Math.abs(data[i] - zem[0]) + Math.abs(data[i + 1] - zem[1]) + Math.abs(data[i + 2] - zem[2]);
+      const gor = new Uint8Array(W * H), kuyruk = [];
+      for(let x = 0; x < W; x++){ kuyruk.push([x, 0], [x, H - 1]); } for(let y = 0; y < H; y++){ kuyruk.push([0, y], [W - 1, y]); }
+      while(kuyruk.length){ const [x, y] = kuyruk.pop(); if(x < 0 || y < 0 || x >= W || y >= H) continue; const k = y * W + x; if(gor[k]) continue; gor[k] = 1; const i = k * 4;
+        if(data[i + 3] < 30 || fark(i) <= 60){ data[i + 3] = 0; kuyruk.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]); } }
+    }
+    let cik = _sharp(data, { raw: { width: W, height: H, channels: 4 } });
+    try{ cik = _sharp(await cik.png().toBuffer()).trim({ threshold: 1 }); }catch(e){}
+    const png = await cik.resize(128, 128, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png({ compressionLevel: 9 }).toBuffer();
+    fs.mkdirSync(TL_KLAS, { recursive: true }); const ad = require('crypto').createHash('md5').update(url).digest('hex').slice(0, 16) + '.png';
+    fs.writeFileSync(path.join(TL_KLAS, ad), png); D[url] = ad; fs.writeFileSync(path.join(TL_KLAS, 'dizin.json'), JSON.stringify(D)); return 'veri/takim-logo/' + ad;
+  }catch(e){ D[url] = ''; return url; }
+}
+async function logolariTemizle(temel){
+  const es = {}; for(const id of Object.keys(temel.takim || {})){ const t = temel.takim[id]; if(t.logo){ const y = await logoTemizle(t.logo); es[t.logo] = y; t.logo = y; } }
+  (temel.mac || []).forEach(m => { if(m.evLogo && es[m.evLogo]) m.evLogo = es[m.evLogo]; if(m.depLogo && es[m.depLogo]) m.depLogo = es[m.depLogo];
+    if(m.evLogo && !es[m.evLogo] && temel.takim[m.ev] && temel.takim[m.ev].logo) m.evLogo = temel.takim[m.ev].logo; if(m.depLogo && !es[m.depLogo] && temel.takim[m.dep] && temel.takim[m.dep].logo) m.depLogo = temel.takim[m.dep].logo; });
+}
 async function ligIsle(L){
   const dosya = path.join(VERI, L.slug + '.json');
   let eski = null; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
@@ -767,6 +838,7 @@ async function ligIsle(L){
   const FUTBOL = !/^(bsk|vlb)\./.test(L.slug);   // basketbol / voleybol: kulüp eşleşmesi, kadro, geçmiş sezon futbol kaynaklarına göre; atlanır
   const t0 = Date.now(); const ad = (x) => console.log('  ' + L.slug + ' ' + x + ' ' + ((Date.now() - t0) / 1000 | 0) + 's');
   const temel = L.tsdb === 'wiki' ? await wikiLig(L, eski) : L.tsdb === 'tff' ? await tffLig(L, eski) : /^tvf:/.test(L.tsdb) ? await tvfLig(L, eski) : L.tsdb ? await tsdbLig(L, eski) : await espnLig(L, eski); ad('temel');
+  if(L.tsdb){ try{ await logolariTemizle(temel); }catch(e){ console.log('HATA logo temizle', L.slug, e.message); } }   // TheSportsDB / TVF / TFF / Vikipedi logoları
   const takim = {};
   Object.entries(temel.takim).forEach(([id, t]) => { takim[id] = Object.assign({}, t); const tr = TR_AD[t.ad]; if(tr) takim[id].adTr = tr; });
   let foto = (eski && eski.foto) || {}, fotoT = (eski && eski.fotoT) || 0, kadroDosya = (eski && eski.kadro) || null, kadroT = (eski && eski.kadroT) || 0;
@@ -786,8 +858,11 @@ async function ligIsle(L){
       fotoT = Date.now();
       OZET.push({ lig: L.slug, oyuncu: Object.values(kadro).reduce((a, l) => a + l.length, 0), espnFoto: Object.keys(espnVar).length, commonsFoto: Object.keys(foto).length });
     }
-    if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && !/^tvf:/.test(L.tsdb) && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now(); }
-  } else if(eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd', 'koord'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
+    if(L.tsdb && L.tsdb !== 'wiki' && L.tsdb !== 'tff' && !/^tvf:/.test(L.tsdb) && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ kadroDosya = await wdKadro(takim); kadroT = Date.now();
+      if(/^\d+$/.test(L.tsdb) && !Object.values(kadroDosya || {}).some(l => l && l.length)){ try{ kadroDosya = await tsdbOyuncular(takim); }catch(e){} } }   // Wikidata boşsa TheSportsDB (takım başına 10 oyuncu)
+  }
+  if(!HIZLI && !FUTBOL && /^\d+$/.test(L.tsdb || '') && Date.now() - ((eski && eski.kadroT) || 0) > 6 * 864e5){ try{ kadroDosya = await tsdbOyuncular(takim); kadroT = Date.now(); }catch(e){ console.log('HATA oyuncu', L.slug, e.message); } }
+  if(HIZLI && eski && eski.takim){ Object.keys(takim).forEach(id => { const e = eski.takim[id]; if(e) ['wd', 'kur', 'stad', 'kap', 'kupa', 'wdAd', 'koord'].forEach(k => { if(e[k] !== undefined) takim[id][k] = e[k]; }); }); }
   // Lig şampiyonlukları: arşivde 1. olunan ama Wikidata'da kayıtlı olmayan sezonlar ilgili turnuvaya eklenir (Wikidata bazı sezonlarda eksik)
   if(!L.tsdb && temel.gecmis) Object.keys(takim).forEach(id => {
     const C = Object.keys(temel.gecmis).map(Number).filter(y => (temel.gecmis[y].satir || []).some(r => r.t === id && r.s === 1 && !r.g));

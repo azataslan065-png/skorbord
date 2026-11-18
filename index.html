@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-18-N';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-19-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -8442,6 +8442,7 @@ function _processLogoImg(imgEl){
     const src=imgEl.src;
     if(!src)return;
     if(src.indexOf('/veri/lig-logo/')!==-1){ imgEl.style.visibility=''; return; }   /* Skorbord: hazır lig logosu olduğu gibi */
+    if(src.indexOf('/veri/lig-logo/')!==-1||src.indexOf('/veri/takim-logo/')!==-1){ imgEl.style.visibility=''; return; }   /* Skorbord: hazır lig logosu olduğu gibi */
     // HATA DÜZELTMESİ (KESİN KANITLANMIŞ KÖK SEBEP - 4. TUR, ekran görüntüleriyle KESİN
     // DOĞRULANDI: "logoya ait olmayan siyahlık kenar hala var"): Burada ÖNCEDEN
     // `if(src.indexOf('data:')===0)return;` satırı vardı - niyeti "zaten işlenmiş bir data
@@ -20971,13 +20972,13 @@ function renderTeamDetailContent(){
     </div>
     <div class="td-tabs">
       <button class="td-tab${_tdTab==='info'?' active':''}" onclick="switchTdTab('info')"> Bilgi</button>
-      <button class="td-tab${_tdTab==='squad'?' active':''}" onclick="switchTdTab('squad')"> Kadro & Diziliş</button>
+      ${(D.sbSpor&&D.sbSpor!=='futbol')?'':`<button class="td-tab${_tdTab==='squad'?' active':''}" onclick="switchTdTab('squad')"> Kadro & Diziliş</button>`}
       <button class="td-tab${_tdTab==='players'?' active':''}" onclick="switchTdTab('players')"> Oyuncular</button>
       <button class="td-tab${_tdTab==='matches'?' active':''}" onclick="switchTdTab('matches')"> Maçlar</button>
       <button class="td-tab${_tdTab==='fanwall'?' active':''}" onclick="switchTdTab('fanwall')"> Taraftar Duvarı</button>
       <button class="td-tab${_tdTab==='kupa'?' active':''}" onclick="switchTdTab('kupa')"> Kupa Dolabı</button>
       <button class="td-tab${_tdTab==='karsi'?' active':''}" onclick="switchTdTab('karsi')"> Karşılaştır</button>
-      <button class="td-tab${_tdTab==='golh'?' active':''}" onclick="switchTdTab('golh')"> Gol Haritası</button>
+      ${(D.sbSpor&&D.sbSpor!=='futbol')?'':`<button class="td-tab${_tdTab==='golh'?' active':''}" onclick="switchTdTab('golh')"> Gol Haritası</button>`}
     </div>
     ${body}
   `;
@@ -40237,6 +40238,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=fd9c987a"></script>
+<script src="gercek.js?v=0867269b"></script>
 </body>
 </html>

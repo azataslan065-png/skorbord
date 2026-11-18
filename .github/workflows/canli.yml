@@ -1,0 +1,41 @@
+# CANLI VERİ DÖNGÜSÜ (2026-11-19, kullanıcı: "kayıtlı takımların canlı verisi taşınmıyor; dün oynanmış bir müsabaka hâlâ oynanmamış görünüyor").
+# KÖK SEBEP: TheSportsDB / TVF / TFF ligleri yalnız GitHub'ın 30 dakikalık zamanlanmış işiyle güncelleniyordu; GitHub yoğunlukta zamanlanmış
+# işleri atlıyor (18 Kasım'da 24 saatte yalnız 3 kez çalıştı). ŞİMDİ tek bir iş ~5,5 saat boyunca 6 dakikada bir hızlı toplama yapıp
+# kaydeder, sonunda kendini yeniden başlatır. Saatlik zamanlama yalnız yedek: döngü durmuşsa onu başlatır (aynı anda iki döngü olmaz).
+name: Canli veri
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: canli-veri
+  cancel-in-progress: false
+jobs:
+  dongu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Hazırlık
+        run: npm i --no-save --silent --prefix .github/arac sharp@0.33.5 || true
+      - name: Döngü
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          git config user.name github-actions && git config user.email actions@github.com
+          BIT=$(( $(date +%s) + 330*60 ))
+          while [ $(date +%s) -lt $BIT ]; do
+            T0=$(date +%s)
+            git pull -q --rebase || true
+            timeout 20m node .github/arac/veri-topla.js --hizli || echo "tur hatası"
+            git add veri && (git diff --cached --quiet || (git commit -qm "Canlı veri $(date -u +%FT%TZ)" && for i in 1 2 3 4 5; do git pull -q --rebase && git push -q && break; sleep 7; done))
+            G=$(( $(date +%s) - T0 )); [ $G -lt 360 ] && sleep $(( 360 - G ))
+          done
+      - name: Yeniden başlat
+        if: always()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh workflow run canli.yml --ref main || true
