@@ -573,16 +573,27 @@ function ytVideolar(h){
       o.push({ v: v.videoId, b: ((v.title && v.title.runs) || []).map(r => r.text).join(''), k: (v.ownerText && v.ownerText.runs && v.ownerText.runs[0].text) || '',
         kid: (v.ownerText && v.ownerText.runs && v.ownerText.runs[0].navigationEndpoint && v.ownerText.runs[0].navigationEndpoint.browseEndpoint && v.ownerText.runs[0].navigationEndpoint.browseEndpoint.browseId) || '',
         canli: /LIVE/.test(s(v.badges || '') + s(v.thumbnailOverlays || '')), bas: v.upcomingEventData ? +v.upcomingEventData.startTime * 1000 : 0, onay: /VERIFIED/.test(s(v.ownerBadges || '')) }); return; }
+    if(x.lockupViewModel && x.lockupViewModel.contentId){ const v = x.lockupViewModel, s = JSON.stringify(v), md = v.metadata && v.metadata.lockupMetadataViewModel;
+      o.push({ v: v.contentId, b: (md && md.title && md.title.content) || '', k: '', kid: '', canli: /BADGE_STYLE_LIVE|"CANLI"|"LIVE"/.test(s), yak: /UPCOMING|Planlandı|Bekleniyor|Scheduled/i.test(s), bas: 0, onay: false }); return; }
     Object.values(x).forEach(gez); };
   gez(j); return o;
 }
 const ytParca = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|jk|fc|cf|ac|sc|kulubu|futbol|spor|club|the|de|of)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
 const ytIcerir = (baslik, takim) => { const B = norm(baslik).split(' '), T = ytParca(takim); if(!T.length) return false;
-  const n = T.filter(t => B.some(b => b === t || (t.length >= 4 && b.length >= 4 && (b.indexOf(t) === 0 || t.indexOf(b) === 0)))).length; return n / T.length >= 0.5; };
+  const var_ = t => B.some(b => b === t || (t.length >= 4 && b.length >= 4 && (b.indexOf(t) === 0 || t.indexOf(b) === 0)));
+  const n = T.filter(var_).length, son = T.filter(t => !/^\d+$/.test(t)).pop(); return n / T.length >= 0.5 || (son && son.length >= 5 && var_(son)); };   // sponsorlu adlarda asıl ad sondadır
 async function youtubeTopla(tum){
   const dosya = path.join(VERI, 'youtube.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
   const ayar = (await al('https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/youtube.json', { deneme: 2 })) || {};
   const izin = Object.values(ayar.kanallar || {}).map(norm), engel = Object.values(ayar.engel || {}).map(norm);
+  // Kanalların "Canlı yayınlar" sekmesi doğrudan okunur: TFF'nin resmî kanalı (2. Lig, 3. Lig, Ziraat Türkiye Kupası, Turkcell Süper Kupa ve TFF'nin
+  // seçtiği maçlar) ve admin'in @kullanıcıadı / UC... kimliğiyle yazdığı kanallar
+  const KANAL = [['channel/UCVoNfzLtczc_TV8-xKjcmKg', 'Türkiye Futbol Federasyonu']].concat(Object.values(ayar.kanallar || {}).map(x => String(x).trim()).filter(x => /^@[\w.-]+$|^UC[\w-]{20,}$/.test(x)).map(x => [x[0] === '@' ? x : 'channel/' + x, x]));
+  const kanalYayin = [];
+  for(const [yol, ad] of KANAL){ for(const sek of ['streams', 'live']){ const h = await ytSayfa('https://www.youtube.com/' + yol + '/' + sek); const l = ytVideolar(h).map(v => Object.assign(v, { k: v.k || ad, kanalan: true }));
+      if(sek === 'live'){ const vid = /"videoId":"([\w-]{11})"[^]{0,400}?"isLive":true/.exec(h) || /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(h); const bas = /<meta name="title" content="([^"]+)"/.exec(h);
+        if(vid && /"isLiveNow":true|"isLive":true/.test(h)) l.push({ v: vid[1], b: bas ? bas[1] : '', k: ad, canli: true, kanalan: true }); }
+      l.forEach(v => { if((v.canli || v.yak) && !kanalYayin.some(x => x.v === v.v)) kanalYayin.push(v); }); await bek(500); } }
   const simdi = Date.now(), aday = [], trGun = new Date(simdi + 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
   for(const L of tum){
     let j = null; try{ j = JSON.parse(fs.readFileSync(path.join(VERI, L.slug + '.json'), 'utf8')); }catch(e){}
@@ -597,7 +608,10 @@ async function youtubeTopla(tum){
   aday.sort((a, b) => (/^tur\./.test(b.lig) ? 1 : 0) - (/^tur\./.test(a.lig) ? 1 : 0));
   const once = {}; (eski.liste || []).forEach(x => { once[x.lig + '|' + x.rid] = x; });
   const liste = [], RED = /özet|ozet|highlight|tahmin|prediction|reaction|analiz|efootball|\bpes\b|fifa ?\d{2}|\bfc ?2\d|simulat|gameplay|oyun|basın toplantısı|radyo|radio|iddaa|oran/i; let arama = 0;
-  for(const a of aday.slice(0, 90)){
+  for(const a of aday){   // önce kanalların kendi canlı yayın listelerinde (arama gerekmez)
+    const v = kanalYayin.find(v => !RED.test(v.b) && ytIcerir(v.b, a.ev) && ytIcerir(v.b, a.dep)); if(v){ a.bulundu = 1; liste.push(Object.assign({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi }, v)); }
+  }
+  for(const a of aday.filter(a => !a.bulundu).slice(0, 70)){
     const k = a.lig + '|' + a.rid, e = once[k];
     if(e && e.v && simdi - (e.t || 0) < 25 * 60e3){ liste.push(e); continue; }
     if(!a.ev || !a.dep) continue;
@@ -609,7 +623,7 @@ async function youtubeTopla(tum){
     if(sec) liste.push(Object.assign({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi }, sec));
   }
   fs.writeFileSync(dosya, JSON.stringify({ t: simdi, kaynak: 'YouTube', liste }));
-  console.log('YOUTUBE', 'aday maç', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.lig + ' ' + x.ev + '-' + x.dep + ' @' + x.k).join(' | ').slice(0, 600));
+  console.log('YOUTUBE', 'kanal yayını', kanalYayin.length, kanalYayin.slice(0, 6).map(v => (v.canli ? 'CANLI ' : 'PLAN ') + v.b).join(' | ').slice(0, 400), 'aday maç', aday.length, 'arama', arama, 'bulunan', liste.length, liste.map(x => x.lig + ' ' + x.ev + '-' + x.dep + ' @' + x.k).join(' | ').slice(0, 600));
 }
 // ── Lig ─────────────────────────────────────────────────────────────────────────────────────────────
 async function ligIsle(L){
