@@ -75,7 +75,8 @@ function tsdbYukle(slug, k){
     var teams={}, matches={};
     Object.keys(j.takim||{}).forEach(function(id){ var t=j.takim[id]; teams['t'+id]={id:'t'+id, name:trAd(t.ad), shortName:trAd(t.kisa||t.ad), logo:t.logo||'', color:'', tsdb:id}; });
     j.mac.forEach(function(m){ var e=tsdbE(m); if(isNaN(e.date)) return; var o=macNesnesi(e, m.r); o.espn=null; o.tsdb=m.id; matches['m'+e.rid]=o; });
-    k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:null, tsdb:true};
+    var turAd=null; j.mac.forEach(function(m){ if(m.tur&&m.r){ (turAd=turAd||{})[m.r]=m.tur; } });
+    k.veri={slug:slug, lid:'', ad:LIG_AD[slug]||j.ad||slug, sezon:j.sezonAdi||'', yil:j.yil, logo:'', teams:teams, matches:matches, notlar:[], gruplar:null, tsdb:true, turAd:turAd};
     k.t=Date.now(); k.yukleniyor=null;
     gunluk('lig yüklendi (TheSportsDB)', slug, Object.keys(teams).length+' takım', j.mac.length+' maç');
     return k.veri;
@@ -401,10 +402,49 @@ window.__sbKupaHtml=function(tid){
   +'.ptk-raf{flex-wrap:wrap}.sb-foto-not{font-size:.55rem;color:var(--mu);text-align:center;margin:-.35rem 0 .5rem;line-height:1.4}.sb-foto-not a{color:inherit}';
   (document.head||document.documentElement).appendChild(st); }catch(e){} })();
 
+/* ═══ MAÇ GÖREVLİLERİ (2026-11-18, kullanıcı: "Desteklenen maçlar için spiker ve yorumcu ekle" → "Maç bilgisinde isimler"; "Hakem detayları ekle").
+   ESPN ve TheSportsDB lig maçlarında hakem / yayın ekibi vermiyor (boş geliyor); bu yüzden admin girer: Admin › Skorbord › Maç görevlileri →
+   skorbord/macBilgi/<lig>/<maç>. Kupa maçlarının hakemi Vikipedi'den gelir. Girilen adlar maç bilgisine (Hakem, Yardımcılar, VAR, Spiker,
+   Yorumcu, Yayın) ve hakem ayrıntı ekranına (hakemin bu ligdeki maçları, kart / penaltı ortalamaları) işlenir. */
+var GOREVLI_ALAN=['spiker','yorumcu','referee','assistRef1','assistRef2','fourthRef','varRef','avarRef','tv'];
+function gorevliUygula(slug, mid, m){
+  var g=null; try{ g=YerelVT.uzak('macBilgi/'+String(slug).replace(/\./g,'_')+'/'+String(mid).replace(/^m/,'')); }catch(e){}
+  var once=m._gorevliA||{};
+  GOREVLI_ALAN.forEach(function(k){ var v=g&&g[k]&&String(g[k]).trim(); if(v){ m[k]=v; } else if(once[k]){ delete m[k]; } });
+  if(g&&g.referee) m._gorevli=1; else delete m._gorevli;
+  var a={}; GOREVLI_ALAN.forEach(function(k){ if(g&&g[k]&&String(g[k]).trim()) a[k]=1; }); if(Object.keys(a).length) m._gorevliA=a; else delete m._gorevliA;
+  return m;
+}
+var _gorevliDinle=false;
+function gorevliDinle(){ if(_gorevliDinle) return; _gorevliDinle=true;
+  try{ firebase.database().ref('macBilgi').on('value', function(){
+    var v=L[A.lig]&&L[A.lig].veri; if(!v) return; var id=ligKimlik(A.lig);
+    Object.keys(v.matches).forEach(function(mid){ var m=v.matches[mid], once=JSON.stringify(m), y=gorevliUygula(A.lig, mid, JSON.parse(once));
+      if(JSON.stringify(y)!==once){ v.matches[mid]=y; YerelVT.yaz('leagues/'+id+'/matches/'+mid, y); } });
+  }); }catch(e){} }
+
+/* ═══ KUPA TUR ADLARI (2026-11-18): kupalarda (Ziraat Türkiye Kupası, Turkcell Süper Kupa) maçlar "hafta" değil tur tur oynanır. Lig sayfası her yerde
+   "3. Hafta" yazıyor (20'den fazla yerde); bu ligler için ekrandaki "N. Hafta" yazıları tur adına çevrilir: "3. Tur", "Yarı Final", "Final". */
+(function(){
+  var calis=false;
+  function cevir(kok){
+    var T=window.D&&D.sbTurAd; if(!T||!kok) return;
+    var w=document.createTreeWalker(kok, NodeFilter.SHOW_TEXT, null), n, l=[];
+    while((n=w.nextNode())) if(/\d+\. Hafta/.test(n.nodeValue)) l.push(n);
+    l.forEach(function(x){ var y=x.nodeValue.replace(/(\d+)\. Hafta/g, function(t, k){ return T[k]||t; }); if(y!==x.nodeValue) x.nodeValue=y; });
+  }
+  function kur(){ if(calis||!window.MutationObserver||!document.body) return; calis=true;
+    new MutationObserver(function(ms){ if(!(window.D&&D.sbTurAd)) return; ms.forEach(function(m){ for(var i=0;i<m.addedNodes.length;i++){ var a=m.addedNodes[i]; if(a.nodeType===1) cevir(a); else if(a.nodeType===3&&a.parentNode) cevir(a.parentNode); } }); })
+      .observe(document.body, {childList:true, subtree:true}); }
+  if(document.body) kur(); else document.addEventListener('DOMContentLoaded', kur);
+})();
+
 /* ---------- yerel ağaca yerleştirme ---------- */
 function ligBelgesi(v){
+  try{ Object.keys(v.matches||{}).forEach(function(mid){ gorevliUygula(v.slug, mid, v.matches[mid]); }); }catch(e){}
+  gorevliDinle();
   return {leagueName:v.ad, season:v.sezon, logoUrl:v.logo||null, teams:v.teams, matches:v.matches,
-    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbGercek:{slug:v.slug, t:Date.now()}};
+    lgConfig:{winPts:3, drawPts:1}, rankNotes:v.notlar||[], sbGruplar:v.gruplar||null, sbTurAd:v.turAd||null, sbGercek:{slug:v.slug, t:Date.now()}};
 }
 function agacaYaz(v){
   var id=ligKimlik(v.slug), eski=YerelVT.ham('leagues/'+id)||{}, b=ligBelgesi(v);
@@ -490,7 +530,7 @@ function ligeIsle(es){
     if(v.lid && e.lid && e.lid!==v.lid) return;
     var eski=v.matches['m'+e.rid]; if(!eski) return;
     var once=macImza(eski), kopya=JSON.parse(JSON.stringify(eski));
-    var yeni=macNesnesi(e, eski.week, kopya);
+    var yeni=gorevliUygula(A.lig, 'm'+e.rid, macNesnesi(e, eski.week, kopya));
     if(macImza(yeni)===once) return;
     v.matches['m'+e.rid]=yeni; n++;
     YerelVT.yaz('leagues/'+id+'/matches/m'+e.rid, yeni);
@@ -560,6 +600,7 @@ function ozetIsle(mid, j){
     return o;
   }).filter(Boolean);
   if(ke.length>=(m2.events||[]).filter(function(e){ return e.type!=='sub'; }).length){ m2.events=ke; m2._ozet=1; }
+  gorevliUygula(A.lig, mid, m2);
   if(JSON.stringify(m2)===JSON.stringify(m)) return;
   v.matches[mid]=m2;
   YerelVT.yaz('leagues/'+ligKimlik(A.lig)+'/matches/'+mid, m2);
@@ -843,10 +884,9 @@ function anaCiz(){
     l.forEach(function(e){ if(fav.mac[e.rid]) favMac.push([s,e]); });
     if(l.length) dolu.push(anaKart(s, l, fav, c.logo)); else bos.push(s); });
   var bekleyen=sira.filter(function(s){ var c=ANA.kume[s+'|'+ofs]; return !c||!c.t; }).length;
-  var gunler=''; for(var g=-3; g<=4; g++) gunler+='<button type="button" class="sba-gun'+(g===ofs?' on':'')+'" onclick="Gercek.anaGun('+g+')">'+anaGunAd(g)+'</button>';
   var h='<div class="sba-ust"><img src="app-icon-192.png" alt="" class="sba-logo"><b>Skorbord</b><span style="flex:1"></span>'
-    +'<button type="button" class="sba-btn" title="Yenile" onclick="Gercek.anaYenile()">⟳</button><button type="button" class="sba-btn" title="Ayarlar" onclick="try{openSettings()}catch(e){}">⚙</button></div>'
-    +'<div class="sba-gunler">'+gunler+'</div><div class="sba-ic">';
+    +'<button type="button" class="sba-btn" title="Sıralamalar" aria-label="Sıralamalar" onclick="Gercek.siralama()"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg></button><button type="button" class="sba-btn" title="Yenile" onclick="Gercek.anaYenile()">⟳</button><button type="button" class="sba-btn" title="Ayarlar" onclick="try{openSettings()}catch(e){}">⚙</button></div>'
+    +anaTarihSeridi(ofs)+'<div class="sba-ic">';
   if(favMac.length) h+='<div class="sba-kart fav"><div class="sba-bas"><span class="sba-bay yildiz">★</span><span class="sba-ad">Favorilerim</span></div>'+favMac.map(function(x){ return anaSatir(x[1], x[0], fav); }).join('')+'</div>';
   h+=dolu.join('');
   if(!dolu.length&&!bekleyen) h+='<div class="sba-bos">'+esc(anaGunAd(ofs))+' kayıtlı liglerde maç yok.</div>';
@@ -870,7 +910,10 @@ function anaGizle(){ var el=document.getElementById('sbAna'); ANA.acik=false; if
 function anaDongu(){ clearTimeout(ANA.z); if(!ANA.acik) return; ANA.z=setTimeout(function(){ if(!document.hidden&&ANA.acik&&ANA.gun===0) anaYukle().then(anaDongu); else anaDongu(); }, 30000); }
 function anaLigAc(slug){
   anaGizle();
-  if(slug!==A.lig) ligSec(slug); else { try{ switchTabById&&switchTabById('standings'); }catch(e){} }
+  // kupalarda (eleme usulü) puan durumu yerine fikstür / sonuçlar açılır
+  var kupa=TSDB_LIG[slug]==='wiki', sek=function(){ var v=L[slug]&&L[slug].veri, bekleyen=v&&Object.keys(v.matches).some(function(k){ return !v.matches[k].played; });
+    try{ switchTabById&&switchTabById(kupa?(bekleyen?'fixture':'results'):'standings'); }catch(e){} };
+  if(slug!==A.lig){ var p=ligSec(slug); if(kupa&&p&&p.then) p.then(function(){ setTimeout(sek, 400); }); } else sek();
 }
 function anaMacAc(slug, rid){
   var ac=function(){ try{ showMatchDetail('m'+rid); }catch(e){ gunluk('maç açılamadı', e.message); } };
@@ -880,7 +923,107 @@ function anaMacAc(slug, rid){
 }
 function anaFavLig(slug){ var f=favOku(); if(f.lig[slug]) delete f.lig[slug]; else f.lig[slug]=1; favYaz(f); anaCiz(); }
 function anaFavMac(rid){ var f=favOku(); if(f.mac[rid]) delete f.mac[rid]; else f.mac[rid]=Date.now(); var s=Date.now()-14*864e5; Object.keys(f.mac).forEach(function(k){ if(f.mac[k]<s) delete f.mac[k]; }); favYaz(f); anaCiz(); }
-function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); }
+function anaGun(g){ ANA.gun=g; anaCiz(); anaYukle(); setTimeout(function(){ try{ var b=document.querySelector('#sbAna .sba-gun.on'); if(b&&b.scrollIntoView) b.scrollIntoView({inline:'center',block:'nearest'}); }catch(e){} }, 0); }
+/* ═══ TAKVİM (2026-11-18, kullanıcı: "Takvim sistemini puan tablosu gibi yap"): lig sayfasının Fikstür / Sonuçlar tarih şeridiyle aynı görünüm -
+   "18 Kas" biçiminde tarih çipleri (bugün yeşil, seçili gün vurgu rengi), sağda takvim düğmesi → "Tarih Seç" sayfası (uzun tarih, o gün maçı olan lig sayısı). */
+var GUN_KISA=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+var TAKVIM_SVG='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+function anaTarihSeridi(ofs){
+  var h='';
+  for(var g=-7; g<=7; g++){ var d=gunTarih(g), on=g===ofs, bu=g===0;
+    h+='<button type="button" class="sba-gun'+(on?' on':'')+(bu?' bugun':'')+'" onclick="Gercek.anaGun('+g+')"><small>'+(bu?'Bugün':g===-1?'Dün':g===1?'Yarın':GUN_KISA[d.getDay()])+'</small>'
+      +esc(d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short'}))+'</button>'; }
+  var disari=ofs<-7||ofs>7;
+  return '<div class="sba-takvim"><div class="sba-gunler">'+h+'</div>'
+    +(disari?'<button type="button" class="sba-gun on" onclick="Gercek.anaTakvim()"><small>'+GUN_KISA[gunTarih(ofs).getDay()]+'</small>'+esc(gunTarih(ofs).toLocaleDateString('tr-TR',{day:'2-digit',month:'short'}))+'</button>':'')
+    +(ofs!==0?'<button type="button" class="sba-tbtn kirmizi" title="Bugüne dön" aria-label="Bugüne dön" onclick="Gercek.anaGun(0)">✕</button>':'')
+    +'<button type="button" class="sba-tbtn" title="Tarih seç" aria-label="Tarih seç" onclick="Gercek.anaTakvim()">'+TAKVIM_SVG+'</button></div>';
+}
+function anaTakvim(){
+  var sc=document.getElementById('sheetContent'), sw=document.getElementById('sheetWrap'); if(!sc||!sw) return;
+  var h='<div class="sheet-handle"></div><div style="font-size:.95rem;font-weight:900;margin-bottom:.8rem;text-align:center">Tarih Seç</div>';
+  for(var g=-30; g<=30; g++){ var d=gunTarih(g), on=g===ANA.gun, lig=0, mac=0, bilinen=false;
+    anaLigler().forEach(function(s){ var c=ANA.kume[s+'|'+g]; if(c&&c.t){ bilinen=true; if(c.l.length){ lig++; mac+=c.l.length; } } });
+    h+='<button type="button" onclick="Gercek.anaGun('+g+');closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:'+(on?'var(--ac)':g===0?'#15803d':'var(--s2)')+';border:1px solid '+(on?'var(--ac)':g===0?'#22c55e':'var(--br)')+';border-radius:11px;padding:.6rem .8rem;margin-bottom:.4rem;color:'+(on||g===0?'#fff':'var(--tx)')+';font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--font-family,\'Outfit\'),sans-serif" id="sbTk'+g+'">'
+      +'<span>'+esc(d.toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric',weekday:'long'}))+'</span>'
+      +'<span style="font-size:.66rem;opacity:.75;font-weight:500">'+(g===0?'Bugün':g===-1?'Dün':g===1?'Yarın':'')+(bilinen?(g>=-1&&g<=1?' · ':'')+(mac?mac+' maç · '+lig+' lig':'maç yok'):'')+'</span></button>'; }
+  h+='<button type="button" onclick="Gercek.anaGun(0);closeSheet()" style="width:100%;margin-top:.4rem;background:transparent;border:1px solid var(--br);border-radius:11px;padding:.55rem;color:var(--mu);font-size:.76rem;cursor:pointer;font-family:var(--font-family,\'Outfit\'),sans-serif">Bugüne Dön</button>';
+  sc.innerHTML=h; try{ if(window.PTSheetNav) PTSheetNav.mark('sbTakvim'); }catch(e){}
+  sw.classList.add('open');
+  setTimeout(function(){ try{ var b=document.getElementById('sbTk'+ANA.gun); if(b) b.scrollIntoView({block:'center'}); }catch(e){} }, 60);
+}
+
+/* ═══ SIRALAMALAR (2026-11-18, kullanıcı: "UEFA Ülke ve Kulüp Puanı ve FIFA Dünya Sıralaması ekle"). Veri: veri/siralama.json -
+   günlük iş UEFA'nın ve FIFA'nın kendi sitelerinin veri servislerinden toplar. Türkiye ve Türk kulüpleri vurgulanır. */
+var SIRA={sekme:'ulke', ara:''};
+try{ SIRA.sekme=localStorage.getItem('sb_siraSekme')||'ulke'; }catch(e){}
+var ULKE3={TUR:'Türkiye',ENG:'İngiltere',ESP:'İspanya',ITA:'İtalya',GER:'Almanya',FRA:'Fransa',NED:'Hollanda',POR:'Portekiz',BEL:'Belçika',SCO:'İskoçya',GRE:'Yunanistan',RUS:'Rusya',AUT:'Avusturya',SUI:'İsviçre',DEN:'Danimarka',NOR:'Norveç',SWE:'İsveç',CZE:'Çekya',POL:'Polonya',CRO:'Hırvatistan',SRB:'Sırbistan',UKR:'Ukrayna',ISR:'İsrail',CYP:'Kıbrıs',HUN:'Macaristan',ROU:'Romanya',BUL:'Bulgaristan',SVK:'Slovakya',SVN:'Slovenya',AZE:'Azerbaycan',KAZ:'Kazakistan',BLR:'Belarus',MDA:'Moldova',GEO:'Gürcistan',ARM:'Ermenistan',ALB:'Arnavutluk',KOS:'Kosova',MKD:'Kuzey Makedonya',MNE:'Karadağ',BIH:'Bosna Hersek',IRL:'İrlanda',NIR:'Kuzey İrlanda',WAL:'Galler',ISL:'İzlanda',FIN:'Finlandiya',EST:'Estonya',LVA:'Letonya',LTU:'Litvanya',LUX:'Lüksemburg',MLT:'Malta',FRO:'Faroe Adaları',AND:'Andorra',SMR:'San Marino',GIB:'Cebelitarık',LIE:'Lihtenştayn'};
+function siraUlke(kod, ad){ return ULKE3[kod]||trAd(ad)||ad||kod||''; }
+function siraP(x){ return x==null||x===''?'-':(typeof x==='number'?x.toLocaleString('tr-TR',{minimumFractionDigits:3,maximumFractionDigits:3}):String(x)); }
+function siraEgilim(n){ n=+n||0; return n>0?'<span class="sbs-up">▲'+n+'</span>':n<0?'<span class="sbs-dn">▼'+(-n)+'</span>':'<span class="sbs-eq">–</span>'; }
+function siralamaAc(){
+  var sc=document.getElementById('sheetContent'), sw=document.getElementById('sheetWrap'); if(!sc||!sw) return;
+  sc.innerHTML='<div class="sheet-handle"></div><div class="sbs-yuk">Sıralamalar yükleniyor…</div>'; sw.classList.add('open');
+  try{ if(window.PTSheetNav) PTSheetNav.mark('sbSiralama'); }catch(e){}
+  veriAl('siralama').then(function(j){ SIRA.j=j; siralamaCiz(); });
+}
+function siralamaCiz(){
+  var sc=document.getElementById('sheetContent'); if(!sc) return; var j=SIRA.j;
+  var sekmeler=[['ulke','UEFA Ülke Puanı'],['kulup','UEFA Kulüp Puanı'],['fifa','FIFA Dünya Sıralaması']];
+  var h='<div class="sheet-handle"></div><div style="font-size:.95rem;font-weight:900;margin-bottom:.7rem;text-align:center">Sıralamalar</div>'
+    +'<div class="sbs-sek">'+sekmeler.map(function(s){ return '<button type="button" class="'+(SIRA.sekme===s[0]?'on':'')+'" onclick="Gercek.siraSekme(\''+s[0]+'\')">'+s[1]+'</button>'; }).join('')+'</div>';
+  if(!j){ sc.innerHTML=h+'<div class="sbs-yuk">Sıralama verisi henüz hazır değil. Biraz sonra tekrar deneyin.</div>'; return; }
+  var tarih=function(t){ var d=new Date(t); return isNaN(d)?'':d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'}); };
+  var ara=SIRA.ara.toLocaleLowerCase('tr-TR'), uy=function(a){ return !ara||String(a).toLocaleLowerCase('tr-TR').indexOf(ara)>=0; };
+  var g, satir='';
+  if(SIRA.sekme==='ulke'){
+    g=j.uefaUlke; if(!g){ sc.innerHTML=h+'<div class="sbs-yuk">UEFA ülke puanı alınamadı.</div>'; return; }
+    var yil=[]; (g.liste[0]&&g.liste[0].sz||[]).forEach(function(z){ yil.push(z.y); }); yil=yil.slice(-5);
+    h+='<div class="sbs-not">5 sezonluk toplam katsayı · '+esc(String(g.sezon-1)+'/'+String(g.sezon).slice(2))+' sezonu dahil'+(g.guncel?' · Güncelleme: '+esc(tarih(g.guncel)):'')+'</div>';
+    satir=g.liste.filter(function(x){ return uy(siraUlke(x.kod, x.ad)); }).map(function(x){ var tr=x.kod==='TUR';
+      var son=(x.sz||[]).slice(-1)[0];
+      return '<div class="sbs-sat'+(tr?' tr':'')+'"><b class="sbs-no">'+x.s+'</b>'+(x.logo?'<img src="'+esc(x.logo)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'<span class="sbs-bos"></span>')
+        +'<span class="sbs-ad">'+esc(siraUlke(x.kod, x.ad))+'<small>'+(son?'Bu sezon '+esc(siraP(son.p)):'')+(x.takim?' · '+(x.kalan!=null?x.kalan+'/':'')+x.takim+' takım':'')+'</small></span>'
+        +'<span class="sbs-p">'+esc(siraP(x.p))+'</span>'+siraEgilim(x.egilim)+'</div>'; }).join('');
+  } else if(SIRA.sekme==='kulup'){
+    g=j.uefaKulup; if(!g){ sc.innerHTML=h+'<div class="sbs-yuk">UEFA kulüp puanı alınamadı.</div>'; return; }
+    h+='<div class="sbs-not">5 sezonluk kulüp katsayısı'+(g.guncel?' · Güncelleme: '+esc(tarih(g.guncel)):'')+'</div>'
+      +'<div class="sbs-filtre"><button type="button" class="'+(SIRA.tr?'on':'')+'" onclick="Gercek.siraTr()">Yalnız Türk kulüpleri</button></div>';
+    satir=g.liste.filter(function(x){ return (!SIRA.tr||x.kod==='TUR') && (uy(x.ad)||uy(siraUlke(x.kod, x.ulke))); }).map(function(x){ var tr=x.kod==='TUR';
+      return '<div class="sbs-sat'+(tr?' tr':'')+'"><b class="sbs-no">'+x.s+'</b>'+(x.logo?'<img src="'+esc(x.logo)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'<span class="sbs-bos"></span>')
+        +'<span class="sbs-ad">'+esc(trAd(x.ad))+'<small>'+esc(siraUlke(x.kod, x.ulke))+(x.kupa?' · '+esc(x.kupa.replace(/UEFA /,'').replace('Champions League','Şampiyonlar Ligi').replace('Europa League','Avrupa Ligi').replace('Conference League','Konferans Ligi')):'')+'</small></span>'
+        +'<span class="sbs-p">'+esc(siraP(x.p))+'</span>'+siraEgilim(x.egilim)+'</div>'; }).join('');
+  } else {
+    g=j.fifa; if(!g){ sc.innerHTML=h+'<div class="sbs-yuk">FIFA dünya sıralaması alınamadı.</div>'; return; }
+    h+='<div class="sbs-not">FIFA Erkekler Dünya Sıralaması'+(g.guncel?' · '+esc(tarih(g.guncel)):'')+'</div>';
+    satir=g.liste.filter(function(x){ return uy(trAd(x.ad)); }).map(function(x){ var tr=x.kod==='TUR', fark=(x.onceki&&x.s)?x.onceki-x.s:0, pf=(x.p!=null&&x.oncekiP!=null)?x.p-x.oncekiP:0;
+      return '<div class="sbs-sat'+(tr?' tr':'')+'"><b class="sbs-no">'+x.s+'</b>'+(x.bayrak?'<img src="'+esc(x.bayrak)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'<span class="sbs-bos"></span>')
+        +'<span class="sbs-ad">'+esc(trAd(x.ad))+'<small>'+esc(x.kita||'')+(pf?' · '+(pf>0?'+':'')+pf.toLocaleString('tr-TR',{maximumFractionDigits:2}):'')+'</small></span>'
+        +'<span class="sbs-p">'+esc(x.p==null?'-':(+x.p).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}))+'</span>'+siraEgilim(fark)+'</div>'; }).join('');
+  }
+  h+='<input class="sbs-ara" type="search" placeholder="Ara…" value="'+esc(SIRA.ara)+'" oninput="Gercek.siraAra(this.value)">';
+  sc.innerHTML=h+'<div class="sbs-liste">'+(satir||'<div class="sbs-yuk">Sonuç yok.</div>')+'</div><div class="sbs-kay">Kaynak: '+(SIRA.sekme==='fifa'?'FIFA':'UEFA')+'</div>';
+  var a=sc.querySelector('.sbs-ara'); if(a&&SIRA.odak){ a.focus(); try{ a.setSelectionRange(a.value.length,a.value.length); }catch(e){} SIRA.odak=false; }
+}
+function siraSekme(s){ SIRA.sekme=s; SIRA.ara=''; try{ localStorage.setItem('sb_siraSekme', s); }catch(e){} siralamaCiz(); var sc=document.getElementById('sheetContent'); if(sc&&sc.parentNode) sc.parentNode.scrollTop=0; }
+function siraAra(v){ SIRA.ara=v; SIRA.odak=true; siralamaCiz(); }
+function siraTr(){ SIRA.tr=!SIRA.tr; siralamaCiz(); }
+(function(){ try{ var st=document.createElement('style'); st.textContent=''
+  +'.sba-takvim{display:flex;align-items:center;gap:.4rem;padding:.5rem .8rem;border-bottom:1px solid var(--br)}.sba-takvim .sba-gunler{flex:1;padding:.15rem 0;border:0}'
+  +'.sba-takvim .sba-gun{display:flex;flex-direction:column;align-items:center;gap:.05rem;border-radius:10px;padding:.3rem .62rem;background:#1a1a1a;border:1.5px solid rgba(255,255,255,.1);color:#fff;font-size:.68rem;white-space:nowrap}'
+  +'.sba-takvim .sba-gun small{font-size:.56rem;font-weight:600;opacity:.7}.sba-takvim .sba-gun.bugun{background:#15803d;border-color:#22c55e}.sba-takvim .sba-gun.on{background:var(--ac);border-color:var(--ac)}'
+  +'.sba-tbtn{flex-shrink:0;background:#1a1a1a;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;cursor:pointer}.sba-tbtn.kirmizi{border-color:rgba(239,68,68,.4);color:#f87171}'
+  +'.sbs-sek{display:flex;gap:.35rem;margin-bottom:.6rem}.sbs-sek button,.sbs-filtre button{flex:1;padding:.5rem .3rem;border-radius:10px;border:1.5px solid var(--br);background:var(--s2);color:var(--tx);font:inherit;font-size:.7rem;font-weight:800;cursor:pointer}'
+  +'.sbs-sek button.on,.sbs-filtre button.on{background:var(--ac);border-color:var(--ac);color:#fff}.sbs-filtre{display:flex;margin-bottom:.5rem}.sbs-filtre button{flex:0 0 auto;padding:.38rem .7rem}'
+  +'.sbs-not{font-size:.68rem;color:var(--mu);margin-bottom:.5rem;text-align:center}.sbs-yuk{padding:2rem 1rem;text-align:center;color:var(--mu);font-size:.82rem}'
+  +'.sbs-ara{width:100%;box-sizing:border-box;margin-bottom:.5rem;padding:.55rem .75rem;border-radius:10px;border:1px solid var(--br);background:var(--s2);color:var(--tx);font:inherit;font-size:.8rem}'
+  +'.sbs-liste{border:1px solid var(--br);border-radius:14px;overflow:hidden}.sbs-sat{display:grid;grid-template-columns:2rem 26px 1fr auto 2.3rem;align-items:center;gap:.5rem;padding:.5rem .65rem;border-top:1px solid var(--br);font-size:.8rem}'
+  +'.sbs-sat:first-child{border-top:0}.sbs-sat.tr{background:rgba(220,38,38,.16);box-shadow:inset 3px 0 0 #dc2626}.sbs-sat img,.sbs-bos{width:26px;height:26px;object-fit:contain;border-radius:4px}'
+  +'.sbs-no{text-align:center;font-variant-numeric:tabular-nums;color:var(--mu)}.sbs-ad{min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sbs-ad small{display:block;font-size:.64rem;font-weight:500;color:var(--mu);overflow:hidden;text-overflow:ellipsis}'
+  +'.sbs-p{font-weight:800;font-variant-numeric:tabular-nums}.sbs-up,.sbs-dn,.sbs-eq{font-size:.66rem;font-weight:800;text-align:right}.sbs-up{color:#22c55e}.sbs-dn{color:#ef4444}.sbs-eq{color:var(--mu)}'
+  +'.sbs-kay{font-size:.62rem;color:var(--mu);text-align:center;margin:.6rem 0 .2rem}';
+  document.head.appendChild(st); }catch(e){} })();
+
 (function(){ try{ var st=document.createElement('style'); st.textContent=''
   +'#sbAna{position:fixed;inset:0;z-index:1500;display:flex;flex-direction:column;background:var(--bg,#0a0a12);color:var(--tx,#fff);font-family:var(--font-family,"Outfit"),system-ui,sans-serif}'
   +'.sba-ust{display:flex;align-items:center;gap:.55rem;padding:calc(env(safe-area-inset-top,0px) + .6rem) 1rem .55rem;background:var(--s,#12121a);border-bottom:1px solid var(--br)}'
@@ -927,6 +1070,6 @@ function baslat(){
   document.addEventListener('visibilitychange', function(){ if(!document.hidden&&ANA.acik){ anaYukle(); anaDongu(); } });
 }
 
-window.Gercek={anaGoster:anaGoster, anaLigAc:anaLigAc, anaMacAc:anaMacAc, anaFavLig:anaFavLig, anaFavMac:function(r){ anaFavMac(r); }, anaGun:anaGun, anaYenile:function(){ anaYukle(true); }, grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
+window.Gercek={anaGoster:anaGoster, anaLigAc:anaLigAc, anaMacAc:anaMacAc, anaFavLig:anaFavLig, anaFavMac:function(r){ anaFavMac(r); }, anaGun:anaGun, anaTakvim:anaTakvim, siralama:siralamaAc, siraSekme:siraSekme, siraAra:siraAra, siraTr:siraTr, anaYenile:function(){ anaYukle(true); }, grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
 baslat();
 })();

@@ -346,8 +346,10 @@ function wikiZaman(tarih, saat){
   else if((m = /([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/.exec(t)) && AY_EN[m[1].toLowerCase()]){ y = +m[3]; a = AY_EN[m[1].toLowerCase()]; g = +m[2]; }
   else if((m = /(\d{4})-(\d{2})-(\d{2})/.exec(t))){ y = +m[1]; a = +m[2]; g = +m[3]; }
   else return null;
-  const s = /(\d{1,2})[:.](\d{2})/.exec(wikiTemizle(saat || '')); const hh = s ? +s[1] : 12, mm = s ? +s[2] : 0;
-  return { z: new Date(Date.UTC(y, a - 1, g, hh - 3, mm)).toISOString(), saatYok: !s };   // Türkiye saati (UTC+3)
+  // saat çoğunlukla Türkiye saati (UTC+3); {{CET|..}} / {{CEST|..}} şablonuyla yazılmışsa o dilimden çevrilir
+  const ham = String(saat || '').replace(/<!--[\s\S]*?-->/g, ''), s = /(\d{1,2})[:.](\d{2})/.exec(ham); const hh = s ? +s[1] : 12, mm = s ? +s[2] : 0;
+  const fark = /\{\{\s*CEST\b/i.test(ham) ? 2 : /\{\{\s*CET\b/i.test(ham) ? 1 : /\{\{\s*(UTC|GMT|WET)\b/i.test(ham) ? 0 : 3;
+  return { z: new Date(Date.UTC(y, a - 1, g, hh - (s ? fark : 3), mm)).toISOString(), saatYok: !s };
 }
 function wikiGoller(x, taraf){
   const o = []; if(!x) return o;
@@ -362,7 +364,15 @@ function wikiGoller(x, taraf){
 }
 function kutularOku(wt){
   const bas = []; let m; const hr = /^(={2,4})\s*([^=\n]+?)\s*\1\s*$/gm; while((m = hr.exec(wt))) bas.push({ i: m.index, ad: wikiTemizle(m[2]) });
-  const turAdi = i => { let a = ''; bas.forEach(b => { if(b.i < i) a = b.ad; }); return a; };
+  // tur adı: maç kutusunun üstündeki en yakın anlamlı başlık ("Matches", "Seedings" gibi genel başlıklar atlanır), Türkçeye çevrilir
+  const GENEL = /^(matches|results|fixtures|summary|bracket|draw|seedings?|upsets|venue|qualified teams|qualification|rounds|top scorers|see also|references)$/i;
+  const TUR_TR = a => { let m; const s = a.trim();
+    if((m = /^(first|second|third|fourth|fifth|sixth|seventh)\s+round$/i.exec(s))) return ({ first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7 })[m[1].toLowerCase()] + '. Tur';
+    if((m = /^round\s+(\d+)$/i.exec(s))) return m[1] + '. Tur';
+    if((m = /^group\s+([A-Z])$/i.exec(s))) return m[1].toUpperCase() + ' Grubu';
+    if(/^group stage$/i.test(s)) return 'Grup Aşaması'; if(/^play-?off/i.test(s)) return 'Play-off'; if(/round of 16|last 16/i.test(s)) return 'Son 16';
+    if(/quarter/i.test(s)) return 'Çeyrek Final'; if(/semi/i.test(s)) return 'Yarı Final'; if(/^final$/i.test(s)) return 'Final'; return s; };
+  const turAdi = i => { let a = ''; bas.forEach(b => { if(b.i < i && !GENEL.test(b.ad)) a = b.ad; }); return TUR_TR(a); };
   const mac = [];
   sablonlar(wt, 'Football box collapsible|Football box|Footballbox collapsible|Footballbox').forEach(k => {
     const f = sablonAlan(k.t), zz = wikiZaman(f.date || '', f.time || ''); if(!zz) return;
@@ -375,16 +385,22 @@ function kutularOku(wt){
       hakem: wikiTemizle(f.referee) || '', pen: pm ? pm[1] + '-' + pm[2] : '', uz: /a\.?e\.?t/i.test(skH + ' ' + (f.aet || '')),
       olay: wikiGoller(f.goals1, 'home').concat(wikiGoller(f.goals2, 'away')).sort((a, b) => a.min - b.min) });
   });
+  const sira = []; mac.forEach(m => { if(!sira.includes(m.r)) sira.push(m.r); });
+  mac.forEach(m => { m.tur = m.r; m.r = sira.indexOf(m.tur) + 1; });   // hafta numarası = tur sırası; tur adı ayrıca
   return mac;
 }
 async function wikiSayfa(baslik){ const j = await al('https://en.wikipedia.org/w/api.php?action=parse&prop=wikitext&format=json&redirects=1&page=' + encodeURIComponent(baslik)); return (j && j.parse && j.parse.wikitext && j.parse.wikitext['*']) || ''; }
 const KUL_EK = /\b(fk|sk|jk|as|spor kulubu|futbol kulubu|a s|football|s k|f k|j k)\b/g;
 async function wikiLig(L, eski){
   const s = new Date(), y = s.getUTCMonth() >= 6 ? s.getUTCFullYear() : s.getUTCFullYear() - 1;
-  const adaylar = L.slug === 'tur.super' ? [String(y + 1) + ' Turkish Super Cup', String(y) + ' Turkish Super Cup']
+  const adaylar = L.slug === 'tur.super' ? [String(y + 1) + ' Turkish Super Cup', String(y) + ' Turkish Super Cup', String(y - 1) + ' Turkish Super Cup']
     : [y + '–' + String((y + 1) % 100).padStart(2, '0') + ' Turkish Cup', (y - 1) + '–' + String(y % 100).padStart(2, '0') + ' Turkish Cup'];
   let mac = [], sezonAdi = '', yil = y;
-  for(const b of adaylar){ const wt = await wikiSayfa(b); const m2 = wt ? kutularOku(wt) : []; if(m2.length){ mac = m2; sezonAdi = b.replace(/ Turkish (Super )?Cup$/, ''); yil = parseInt(b, 10); break; } }
+  // Sayfa geçerli sayılır: oynanmış maçı ya da ileri tarihli maçı varsa (Vikipedi'de gelecek yılın sayfası bazen eski tarihlerle boş açılıyor)
+  for(const b of adaylar){ let wt = await wikiSayfa(b); if(!wt) continue;
+    for(const [, alt] of [...wt.matchAll(/\{\{\s*:([^{}|]+)\}\}/g)].slice(0, 4)){ const e = await wikiSayfa(alt.trim()); if(e) wt += '\n' + e; }   // {{:2025 Turkish Super Cup final}} gibi gömülü sayfalar
+    const m2 = kutularOku(wt), simdi = Date.now();
+    if(m2.some(m => m.evG != null || Date.parse(m.z) > simdi - 864e5)){ mac = m2; sezonAdi = b.replace(/ Turkish (Super )?Cup$/, ''); yil = parseInt(b, 10); break; } }
   // Logo, Türkçe ad ve Wikidata kaydı: aynı kulübün Süper Lig / TFF ligi dosyasından
   const dizin = {}, anah = a => norm(a).replace(KUL_EK, ' ').replace(/\s+/g, ' ').trim();
   for(const sl of ['tur.1', 'tur.2', 'tur.3']){ try{ const j = JSON.parse(fs.readFileSync(path.join(VERI, sl + '.json'), 'utf8'));
@@ -413,16 +429,26 @@ async function siralamaTopla(){
     p: m.overallRanking.totalValue, ulkeP: m.overallRanking.nationalAssociationPoints, egilim: m.overallRanking.trend, kupa: m.competition && m.competition.displayName || '',
     sz: (m.seasonRankings || []).map(z => ({ y: z.seasonYear, p: z.totalValue })).sort((a, b) => a.y - b.y) })).sort((a, b) => a.s - b.s) };
   else if(eski.uefaKulup) o.uefaKulup = eski.uefaKulup;
-  // FIFA: sayfadaki en yeni sıralama kimliği; sonra yukarı doğru daha yenisi aranır (sayfa bazen eski kimlikleri listeliyor)
+  // FIFA: sıralama sayfasının içindeki tarih listesinden en yeni resmî sıralama (ör. FRS_Male_Football_20260720). Aynıysa eski veri kullanılır;
+  // değilse veri servisi o kimlikle, olmazsa sayısal kimlikler (id15175 gibi) taranarak bulunur.
   const fifa = async id => { const j = await al('https://inside.fifa.com/api/ranking-overview?locale=en&dateId=' + id, { h: { 'User-Agent': 'Mozilla/5.0' }, deneme: 2 }); return (j && j.rankings && j.rankings.length) ? j.rankings : null; };
   let enIyi = null, enId = (eski.fifa && eski.fifa.id) || '';
-  const sayfa = await al('https://inside.fifa.com/fifa-world-ranking/men', { metin: true, h: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' } });
-  const ids = [...new Set(String(sayfa || '').match(/id1\d{4}/g) || [])].map(x => +x.slice(2)); if(enId) ids.push(+enId.slice(2));
-  let n = ids.length ? Math.max(...ids) : 14870;
+  const sayfa = String(await al('https://inside.fifa.com/fifa-world-ranking/men', { metin: true, h: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' } }) || '');
+  let yeniId = ''; try{ const nd = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(sayfa); const d = JSON.parse(nd[1]).props.pageProps.pageData.ranking.dates;
+    yeniId = d.flatMap(x => x.dates || []).map(x => x.id).filter(Boolean).sort((x, y) => (/(\d{8})$/.exec(y) || [0, '0'])[1].localeCompare((/(\d{8})$/.exec(x) || [0, '0'])[1]))[0] || ''; }catch(e){}
+  const yeniGun = (/(\d{4})(\d{2})(\d{2})$/.exec(yeniId) || []).slice(1).join('-');
   const tarih = r => Date.parse((r[0] && r[0].lastUpdateDate) || '') || 0;
-  let r0 = await fifa('id' + n); if(r0){ enIyi = r0; enId = 'id' + n; }
-  for(let k = n + 1, bos = 0; k < n + 400 && bos < 120; k++){ const r = await fifa('id' + k); if(r && (!enIyi || tarih(r) >= tarih(enIyi))){ enIyi = r; enId = 'id' + k; bos = 0; } else bos++; }
-  if(enIyi) o.fifa = { id: enId, guncel: (enIyi[0] && enIyi[0].lastUpdateDate) || '', liste: enIyi.map(x => ({ s: x.rankingItem.rank, ad: x.rankingItem.name, kod: x.rankingItem.countryCode, bayrak: x.rankingItem.flag && x.rankingItem.flag.src,
+  if(eski.fifa && yeniGun && String(eski.fifa.guncel).slice(0, 10) === yeniGun){ o.fifa = eski.fifa; }
+  else {
+    if(yeniId){ const r = await fifa(yeniId); if(r){ enIyi = r; enId = yeniId; } }
+    if(!enIyi){
+      const ids = [...new Set(sayfa.match(/id1\d{4}/g) || [])].map(x => +x.slice(2)); if(/^id\d+$/.test(enId)) ids.push(+enId.slice(2));
+      const n = ids.length ? Math.max(...ids) : 15175;
+      const r0 = await fifa('id' + n); if(r0){ enIyi = r0; enId = 'id' + n; }
+      for(let k = n + 1, bos = 0; k < n + 600 && bos < 150; k++){ const r = await fifa('id' + k); if(r && (!enIyi || tarih(r) >= tarih(enIyi))){ enIyi = r; enId = 'id' + k; bos = 0; if(yeniGun && String(r[0].lastUpdateDate).slice(0, 10) === yeniGun) break; } else bos++; }
+    }
+  }
+  if(o.fifa){} else if(enIyi) o.fifa = { id: enId, guncel: (enIyi[0] && enIyi[0].lastUpdateDate) || '', liste: enIyi.map(x => ({ s: x.rankingItem.rank, ad: x.rankingItem.name, kod: x.rankingItem.countryCode, bayrak: x.rankingItem.flag && x.rankingItem.flag.src,
     p: x.rankingItem.totalPoints, onceki: x.rankingItem.previousRank, oncekiP: x.previousPoints, kita: x.tag && x.tag.text })).sort((a, b) => a.s - b.s) };
   else if(eski.fifa) o.fifa = eski.fifa;
   fs.writeFileSync(dosya, JSON.stringify(o));
