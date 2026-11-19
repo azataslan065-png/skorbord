@@ -538,10 +538,15 @@ async function tffTopla(){
     if(!liste.length){ ozet.push(slug + ' liste yok'); continue; }
     const once = {}; (eski.mac || []).forEach(m => { once[m.id] = m; });
     const mac = liste.map(m => { const e = once[m.id] || {}; return Object.assign({}, m, { z: e.z, saatYok: e.saatYok, hk: e.hk, st: e.st, evLogo: e.evLogo, depLogo: e.depLogo, t: e.t || 0 }); });
-    // hangi maçların sayfası okunur: tarihi bilinmeyen (ilk kez), yakın (-1..+4 gün, 3 saatte bir), görevlisi eksik oynanmış maç (arşiv, bir kez)
+    // hangi maçların sayfası okunur: tarihi bilinmeyen (ilk kez), yakın (-1..+4 gün), görevlisi eksik oynanmış maç (arşiv, bir kez).
+    // (2026-11-20, kullanıcı: "hakemler TFF tarafından açıklanmış fakat bizim sistem bunu ve diğer maçları görmüyor") KÖK SEBEP: yakın maçın sayfası
+    // en fazla 3 saatte bir okunuyordu; TFF atamayı bu arada açıklayınca maç saatine kadar hakem görünmüyordu (Iğdır - Ümraniyespor: son okuma
+    // 21:17, atama sonra geldi). ŞİMDİ hakemi henüz açıklanmamış yakın maç 20 dakikada bir, açıklanmış olan (değişiklik için) 3 saatte bir okunur;
+    // hakemsizler sıranın başına alınır.
     const yakin = m => m.z && Math.abs(Date.parse(m.z) - simdi) < 4 * 864e5;
-    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > 3 * 3600e3) || (!m.z) || (m.saatYok && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
-    sira.sort((a, b) => (yakin(b) ? 1 : 0) - (yakin(a) ? 1 : 0));
+    const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > (m.hk ? 3 * 3600e3 : 20 * 60e3)) || (!m.z) || (m.saatYok && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
+    const oncelik = m => (yakin(m) ? 2 : 0) + (yakin(m) && !m.hk ? 1 : 0);
+    sira.sort((a, b) => oncelik(b) - oncelik(a));
     const sinir = HIZLI ? 80 : 700; let n = 0;
     let hata = 0, top = 0;
     for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); const o = d ? tffMacOku(d) : {};
@@ -608,6 +613,28 @@ async function yayinTopla(){
         const t = trSaat(m[1]); if(!t || t.z < Date.now() - 864e5 || t.z > Date.now() + 8 * 864e5) continue;
         yeni.push({ g: t.g, s: t.s, ad, k, canli: /<live\s*\/>/.test(m[3]) || undefined }); epgSay++; } }catch(e){ console.log('  EPG okunamadı', u, e.message); }
   }
+  // (2026-11-20, kullanıcı: "bazı yayın ihaleleri iki kanal üzerinden veriliyor; eğer ulaşılırsa ona göre bilgi eklensin") TFF 1. Lig 2026-27'de
+  // beIN SPORTS'un yanında TRT Spor ve tabii'de de şifresiz yayınlanıyor; XMLTV akışlarında TRT Spor'un maç başlıkları yok. TRT Spor'un kendi
+  // yayın akışı (trtspor.com.tr, 7 gün; TRT Spor, TRT Spor Yıldız, tabii Spor) okunur. Başlık: "TRENDYOL 1.LİG FUTBOL KARŞILAŞMASI 15.HAFTA
+  // ALAGÖZ HOLDİNG IĞDIR FUTBOL KULÜBÜ - EMİNEVİM ÜMRANİYESPOR". Tekrarlar (isRepeat) alınmaz. Saatler "Z" etiketli ama Türkiye saati
+  // (Iğdır - Ümraniyespor 20:00 → "20:00:00.000Z"); ileride gerçekten UTC'ye geçerse diye iki yorum da yazılır (uygulama ±20 dk ile eşleştirir,
+  // yanlış olan hiçbir maçla tutmaz). TRT Spor'un canlı yayını tabii'de de aynı anda verildiği için TRT Spor maçlarına "tabii" de eklenir.
+  let trtSay = 0;
+  try{
+    const h = await tffAl('https://www.trtspor.com.tr/yayin-akisi/trt-spor'); const m = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(h || '');
+    let epg = null; const gez = x => { if(!x || typeof x !== 'object' || epg) return; if(Array.isArray(x.epg)){ epg = x.epg; return; } Object.values(x).forEach(gez); };
+    if(m){ try{ gez(JSON.parse(m[1]).props.pageProps); }catch(e){} }
+    const KAN = { 'trt-spor': 'TRT Spor', 'trt-spor-yildiz': 'TRT Spor Yıldız', 'tabii-spor': 'tabii Spor' };
+    (epg || []).forEach(g => (g.tvChannels || []).forEach(c => { const k = KAN[c.slug]; if(!k) return;
+      [].concat(c.past || [], c.upcoming || []).forEach(p => {
+        const ti = String(p.title || '').replace(/\s+/g, ' ').trim(); if(p.isRepeat || !/ - | – /.test(ti) || /ÖZET|GOLLER|TEKRAR|BANT/i.test(ti)) return;
+        const st = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(p.starttime || ''); if(!st) return;
+        const ad = ti.replace(/^.*?(\d+\.\s*HAFTA|KARŞILAŞMASI|MAÇI)\s*/i, '').trim() || ti;
+        const yerel = { g: st[1], s: st[2] + ':' + st[3] }, z = new Date(Date.parse(st[1] + 'T' + st[2] + ':' + st[3] + ':00Z') + 3 * 3600e3).toISOString(), utc = { g: z.slice(0, 10), s: z.slice(11, 16) };
+        [yerel, utc].forEach(t => { yeni.push({ g: t.g, s: t.s, ad, k, canli: true }); if(k === 'TRT Spor') yeni.push({ g: t.g, s: t.s, ad, k: 'tabii', canli: true }); });
+        trtSay++; }); }));
+  }catch(e){ console.log('  TRT Spor yayın akışı okunamadı', e.message); }
+  console.log('  TRT Spor yayın akışı maç', trtSay);
   const sinir = Date.now() - 12 * 864e5, anah = x => x.g + '|' + x.s + '|' + x.k + '|' + x.ad, gor = {};
   const tum = yeni.concat(eski.liste || []).filter(x => { if(Date.parse(x.g) < sinir || gor[anah(x)]) return false; gor[anah(x)] = 1; return true; });
   fs.writeFileSync(dosya, JSON.stringify({ t: Date.now(), kaynak: 'beIN SPORTS yayın akışı ve kanal yayın akışları (XMLTV)', liste: tum }));
