@@ -629,7 +629,7 @@ async function yayinTopla(){
       [].concat(c.past || [], c.upcoming || []).forEach(p => {
         const ti = String(p.title || '').replace(/\s+/g, ' ').trim(); if(p.isRepeat || !/ - | – /.test(ti) || /ÖZET|GOLLER|TEKRAR|BANT/i.test(ti)) return;
         const st = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(p.starttime || ''); if(!st) return;
-        const ad = ti.replace(/^.*?(\d+\.\s*HAFTA|KARŞILAŞMASI|MAÇI)\s*/i, '').trim() || ti;
+        const ad = ti.replace(/^.*?\d+\.\s*HAFTA\s*/i, '').replace(/^.*?(KARŞILAŞMASI|MAÇI)\s*/i, '').trim() || ti;
         const yerel = { g: st[1], s: st[2] + ':' + st[3] }, z = new Date(Date.parse(st[1] + 'T' + st[2] + ':' + st[3] + ':00Z') + 3 * 3600e3).toISOString(), utc = { g: z.slice(0, 10), s: z.slice(11, 16) };
         [yerel, utc].forEach(t => { yeni.push({ g: t.g, s: t.s, ad, k, canli: true }); if(k === 'TRT Spor') yeni.push({ g: t.g, s: t.s, ad, k: 'tabii', canli: true }); });
         trtSay++; }); }));

@@ -611,7 +611,9 @@ function otoYukle(slug, v){
       yay.liste.forEach(function(y){ var l=gunMac[y.g]; if(!l) return; var b=+y.s.slice(0,2)*60+ +y.s.slice(3,5), en=null, ep=0;
         l.forEach(function(x){ var m=x[1], a=+m.time.slice(0,2)*60+ +m.time.slice(3,5); if(Math.abs(a-b)>20) return; var p=adMetinde(y.ad, takimAdi(v,m.homeId))+adMetinde(y.ad, takimAdi(v,m.awayId)); if(p>ep){ ep=p; en=x[0]; } });
         if(en&&ep>=1.2){ var x=o[en]=o[en]||{}; if(!x.tvK) x.tvK=[]; if(x.tvK.indexOf(y.k)<0) x.tvK.push(y.k); } });
-      Object.keys(o).forEach(function(mid){ var x=o[mid]; if(x.tvK){ x.tvK.sort(function(a,b){ return a.localeCompare(b,'tr',{numeric:true}); }); x.tv=x.tvK.join(', '); delete x.tvK; } }); }
+      // (2026-11-20) Birden çok yayıncı: televizyon kanalları önce, dijital platformlar (tabii, TOD, Exxen, YouTube) sonra; " | " ile (Mackolik gibi)
+      var PLATFORM=/^(tabii|TOD|Exxen|YouTube|S Sport Plus)/i;
+      Object.keys(o).forEach(function(mid){ var x=o[mid]; if(x.tvK){ x.tvK.sort(function(a,b){ var p=(PLATFORM.test(a)?1:0)-(PLATFORM.test(b)?1:0); return p||a.localeCompare(b,'tr',{numeric:true}); }); x.tv=x.tvK.join(' | '); delete x.tvK; } }); }
     // Yayın ekibi (haberlerden): spiker, yorumcu, kanal
     if(ekip&&ekip.liste) ekip.liste.forEach(function(x){ if(x.lig!==slug) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var e=o[mid]=o[mid]||{};
       if(x.spiker) e.spiker=x.spiker; if(x.yorumcu&&x.yorumcu.length) e.yorumcu=x.yorumcu.join(', '); if(x.kanal&&!e.tv) e.tv=x.kanal; });
