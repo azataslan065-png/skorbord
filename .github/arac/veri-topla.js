@@ -545,11 +545,12 @@ async function tffTopla(){
     // hakemsizler sıranın başına alınır.
     const yakin = m => m.z && Math.abs(Date.parse(m.z) - simdi) < 4 * 864e5;
     const sira = mac.filter(m => !m.t || (yakin(m) && simdi - m.t > (m.hk ? 3 * 3600e3 : 20 * 60e3)) || (!m.z) || (m.saatYok && simdi - m.t > 12 * 3600e3) || (m.evG != null && !m.hk && simdi - m.t > 864e5));
-    const oncelik = m => (yakin(m) ? 2 : 0) + (yakin(m) && !m.hk ? 1 : 0);
-    sira.sort((a, b) => oncelik(b) - oncelik(a));
+    const oncelik = m => (yakin(m) ? 2 : 0) + (yakin(m) && !m.hk ? 1 : 0), uzak = m => m.z ? Math.abs(Date.parse(m.z) - simdi) : 9e15;
+    sira.sort((a, b) => (oncelik(b) - oncelik(a)) || (uzak(a) - uzak(b)));   // en yakın maç önce
+    const bas = Date.now();   // hızlı turda lig başına en çok 75 sn: canlı skor turu (6 dk) gecikmesin; kalanlar sonraki turda okunur
     const sinir = HIZLI ? 80 : 700; let n = 0;
     let hata = 0, top = 0;
-    for(const m of sira.slice(0, sinir)){ const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); const o = d ? tffMacOku(d) : {};
+    for(const m of sira.slice(0, sinir)){ if(HIZLI && Date.now() - bas > 75e3) break; const d = await tffAl('https://www.tff.org/Default.aspx?pageID=29&macID=' + m.id); const o = d ? tffMacOku(d) : {};
       if(!o.z){ hata++; top++; if(top >= 40) break; if(hata >= 6){ await bek(20000); hata = 0; } else await bek(1200); continue; }   // boş / sınır sayfası: işaretlenmez, sonraki çalışmada yeniden denenir
       hata = 0; Object.assign(m, o); m.t = simdi; n++; await bek(300); }
     const gruplar = {}; mac.forEach(m => { if(!m.g) return; const g = gruplar[m.g] || (gruplar[m.g] = {}); g[m.evK] = m.ev; g[m.depK] = m.dep; });
