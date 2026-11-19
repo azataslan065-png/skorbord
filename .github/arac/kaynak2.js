@@ -1,10 +1,17 @@
-// Deneme 52: YouTube kanal kimlikleri (TVF Voleybol TV, TBF TV, FIBA, EuroLeague Women, Basketball Champions League, CEV)
+// Deneme 53: Supabase depolama — kova içeriği (klasör bazında toplam boyut; dosya adları yazdırılmaz) ve erişim durumu
 (async () => {
   if (process.env.PARCA !== '0') return;
-  for (const q of ['TVF Voleybol TV', 'TBF TV basketbol', 'FIBA', 'EuroLeague Women', 'Basketball Champions League', 'Volleyball World', 'CEV European Volleyball', 'Euroleague Basketball', 'FIBA Europe Cup']) {
-    const r = await fetch('https://www.youtube.com/results?search_query=' + encodeURIComponent(q) + '&sp=EgIQAg%253D%253D', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124 Safari/537.36', 'Accept-Language': 'tr-TR,tr' } });
-    const t = await r.text();
-    const ch = [...t.matchAll(/"channelRenderer":\{"channelId":"(UC[\w-]{22})"[\s\S]{0,400}?"title":\{"simpleText":"([^"]+)"[\s\S]{0,1200}?"canonicalBaseUrl":"\/(@[^"]+)"/g)].slice(0, 4).map(m => m[2] + ' ' + m[1] + ' ' + m[3]);
-    console.log('YT', q, '→', ch.join(' | '));
-  }
+  const U = 'https://oasyhelzshbehnpyrssw.supabase.co', K = 'sb_publishable_DxSYVhhxvfVw_yAA7xkS6A_s1Usv41C';
+  const h = { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' };
+  const liste = async (onek) => { const r = await fetch(U + '/storage/v1/object/list/videos', { method: 'POST', headers: h, body: JSON.stringify({ prefix: onek, limit: 1000, offset: 0, sortBy: { column: 'name', order: 'asc' } }) }); return { s: r.status, j: await r.json().catch(() => null) }; };
+  const kok = await liste(''); console.log('KÖK', kok.s, Array.isArray(kok.j) ? kok.j.length : JSON.stringify(kok.j).slice(0, 200));
+  const top = {}; let tum = [];
+  async function gez(onek, d){ if (d > 3) return; const r = await liste(onek); if (!Array.isArray(r.j)) return;
+    for (const x of r.j) { if (x.id == null) await gez(onek + x.name + '/', d + 1); else { const b = (x.metadata && x.metadata.size) || 0; const k = onek.split('/')[0] || '(kök)'; top[k] = top[k] || { n: 0, b: 0 }; top[k].n++; top[k].b += b; tum.push({ k, b, t: (x.metadata && x.metadata.mimetype) || '', c: (x.metadata && x.metadata.cacheControl) || '', z: x.created_at }); } } }
+  await gez('', 0);
+  Object.entries(top).sort((a, b) => b[1].b - a[1].b).forEach(([k, v]) => console.log('KLASÖR', k.replace(/[^a-zA-Z_-]/g, '#').slice(0, 20), v.n, 'dosya', (v.b / 1048576).toFixed(1), 'MB'));
+  tum.sort((a, b) => b.b - a.b); tum.slice(0, 15).forEach(x => console.log('BÜYÜK', x.k.replace(/[^a-zA-Z_-]/g, '#').slice(0, 20), (x.b / 1048576).toFixed(1), 'MB', x.t, x.c, (x.z || '').slice(0, 10)));
+  const tur = {}; tum.forEach(x => { tur[x.t] = (tur[x.t] || 0) + x.b; }); console.log('TÜR', JSON.stringify(Object.fromEntries(Object.entries(tur).map(([k, v]) => [k, (v / 1048576).toFixed(1) + 'MB']))));
+  const ccs = {}; tum.forEach(x => { ccs[x.c] = (ccs[x.c] || 0) + 1; }); console.log('CACHE', JSON.stringify(ccs));
+  if (tum[0]) { const r = await fetch(U + '/storage/v1/object/public/videos/' + 'x-yok.mp4', { method: 'HEAD' }); console.log('ERİŞİM', r.status); }
 })();
