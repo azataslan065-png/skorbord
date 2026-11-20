@@ -1,0 +1,15 @@
+# Geçici deneme: YouTube canlı maç bulma (salt okunur)
+name: YT dene
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/yt-dene.yml, .github/arac/yt-dene.js]
+  workflow_dispatch:
+jobs:
+  dene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node .github/arac/yt-dene.js
