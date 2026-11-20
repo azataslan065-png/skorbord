@@ -858,15 +858,15 @@ function sahadakiBes(l, j){
 function takimKadrosu(tid){ var t=(D.teams||{})[tid]||{}, q=t.squad||{}; return [].concat(q.starting||[], q.bench||[]).filter(function(p){ return p&&p.name; }); }
 var BSK_SLOT=[[/oyun kurucu/i,[0]],[/şutör/i,[1]],[/^guard$/i,[0,1]],[/guard \/ forvet/i,[1,2]],[/kısa forvet/i,[2]],[/uzun forvet/i,[3]],[/forvet \/ pivot/i,[3,4]],[/^forvet$/i,[2,3]],[/pivot/i,[4]]];
 function kadrodanBes(tid){ var l=takimKadrosu(tid); if(l.length<5) return null; var out=new Array(5), kul={};
-  BSK_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(i){ return !out[i]; })[0]; if(bos!=null){ out[bos]={no:p.number||'', kisa:kisaAd(p.name)}; kul[ix]=1; } }); });
-  l.forEach(function(p,ix){ if(kul[ix]) return; for(var i=0;i<5;i++) if(!out[i]){ out[i]={no:p.number||'', kisa:kisaAd(p.name)}; kul[ix]=1; break; } });
+  BSK_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(i){ return !out[i]; })[0]; if(bos!=null){ out[bos]={no:p.number!=null?p.number:'', kisa:kisaAd(p.name)}; kul[ix]=1; } }); });
+  l.forEach(function(p,ix){ if(kul[ix]) return; for(var i=0;i<5;i++) if(!out[i]){ out[i]={no:p.number!=null?p.number:'', kisa:kisaAd(p.name)}; kul[ix]=1; break; } });
   return out; }
 var VLB_SLOT=[[/^pasör$/i,['1']],[/smaçör/i,['2','4']],[/orta/i,['3','6']],[/pasör çaprazı/i,['5']]];
 function kadrodanAlti(tid){ var l=takimKadrosu(tid); if(l.length<6) return null; var out={}, kul={}, libero=null;
   l.forEach(function(p,ix){ if(/libero/i.test(p.position||'')&&!libero){ libero=p; kul[ix]=1; } });
-  VLB_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(z){ return !out[z]; })[0]; if(bos){ out[bos]={no:p.number||'', kisa:kisaAd(p.name), rol:p.position}; kul[ix]=1; } }); });
-  ['1','2','3','4','5','6'].forEach(function(z){ if(out[z]) return; for(var ix=0;ix<l.length;ix++) if(!kul[ix]){ out[z]={no:l[ix].number||'', kisa:kisaAd(l[ix].name), rol:l[ix].position||''}; kul[ix]=1; break; } });
-  out._libero=libero?{no:libero.number||'', kisa:kisaAd(libero.name)}:null; return out; }
+  VLB_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(z){ return !out[z]; })[0]; if(bos){ out[bos]={no:p.number!=null?p.number:'', kisa:kisaAd(p.name), rol:p.position}; kul[ix]=1; } }); });
+  ['1','2','3','4','5','6'].forEach(function(z){ if(out[z]) return; for(var ix=0;ix<l.length;ix++) if(!kul[ix]){ out[z]={no:l[ix].number!=null?l[ix].number:'', kisa:kisaAd(l[ix].name), rol:l[ix].position||''}; kul[ix]=1; break; } });
+  out._libero=libero?{no:libero.number!=null?libero.number:'', kisa:kisaAd(libero.name)}:null; return out; }
 function kutuOyuncular(j, tid){ var b=j&&j.boxscore&&j.boxscore.players; if(!b) return null; var t=b.filter(function(x){ return String(x.team&&x.team.id)===String(tid).replace(/^t/,''); })[0]; if(!t) return null;
   var st=(t.statistics||[])[0]||{}, ad=st.names||st.labels||[], keys=st.keys||[];
   return (st.athletes||[]).map(function(x){ var a=x.athlete||{}, v={}; (x.stats||[]).forEach(function(s,i){ v[keys[i]||ad[i]]=s; });
@@ -1094,7 +1094,8 @@ var DIZILIS={'4-4-2':1,'4-3-3':1,'4-2-3-1':1,'5-3-2':1,'4-3-2-1':1};
 var MEVKI_WD=[[/kaleci|goalkeeper/i,'KL'],[/defans|defender|stoper|bek|back/i,'STP'],[/orta|midfield/i,'MOS'],[/forvet|forward|striker|kanat|wing/i,'SF']];
 /* basketbol / voleybol mevkileri (veri işi kısaltır; ESPN: PG, SG, SF, PF, C, G, F) */
 var SPOR_MEVKI={OK:'Oyun kurucu','ŞT':'Şutör',G:'Guard',KF:'Kısa forvet',UF:'Uzun forvet',F:'Forvet',P:'Pivot',PG:'Oyun kurucu',SG:'Şutör',SF:'Kısa forvet',PF:'Uzun forvet',C:'Pivot','G-F':'Guard / forvet','F-C':'Forvet / pivot',
-  PS:'Pasör','PÇ':'Pasör çaprazı',SM:'Smaçör',OO:'Orta oyuncu',LB:'Libero'};
+  PS:'Pasör','PÇ':'Pasör çaprazı',SM:'Smaçör',OO:'Orta oyuncu',LB:'Libero',
+  S:'Pasör',OH:'Smaçör',MB:'Orta oyuncu',MH:'Orta oyuncu',OPP:'Pasör çaprazı',RS:'Pasör çaprazı',L:'Libero',LIB:'Libero',DS:'Savunma oyuncusu'};   // (2026-11-20) ESPN voleybol kısaltmaları
 /* kadro sonradan gelince açık maç detayı (Kadro sekmesi) yeniden çizilir */
 var _mdTz=null; function mdTazele(){ clearTimeout(_mdTz); _mdTz=setTimeout(function(){ try{ var sw=document.getElementById('sheetWrap'); if(sw&&sw.classList.contains('open')&&typeof _mdTab!=='undefined'&&_mdTab==='kadro'&&typeof renderMatchDetailContent==='function') renderMatchDetailContent(); }catch(e){} }, 300); }
 function sporKadroIste(slug, tid){   // ESPN basketbol kadrosu (NBA, WNBA, G League, NCAA, NBL…)
