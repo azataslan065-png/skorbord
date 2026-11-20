@@ -600,7 +600,9 @@ async function yayinTopla(){
   const EPG = ['https://iptv-epg.org/files/epg-tr.xml', 'https://www.open-epg.com/files/turkey1.xml', 'https://epgshare01.online/epgshare01/epg_ripper_TR1.xml.gz'];
   const KAD = id => { const x = id.replace(/\.tr$/i, '').replace(/[._]/g, ' ').replace(/\s+/g, ' ').replace(/\bHD\b/i, '').trim(), u = x.toUpperCase().replace(/\s+/g, '');
     let m; if((m = /^(?:BEINSPORTS|BEINSPORT)(\d)$/.exec(u)) || /^BEINSPORTS$/.test(u) && (m = [0, '1'])) return 'beIN SPORTS ' + m[1]; if((m = /^BEINSPORTSMAX(\d)$/.exec(u))) return 'beIN SPORTS MAX ' + m[1]; if(/^BEINSPORTSHABER$/.test(u)) return 'beIN SPORTS HABER';
-    if(/^SSPORT$/.test(u)) return 'S Sport'; if(/^SSPORT2$/.test(u)) return 'S Sport 2'; if(/^SSPORTPLUS$/.test(u)) return 'S Sport Plus'; if(/^TRT1$/.test(u)) return 'TRT 1'; if(/^(TRT3\/)?TRTSPOR$/.test(u)) return 'TRT Spor'; if(/^TRTSPORYILDIZ$/.test(u)) return 'TRT Spor Yıldız';
+    if(/^SSPORT?$/.test(u)) return 'S Sport'; if(/^SSPORT?2$/.test(u)) return 'S Sport 2'; if(/^SSPORT?PLUS$/.test(u)) return 'S Sport Plus'; if(/^TRT1$/.test(u)) return 'TRT 1'; if(/^(TRT3\/)?TRTSPOR$|^TRT3SPOR$/.test(u)) return 'TRT Spor'; if(/^TRTSPORYILDIZ$/.test(u)) return 'TRT Spor Yıldız';
+    // (2026-11-20) Suudi Pro Lig HT Spor'da, Asya / Güney Amerika futbolu Spor Smart'ta (D-Smart), tenis / bisiklet Eurosport'ta: bu kanallar tanınmıyordu
+    if(/^HTSPOR$/.test(u)) return 'HT Spor'; if((m = /^SPORSMART(\d?)$/.exec(u))) return 'Spor Smart' + (m[1] && m[1] !== '1' ? ' ' + m[1] : ''); if((m = /^EUROSPORT(\d?)$/.exec(u))) return 'Eurosport' + (m[1] && m[1] !== '1' ? ' ' + m[1] : '');
     if(/^ASPOR$/.test(u)) return 'A Spor'; if(/^ATV$/.test(u)) return 'ATV'; if(/^TV8$/.test(u)) return 'TV8'; if(/^TV8,?5$/.test(u)) return 'TV8,5'; if((m = /^TABII(?:SPOR)?(\d)$/.exec(u))) return 'tabii Spor ' + m[1]; if((m = /^TIVIBUSPOR(\d?)$/.exec(u))) return 'Tivibu Spor' + (m[1] ? ' ' + m[1] : ''); return ''; };
   const zlib = require('zlib'), ent = x => String(x || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (a, n) => String.fromCharCode(+n)).trim();
   const trSaat = (st) => { const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})\d{0,2}\s*([+-]\d{4})?/.exec(st); if(!m) return null; const of = m[6] ? (+m[6].slice(0, 3)) * 60 + Math.sign(+m[6].slice(0, 3) || 1) * (+m[6].slice(3)) : 0;
@@ -699,7 +701,9 @@ async function youtubeTopla(tum){
   }
   aday.sort((a, b) => (/^tur\./.test(b.lig) ? 1 : 0) - (/^tur\./.test(a.lig) ? 1 : 0));
   const once = {}; (eski.liste || []).forEach(x => { once[x.lig + '|' + x.rid] = x; });
-  const liste = [], RED = /özet|ozet|highlight|tahmin|prediction|reaction|analiz|efootball|\bpes\b|fifa ?\d{2}|\bfc ?2\d|simulat|gameplay|oyun|basın toplantısı|radyo|radio|iddaa|oran/i; let arama = 0;
+    // (2026-11-20) Canlı aramada çıkan sahte "maç" yayınları (canlı skor, tepki / watchalong, eFootball simülasyonu, Arapça "رد فعل" / "محاكاة") ayıklanır:
+  // bunlar onaylı kanallardan da gelebiliyor, yalnızca onay rozetine güvenilmez.
+  const liste = [], RED = /özet|ozet|highlight|tahmin|prediction|reaction|tepki|analiz|efootball|\bpes\b|fifa ?\d{2}|\bfc ?2\d|simulat|simülasyon|gameplay|oyun|basın toplantısı|radyo|radio|iddaa|oran|live ?score|skor|score update|commentary|watch ?along|rival watch|fan ?cam|reacts?\b|pre-?recorded|رد فعل|محاكاة|نتيجة|لايف صوتي/i; let arama = 0;
   for(const a of aday){   // önce kanalların kendi canlı yayın listelerinde (arama gerekmez)
     const v = kanalYayin.find(v => !RED.test(v.b) && ytIcerir(v.b, a.ev) && ytIcerir(v.b, a.dep)); if(v){ a.bulundu = 1; liste.push(Object.assign({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi }, v)); }
   }

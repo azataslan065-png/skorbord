@@ -573,12 +573,29 @@ function havaYukle(slug, v, lj){
     });
   }catch(e){}
 }
-/* Yayın hakları 2026-27 (cnbce.com / aspor.com.tr): Süper Lig ve 1. Lig beIN SPORTS; 2. ve 3. Lig Tivibu Spor; Ziraat Türkiye Kupası ve
-   Turkcell Süper Kupa ATV / A Spor; Premier Lig ve Ligue 1 beIN SPORTS; La Liga, Bundesliga, Serie A S Sport; UEFA kupaları TRT / tabii;
-   Uluslar Ligi ATV / A Spor; FA Cup TRT. Kanalın kendisi (beIN SPORTS 2 gibi) yayın akışından ya da haberden gelirse o yazılır. */
-var YAYINCI={'tur.1':'beIN SPORTS','tur.2':'beIN SPORTS','tur.3':'Tivibu Spor','tur.4':'Tivibu Spor','tur.cup':'ATV / A Spor','tur.super':'ATV / A Spor',
-  'eng.1':'beIN SPORTS','fra.1':'beIN SPORTS','esp.1':'S Sport','ger.1':'S Sport','ita.1':'S Sport','uefa.champions':'TRT / tabii','uefa.europa':'TRT / tabii',
-  'uefa.europa.conf':'TRT / tabii','uefa.super_cup':'TRT / tabii','uefa.nations':'ATV / A Spor','eng.fa':'TRT'};
+/* YAYIN HAKLARI 2026-27 (2026-11-20, kullanıcı: "Türkiye maçlarının yayın hakları Turkuvaz Medya'da, bu maçı ATV/ASPOR olarak gösterme, maç
+   hangisindeyse o yazılır, bütün maçları bu şekilde gözden geçir"). Maçın KENDİ kanalı yayın akışlarından bulunur (beIN, TRT Spor, ATV, A Spor,
+   S Sport, HT Spor, Spor Smart, Tivibu Spor, TV8, Eurosport...). Bulunamazsa kanal UYDURULMAZ: "Yayın hakkı: <kuruluş>" yazılır (aynı kuruluşun
+   birden çok kanalı olduğu için "ATV / A Spor" gibi birleşik ad artık yok). Kaynaklar: AA yayın haritası (27.07.2026), TRT, beIN, TBF / Digiturk,
+   Turkuvaz Medya (A Milli Takım Uluslar Ligi maçları ATV), TV+ (S Sport: La Liga, Serie A, NBA, EuroLeague). Portekiz Ligi için kaynaklar çelişiyor
+   (AA: S Sport, başka haberler: beIN) → kuruluş yazılmaz, yalnızca yayın akışında bulunan kanal. Listede olmayan ligin Türkiye'de yayıncısı
+   olmayabilir; boş kalır. */
+var YAYINCI={'tur.1':'beIN SPORTS','tur.2':'beIN SPORTS · TRT Spor (seçili maçlar)','tur.3':'Tivibu Spor','tur.4':'Tivibu Spor',
+  'tur.cup':'Turkuvaz Medya','tur.super':'Turkuvaz Medya','uefa.nations':'Turkuvaz Medya',
+  'uefa.champions':'TRT','uefa.europa':'TRT','uefa.europa.conf':'TRT','uefa.super_cup':'TRT','eng.fa':'TRT','fifa.world':'TRT',
+  'eng.1':'beIN SPORTS','fra.1':'beIN SPORTS','esp.1':'S Sport','ita.1':'S Sport','ger.1':'S Sport','ned.1':'S Sport','sco.1':'S Sport','ksa.1':'S Sport',
+  'afc.champions':'D-Smart','afc.asian.cup':'D-Smart','conmebol.libertadores':'D-Smart','conmebol.sudamericana':'D-Smart',
+  'bsk.tur.bsl':'beIN SPORTS','bsk.int.euroleague':'S Sport','bsk.int.eurocup':'S Sport','bsk.usa.nba':'S Sport','bsk.tur.tbl':'TRT Spor Yıldız',
+  'bsk.int.fibadk':'TRT','bsk.int.eurobasket':'TRT','vlb.tur.sultanlar':'TRT','vlb.tur.efeler':'TRT'};
+/* Kanalın dijital eşi (aynı yayın): TRT kanalları tabii'de, S Sport kanalları S Sport Plus'ta; Suudi Pro Lig HT Spor'la birlikte S Sport Plus'ta. */
+function platformEkle(liste, slug){
+  var l=liste.slice(), var_=function(x){ return l.indexOf(x)>=0; };
+  if(l.some(function(k){ return /^TRT (1|Spor|Spor Yıldız)$/.test(k); }) && !var_('tabii')) l.push('tabii');
+  if(l.some(function(k){ return /^S Sport( 2)?$/.test(k); }) && !var_('S Sport Plus')) l.push('S Sport Plus');
+  if(slug==='ksa.1' && var_('HT Spor') && !var_('S Sport Plus')) l.push('S Sport Plus');
+  return l;
+}
+function hakYazisi(slug){ var y=YAYINCI[slug]; return y?'Yayın hakkı: '+y:''; }
 function otoYukle(slug, v){
   var isler=[veriAl('yayin').catch(function(){ return null; })];
   isler.push(TFF_LIG[slug]?veriAl('tff-'+slug).catch(function(){ return null; }):Promise.resolve(null));
@@ -613,12 +630,12 @@ function otoYukle(slug, v){
         if(en&&ep>=1.2){ var x=o[en]=o[en]||{}; if(!x.tvK) x.tvK=[]; if(x.tvK.indexOf(y.k)<0) x.tvK.push(y.k); } });
       // (2026-11-20) Birden çok yayıncı: televizyon kanalları önce, dijital platformlar (tabii, TOD, Exxen, YouTube) sonra; " | " ile (Mackolik gibi)
       var PLATFORM=/^(tabii|TOD|Exxen|YouTube|S Sport Plus)/i;
-      Object.keys(o).forEach(function(mid){ var x=o[mid]; if(x.tvK){ x.tvK.sort(function(a,b){ var p=(PLATFORM.test(a)?1:0)-(PLATFORM.test(b)?1:0); return p||a.localeCompare(b,'tr',{numeric:true}); }); x.tv=x.tvK.join(' | '); delete x.tvK; } }); }
+      Object.keys(o).forEach(function(mid){ var x=o[mid]; if(x.tvK){ x.tvK=platformEkle(x.tvK, slug); x.tvK.sort(function(a,b){ var p=(PLATFORM.test(a)?1:0)-(PLATFORM.test(b)?1:0); return p||a.localeCompare(b,'tr',{numeric:true}); }); x.tv=x.tvK.join(' | '); delete x.tvK; } }); }
     // Yayın ekibi (haberlerden): spiker, yorumcu, kanal
     if(ekip&&ekip.liste) ekip.liste.forEach(function(x){ if(x.lig!==slug) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var e=o[mid]=o[mid]||{};
       if(x.spiker) e.spiker=x.spiker; if(x.yorumcu&&x.yorumcu.length) e.yorumcu=x.yorumcu.join(', '); if(x.kanal&&!e.tv) e.tv=x.kanal; });
     // Yayın hakkı sahibi (2026-27 sezonu): maçın kendi kanalı bilinmiyorsa ligin yayıncısı yazılır
-    var yk=YAYINCI[slug]; if(yk) Object.keys(v.matches).forEach(function(mid){ var e=o[mid]=o[mid]||{}; if(!e.tv) e.tv=yk; });
+    var yk=hakYazisi(slug); if(yk) Object.keys(v.matches).forEach(function(mid){ var e=o[mid]=o[mid]||{}; if(!e.tv) e.tv=yk; });
     OTO[slug]=o;
     havaYukle(slug, v, lj);
     var n=Object.keys(o).length; if(n) gunluk('otomatik maç bilgisi', slug, n+' maç');
@@ -657,7 +674,7 @@ function ytUygula(){
   // açık ligin maçlarına "YouTube · kanal" bilgisi
   try{ var v=L[A.lig]&&L[A.lig].veri; if(!v) return; var id=ligKimlik(A.lig), o=OTO[A.lig]=OTO[A.lig]||{};
     (YT.liste||[]).forEach(function(x){ if(x.lig!==A.lig) return; var mid='m'+x.rid; if(!v.matches[mid]) return; var t='YouTube'+(x.k?' · '+x.k:''), e=o[mid]=o[mid]||{};
-      if(!e.tv) e.tv=t; else if(e.tv.indexOf('YouTube')<0) e.tv+=', '+t; var once=JSON.stringify(v.matches[mid]); gorevliUygula(A.lig, mid, v.matches[mid]);
+      if(!e.tv||/^Yayın hakkı:/.test(e.tv)) e.tv=t; else if(e.tv.indexOf('YouTube')<0) e.tv+=' | '+t; var once=JSON.stringify(v.matches[mid]); gorevliUygula(A.lig, mid, v.matches[mid]);
       if(JSON.stringify(v.matches[mid])!==once) YerelVT.yaz('leagues/'+id+'/matches/'+mid, v.matches[mid]); }); }catch(e){}
 }
 setTimeout(function(){ ytTazele(); setInterval(function(){ if(!document.hidden) ytTazele(); }, 3*60000); }, 2500);
@@ -746,7 +763,7 @@ function periyotTablosu(m, h, a){ var sp=D.sbSpor, s=setlerAyir(m); if(!s.length
 function sbDetay(id, m, h, a){
   var j=sporOzetIste(id), gi=(j&&j.gameInfo)||{}, off=(gi.officials||[]).map(function(o){ return esc(o.displayName||o.fullName||''); }).filter(Boolean);
   var ven=gi.venue||{}, salon=(ven.fullName?esc(ven.fullName)+(ven.address&&ven.address.city?' · '+esc(ven.address.city):''):esc(m.stadium||''));
-  var tv=esc(m.tv||YAYINCI[A.lig]||''), sp=D.sbSpor;
+  var tv=esc(m.tv||hakYazisi(A.lig)), sp=D.sbSpor;
   var tarih=m.date?esc(m.date.split('-').reverse().join('.'))+(m.time?' · '+esc(m.time):''):'';
   var bilgi=sbSatir('Tarih', tarih)+sbSatir(sp==='voleybol'?'Salon':'Salon / Arena', salon)+sbSatir('Yayın', tv)+sbSatir('Spiker', esc(m.spiker||''))+sbSatir('Yorumcu', esc(m.yorumcu||''))
     +sbSatir('Hakemler', off.join(', ')||esc(m.referee||''))+sbSatir('Seyirci', gi.attendance?Number(gi.attendance).toLocaleString('tr-TR'):'')+sbSatir('Lig', esc(D.leagueName||'')+(D.season?' · '+esc(D.season):''));
@@ -813,33 +830,63 @@ function bskSaha(h, a, hi, ai){
 }
 var VLB_YER=[[78,72,'1'],[78,28,'2'],[50,28,'3'],[22,28,'4'],[22,72,'5'],[50,72,'6']];   // ön hat 4-3-2, arka hat 5-6-1 (fileye göre)
 var VLB_ROL={'1':'Pasör','2':'Smaçör','3':'Orta oyuncu','4':'Smaçör','5':'Pasör çaprazı','6':'Orta / Libero'};
-function vlbYari(ust, renk){ var W=300, H=150, cz='stroke="rgba(255,255,255,.75)" stroke-width="1.6" fill="none"';
+function vlbYari(ust, renk, oy){ var W=300, H=150, cz='stroke="rgba(255,255,255,.75)" stroke-width="1.6" fill="none"'; oy=oy||{};
   var hucum=ust?H-50:50;   // 3 m çizgisi (fileye yakın)
   var g='<rect x="10" y="'+(ust?6:0)+'" width="280" height="144" '+cz+'/><line x1="10" x2="290" y1="'+hucum+'" y2="'+hucum+'" stroke="rgba(255,255,255,.55)" stroke-width="1.3" stroke-dasharray="5 4"/>';
   var p=VLB_YER.map(function(k){ var x=(ust?100-k[0]:k[0])/100*W, yy=k[1]/100*H, y=ust?H-yy:yy;   // karşı takım fileye bakar: sol-sağ ters
-    return '<g><circle cx="'+x+'" cy="'+y+'" r="13" fill="'+renk+'" stroke="#fff" stroke-width="1.5"/><text x="'+x+'" y="'+(y+4)+'" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">'+k[2]+'</text><text x="'+x+'" y="'+(y+25)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">'+VLB_ROL[k[2]]+'</text></g>'; }).join('');
+    var o=oy[k[2]];   // bölgedeki oyuncu (güncel kadro); yoksa bölgenin rolü
+    return '<g><circle cx="'+x+'" cy="'+y+'" r="13" fill="'+renk+'" stroke="#fff" stroke-width="1.5"/><text x="'+x+'" y="'+(y+4)+'" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">'+esc(o&&o.no?o.no:k[2])+'</text><text x="'+x+'" y="'+(y+25)+'" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">'+esc(o?o.kisa:VLB_ROL[k[2]])+'</text></g>'; }).join('');
   return '<svg viewBox="0 0 300 150" style="display:block;width:100%">'+g+p+'</svg>'; }
-function vlbSaha(h, a){
+function vlbSaha(h, a, ho, ao){
   return '<div style="margin:.7rem .9rem;border-radius:14px;overflow:hidden;background:linear-gradient(#1e6fb8,#185a96)">'
-    +'<div style="font-size:.68rem;font-weight:800;color:#fff;padding:.4rem .6rem;background:rgba(0,0,0,.25)">'+esc(a.name||'Deplasman')+'</div>'+vlbYari(true,'#334155')
+    +'<div style="font-size:.68rem;font-weight:800;color:#fff;padding:.4rem .6rem;background:rgba(0,0,0,.25)">'+esc(a.name||'Deplasman')+'</div>'+vlbYari(true,'#334155',ao)
     +'<div style="height:6px;background:repeating-linear-gradient(90deg,#fff 0 6px,#cbd5e1 6px 12px);box-shadow:0 0 0 1px #0f172a"></div>'
-    +vlbYari(false,'var(--ac)')+'<div style="font-size:.68rem;font-weight:800;color:#fff;padding:.4rem .6rem;background:rgba(0,0,0,.25)">'+esc(h.name||'Ev sahibi')+'</div></div>';
+    +vlbYari(false,'var(--ac)',ho)+'<div style="font-size:.68rem;font-weight:800;color:#fff;padding:.4rem .6rem;background:rgba(0,0,0,.25)">'+esc(h.name||'Ev sahibi')+'</div></div>';
 }
+/* GÜNCEL KADRO SAHADA (2026-11-20, kullanıcı: "bu alanda o anki güncel kadro kullanılır"). Önceden basketbol sahasında yalnız ESPN maçlarında
+   ilk 5 vardı (EuroLeague, BSL gibi liglerde saha boştu), voleybolda hiç oyuncu yoktu. Sıra: (1) ESPN kutu skorunun ilk beşi, maç sürerken oyun
+   akışındaki değişiklikler ("X enters the game for Y") uygulanarak SAHADAKİ beş; (2) maç kadrosu yoksa takımın güncel kadrosundan mevkiye göre
+   beş (basketbol) / altı (voleybol: pasör 1, smaçörler 2 ve 4, ortalar 3 ve 6, pasör çaprazı 5; libero ayrıca). */
+function kisaAd(a){ a=String(a||'').trim(); var p=a.split(/\s+/); return p.length>1?(p[0].charAt(0)+'. '+p.slice(1).join(' ')):a; }
+function sahadakiBes(l, j){
+  var bes=l.filter(function(p){ return p.ilk; }).slice(0,5).map(function(p){ return p.ad; }), adi={};
+  l.forEach(function(p){ adi[p.ad]=p; if(p.kisa) adi[p.kisa]=p; });
+  ((j&&j.plays)||[]).forEach(function(pl){ var t=String(pl.text||''), m=/^(.+?) enters the game for (.+?)\.?$/i.exec(t); if(!m) return;
+    var gir=adi[m[1].trim()], cik=adi[m[2].trim()]; if(!gir||!cik) return; var i=bes.indexOf(cik.ad); if(i>=0&&bes.indexOf(gir.ad)<0) bes[i]=gir.ad; });
+  return bes.map(function(a){ return adi[a]; }).filter(Boolean);
+}
+function takimKadrosu(tid){ var t=(D.teams||{})[tid]||{}, q=t.squad||{}; return [].concat(q.starting||[], q.bench||[]).filter(function(p){ return p&&p.name; }); }
+var BSK_SLOT=[[/oyun kurucu/i,[0]],[/şutör/i,[1]],[/^guard$/i,[0,1]],[/guard \/ forvet/i,[1,2]],[/kısa forvet/i,[2]],[/uzun forvet/i,[3]],[/forvet \/ pivot/i,[3,4]],[/^forvet$/i,[2,3]],[/pivot/i,[4]]];
+function kadrodanBes(tid){ var l=takimKadrosu(tid); if(l.length<5) return null; var out=new Array(5), kul={};
+  BSK_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(i){ return !out[i]; })[0]; if(bos!=null){ out[bos]={no:p.number||'', kisa:kisaAd(p.name)}; kul[ix]=1; } }); });
+  l.forEach(function(p,ix){ if(kul[ix]) return; for(var i=0;i<5;i++) if(!out[i]){ out[i]={no:p.number||'', kisa:kisaAd(p.name)}; kul[ix]=1; break; } });
+  return out; }
+var VLB_SLOT=[[/^pasör$/i,['1']],[/smaçör/i,['2','4']],[/orta/i,['3','6']],[/pasör çaprazı/i,['5']]];
+function kadrodanAlti(tid){ var l=takimKadrosu(tid); if(l.length<6) return null; var out={}, kul={}, libero=null;
+  l.forEach(function(p,ix){ if(/libero/i.test(p.position||'')&&!libero){ libero=p; kul[ix]=1; } });
+  VLB_SLOT.forEach(function(s){ l.forEach(function(p,ix){ if(kul[ix]||!s[0].test(p.position||'')) return; var bos=s[1].filter(function(z){ return !out[z]; })[0]; if(bos){ out[bos]={no:p.number||'', kisa:kisaAd(p.name), rol:p.position}; kul[ix]=1; } }); });
+  ['1','2','3','4','5','6'].forEach(function(z){ if(out[z]) return; for(var ix=0;ix<l.length;ix++) if(!kul[ix]){ out[z]={no:l[ix].number||'', kisa:kisaAd(l[ix].name), rol:l[ix].position||''}; kul[ix]=1; break; } });
+  out._libero=libero?{no:libero.number||'', kisa:kisaAd(libero.name)}:null; return out; }
 function kutuOyuncular(j, tid){ var b=j&&j.boxscore&&j.boxscore.players; if(!b) return null; var t=b.filter(function(x){ return String(x.team&&x.team.id)===String(tid).replace(/^t/,''); })[0]; if(!t) return null;
   var st=(t.statistics||[])[0]||{}, ad=st.names||st.labels||[], keys=st.keys||[];
   return (st.athletes||[]).map(function(x){ var a=x.athlete||{}, v={}; (x.stats||[]).forEach(function(s,i){ v[keys[i]||ad[i]]=s; });
     return {ad:a.displayName||'', kisa:a.shortName||a.displayName||'', no:a.jersey||'', poz:(a.position&&a.position.abbreviation)||'', ilk:!!x.starter, oynamadi:!!x.didNotPlay, dk:v.minutes||v.MIN||'', sy:v.points||v.PTS||'', rb:v.rebounds||v.REB||'', as:v.assists||v.AST||''}; }); }
 function sbKadro(id, m, h, a){
   var sp=D.sbSpor;
-  if(sp==='voleybol') return vlbSaha(h,a)+sbKart('Oyun düzeni', '<div style="font-size:.76rem;line-height:1.6">Sahada her takımdan <b>6 oyuncu</b> bulunur: ön hatta 4-3-2, arka hatta 5-6-1 numaralı bölgeler. Servisi kazanan takım saat yönünde döner (rotasyon). <b>Libero</b> yalnız arka hatta oynar, hücum vuruşu ve servis atamaz (ligine göre). Kadroda en çok 14 oyuncu (2 libero).</div><div style="font-size:.7rem;color:var(--mu);margin-top:.45rem">Bu lig için ilk 6 ve oyuncu listesi kaynakta yok; kort düzeni ve mevkiler gösteriliyor.</div>');
+  if(sp==='voleybol') { try{ kadroIste(m.homeId); kadroIste(m.awayId); }catch(e){} var vh=kadrodanAlti(m.homeId), va=kadrodanAlti(m.awayId);
+    var lib=function(t,o){ return o&&o._libero?'<div><b>'+esc(t.name||'')+'</b> libero: '+esc(o._libero.kisa)+(o._libero.no?' ('+esc(o._libero.no)+')':'')+'</div>':''; };
+    var not=(vh||va)?sbKart('Sahadaki altı','<div style="font-size:.74rem;line-height:1.6">Takımların <b>güncel kadrosundan</b> mevkiye göre: pasör 1. bölge, smaçörler 2 ve 4, orta oyuncular 3 ve 6, pasör çaprazı 5. Maçın resmî ilk altısı ve rotasyon kaynakta yok.'+lib(h,vh)+lib(a,va)+'</div>'):'';
+    return vlbSaha(h,a,vh,va)+not+sbKart('Oyun düzeni', '<div style="font-size:.76rem;line-height:1.6">Sahada her takımdan <b>6 oyuncu</b> bulunur: ön hatta 4-3-2, arka hatta 5-6-1 numaralı bölgeler. Servisi kazanan takım saat yönünde döner (rotasyon). <b>Libero</b> yalnız arka hatta oynar, hücum vuruşu ve servis atamaz (ligine göre). Kadroda en çok 14 oyuncu (2 libero).</div><div style="font-size:.7rem;color:var(--mu);margin-top:.45rem">Bu lig için ilk 6 ve oyuncu listesi kaynakta yok; kort düzeni ve mevkiler gösteriliyor.</div>'); }
   var j=sporOzetIste(id), hp=kutuOyuncular(j, m.homeId), ap=kutuOyuncular(j, m.awayId);
   if(hp&&ap&&hp.length&&ap.length){
-    var i5=function(l){ return bskSira(l.filter(function(p){ return p.ilk; }).slice(0,5)); };
+    var i5=function(l){ var b=(m.isLive||m.played)?sahadakiBes(l, j):l.filter(function(p){ return p.ilk; }).slice(0,5); return bskSira(b); };
     var liste=function(t, l){ return sbKart(t.name||'', '<div style="display:grid;grid-template-columns:2rem 1fr 2.4rem 2rem 2rem 2rem;gap:.15rem .4rem;font-size:.74rem;align-items:center;font-variant-numeric:tabular-nums"><b style="color:var(--mu)">No</b><b style="color:var(--mu)">Oyuncu</b><b style="color:var(--mu)">Dk</b><b style="color:var(--mu)">Sy</b><b style="color:var(--mu)">Rb</b><b style="color:var(--mu)">As</b>'
       +l.map(function(p){ return '<span style="color:var(--mu)">'+esc(p.no)+'</span><span style="'+(p.ilk?'font-weight:800':'')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.ad)+(p.poz?' <small style="color:var(--mu)">'+esc(p.poz)+'</small>':'')+(p.ilk?' <small style="color:var(--ac3,var(--ac))">İ5</small>':'')+'</span>'+(p.oynamadi?'<span style="grid-column:span 4;color:var(--mu)">Oynamadı</span>':'<span>'+esc(p.dk)+'</span><span><b>'+esc(p.sy)+'</b></span><span>'+esc(p.rb)+'</span><span>'+esc(p.as)+'</span>'); }).join('')+'</div>'); };
     return bskSaha(h,a,i5(hp),i5(ap))+liste(h,hp)+liste(a,ap)+'<div style="font-size:.66rem;color:var(--mu);text-align:center;margin:0 1rem 1rem">İ5: ilk beş · Dk: dakika · Sy: sayı · Rb: ribaund · As: asist</div>';
   }
-  return bskSaha(h,a,[null,null,null,null,null],[null,null,null,null,null])+sbKart('Oyun düzeni','<div style="font-size:.76rem;line-height:1.6">Sahada her takımdan <b>5 oyuncu</b>: oyun kurucu (1), şutör (2), kısa forvet (3), uzun forvet (4), pivot (5). Oyuncu değişikliği sınırsızdır; kadroda en çok 12 oyuncu (NBA: 13 aktif).</div><div style="font-size:.7rem;color:var(--mu);margin-top:.45rem">'+(ESPN_YOL[A.lig]?(m.played||m.isLive?'Kadro yükleniyor…':'İlk beşler maç başlayınca kaynakta açıklanır.'):'Bu lig için ilk beş ve oyuncu listesi kaynakta yok; kort düzeni ve mevkiler gösteriliyor.')+'</div>');
+  try{ kadroIste(m.homeId); kadroIste(m.awayId); }catch(e){}
+  var kh=kadrodanBes(m.homeId), ka=kadrodanBes(m.awayId), bos=[null,null,null,null,null];
+  return bskSaha(h,a,kh||bos,ka||bos)+((kh||ka)?sbKart('Sahadaki beş','<div style="font-size:.74rem;line-height:1.6">Bu maçın ilk beşi ve oyuncu değişiklikleri kaynakta yok; takımların <b>güncel kadrosundan</b> mevkiye göre (oyun kurucu, şutör, kısa forvet, uzun forvet, pivot).</div>'):'')+sbKart('Oyun düzeni','<div style="font-size:.76rem;line-height:1.6">Sahada her takımdan <b>5 oyuncu</b>: oyun kurucu (1), şutör (2), kısa forvet (3), uzun forvet (4), pivot (5). Oyuncu değişikliği sınırsızdır; kadroda en çok 12 oyuncu (NBA: 13 aktif).</div><div style="font-size:.7rem;color:var(--mu);margin-top:.45rem">'+(ESPN_YOL[A.lig]?(m.played||m.isLive?'Kadro yükleniyor…':'İlk beşler maç başlayınca kaynakta açıklanır.'):'Bu lig için ilk beş ve oyuncu listesi kaynakta yok; kort düzeni ve mevkiler gösteriliyor.')+'</div>');
 }
 window.__sbSporMd=function(tab, id, m, h, a){
   try{ if(tab==='detay') return sbDetay(id,m,h,a); if(tab==='kadro') return sbKadro(id,m,h,a); if(tab==='anlati') return sbAnlati(id,m,h,a); if(tab==='istatistik') return sbIstatistik(id,m,h,a); }catch(e){ gunluk('spor detay hatası', e.message); }
@@ -987,8 +1034,7 @@ function ozetIsle(mid, j){
   var hk=(gi.officials||[])[0]; if(hk&&(hk.fullName||hk.displayName)) m2.referee=hk.fullName||hk.displayName;
   if(gi.venue&&(gi.venue.fullName||gi.venue.shortName)) m2.stadium=gi.venue.fullName||gi.venue.shortName;
   if(gi.attendance) m2.attendance=gi.attendance;
-  var yayin=(j.broadcasts||[]).map(function(b){ return (b.media&&b.media.shortName)||b.station||(b.names&&b.names[0])||''; }).filter(Boolean);
-  if(yayin.length) m2.tv=yayin.slice(0,2).join(', ');
+  // (2026-11-20) ESPN'in "broadcasts" alanı maçın ABD / yerel yayıncısıdır (ESPN+, Paramount+...), Türkiye'deki kanal değil: kullanılmaz.
   // istatistik
   var ts=j.boxscore&&j.boxscore.teams;
   if(ts&&ts.length>=2){
@@ -1049,6 +1095,8 @@ var MEVKI_WD=[[/kaleci|goalkeeper/i,'KL'],[/defans|defender|stoper|bek|back/i,'S
 /* basketbol / voleybol mevkileri (veri işi kısaltır; ESPN: PG, SG, SF, PF, C, G, F) */
 var SPOR_MEVKI={OK:'Oyun kurucu','ŞT':'Şutör',G:'Guard',KF:'Kısa forvet',UF:'Uzun forvet',F:'Forvet',P:'Pivot',PG:'Oyun kurucu',SG:'Şutör',SF:'Kısa forvet',PF:'Uzun forvet',C:'Pivot','G-F':'Guard / forvet','F-C':'Forvet / pivot',
   PS:'Pasör','PÇ':'Pasör çaprazı',SM:'Smaçör',OO:'Orta oyuncu',LB:'Libero'};
+/* kadro sonradan gelince açık maç detayı (Kadro sekmesi) yeniden çizilir */
+var _mdTz=null; function mdTazele(){ clearTimeout(_mdTz); _mdTz=setTimeout(function(){ try{ var sw=document.getElementById('sheetWrap'); if(sw&&sw.classList.contains('open')&&typeof _mdTab!=='undefined'&&_mdTab==='kadro'&&typeof renderMatchDetailContent==='function') renderMatchDetailContent(); }catch(e){} }, 300); }
 function sporKadroIste(slug, tid){   // ESPN basketbol kadrosu (NBA, WNBA, G League, NCAA, NBL…)
   var v=L[slug]&&L[slug].veri, t=v&&v.teams[tid]; if(!t||!t.espn||!ESPN_YOL[slug]) return;
   var c=K[slug+tid]||(K[slug+tid]={t:0}); if(c.yukleniyor||(c.t&&Date.now()-c.t<SEZON_TAZE)) return; c.yukleniyor=true;
@@ -1057,7 +1105,7 @@ function sporKadroIste(slug, tid){   // ESPN basketbol kadrosu (NBA, WNBA, G Lea
     var sira=l.map(function(a){ var pz=(a.position&&a.position.abbreviation)||''; var o={name:a.displayName||a.fullName||'?', position:SPOR_MEVKI[pz]||pz}; if(a.jersey) o.number=+a.jersey||a.jersey;
       if(a.headshot&&a.headshot.href) o.photo=a.headshot.href; if(a.age) o.age=a.age; if(a.citizenship) o.nat=trAd(a.citizenship); return o; });
     if(!sira.length) return; var t2=JSON.parse(JSON.stringify(v.teams[tid])); t2.squad={starting:[], bench:sira}; v.teams[tid]=t2;
-    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2);
+    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2); mdTazele();
   }, function(){ c.t=Date.now(); }).then(function(){ c.yukleniyor=false; });
 }
 function tsdbKadro(slug, tid){
@@ -1070,7 +1118,7 @@ function tsdbKadro(slug, tid){
     var sira=l.map(function(a){ var o={name:a.ad, position:spor?(SPOR_MEVKI[a.mevki]||a.mevki||''):kod(a.mevki)}; if(a.no) o.number=a.no; if(a.yas) o.age=a.yas; if(a.uyruk) o.nat=trAd(a.uyruk);
       if(a.foto&&a.foto.f){ o.photo=a.foto.f; o.photoCredit=(a.foto.y?a.foto.y+' · ':'')+(a.foto.l||'')+' · Wikimedia Commons'; o.photoSource=a.foto.u||''; } return o; });
     var t2=JSON.parse(JSON.stringify(v.teams[tid])); t2.squad={starting:[], bench:sira}; v.teams[tid]=t2;
-    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2);
+    YerelVT.yaz('leagues/'+ligKimlik(slug)+'/teams/'+tid, t2); mdTazele();
   }).then(function(){ c.yukleniyor=false; }, function(){ c.yukleniyor=false; });
 }
 function kadroIste(tid){
