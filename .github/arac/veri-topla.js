@@ -664,8 +664,12 @@ function ytVideolar(h){
   gez(j); return o;
 }
 const ytParca = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|jk|fc|cf|ac|sc|kulubu|futbol|spor|club|the|de|of)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
-const ytIcerir = (baslik, takim) => { const B = norm(baslik).split(' '), T = ytParca(takim); if(!T.length) return false;
-  const var_ = t => B.some(b => b === t || (t.length >= 4 && b.length >= 4 && (b.indexOf(t) === 0 || t.indexOf(b) === 0)));
+// (2026-11-20) Başlıktaki genel sözcükler ("A Spor Canlı Yayın", "TV", "live") takım adı parçası sayılmaz; ön ek eşleşmesi kısa olanın en az 5 harf
+// ve uzun olanın %60'ı olmasını ister. Önceden "Sportivo Ameliano - Sportivo Luqueño" maçı "Spor" sözcüğü yüzünden "A Spor Canlı Yayın"a bağlanıyordu.
+const YT_GENEL = /^(spor|sport|sports|canli|yayin|yayini|live|tv|hd|izle|mac|maci|vs|ve|ile|the|de|of)$/;
+const ytIcerir = (baslik, takim) => { const B = norm(baslik).split(' ').filter(b => b && !YT_GENEL.test(b)), T = ytParca(takim); if(!T.length) return false;
+  const on = (x, y) => { const k = x.length < y.length ? x : y, u = x.length < y.length ? y : x; return k.length >= 5 && k.length >= 0.6 * u.length && u.indexOf(k) === 0; };
+  const var_ = t => B.some(b => b === t || on(b, t));
   const n = T.filter(var_).length, son = T.filter(t => !/^\d+$/.test(t)).pop(); return n / T.length >= 0.5 || (son && son.length >= 5 && var_(son)); };   // sponsorlu adlarda asıl ad sondadır
 async function youtubeTopla(tum){
   const dosya = path.join(VERI, 'youtube.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
