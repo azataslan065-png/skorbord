@@ -707,6 +707,23 @@ async function youtubeTopla(tum){
   for(const a of aday){   // önce kanalların kendi canlı yayın listelerinde (arama gerekmez)
     const v = kanalYayin.find(v => !RED.test(v.b) && ytIcerir(v.b, a.ev) && ytIcerir(v.b, a.dep)); if(v){ a.bulundu = 1; liste.push(Object.assign({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi }, v)); }
   }
+  // (2026-11-20, kullanıcı: Suudi Pro Lig maçı YouTube'da yayında ama sistem görmüyor; bağlantı HT Spor'un "7/24 Canlı Yayın"ıydı). KÖK SEBEP:
+  // kanalın YouTube'daki sürekli canlı yayınının başlığında maç adı yok ("#CANLI | HT Spor 7/24 Canlı Yayın"), takım adıyla arama onu hiç bulamaz.
+  // ŞİMDİ maçın kanalı yayın akışından biliniyorsa (veri/yayin.json, maç saatinde ±25 dk, iki takımın adı) ve o kanalın YouTube'da 7/24 canlı
+  // yayını varsa, maç başlamadan 10 dk önceden itibaren o yayın maça bağlanır. Yayın yalnız Türkiye'den açılıyor (bölge kısıtı).
+  const KANAL_7_24 = { 'HT Spor': '@htspor', 'A Spor': 'channel/UCJElRTCNEmLemgirqvsW63Q' };
+  let akis = []; try{ akis = JSON.parse(fs.readFileSync(path.join(VERI, 'yayin.json'), 'utf8')).liste || []; }catch(e){}
+  const surekli = {};
+  for(const [k, yol] of Object.entries(KANAL_7_24)){
+    if(!aday.some(a => !a.bulundu && a.z - simdi < 10 * 60e3)) break;
+    const h = await ytSayfa('https://www.youtube.com/' + yol + '/live'); const m = /<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/.exec(h);
+    if(m && /"isLiveNow":true|"isLive":true/.test(h)) surekli[k] = { v: m[1], b: ((/<meta name="title" content="([^"]+)"/.exec(h) || [])[1] || (k + ' canlı yayın')).replace(/&amp;/g, '&').replace(/&#39;/g, "'") };
+    await bek(400);
+  }
+  for(const a of aday){ if(a.bulundu || a.z - simdi > 10 * 60e3) continue;
+    const y = akis.find(y => surekli[y.k] && Math.abs(Date.parse(y.g + 'T' + y.s + ':00+03:00') - a.z) <= 25 * 60e3 && ytIcerir(y.ad, a.ev) && ytIcerir(y.ad, a.dep));
+    if(y){ a.bulundu = 1; liste.push({ lig: a.lig, rid: a.rid, ev: a.ev, dep: a.dep, z: a.z, t: simdi, v: surekli[y.k].v, b: surekli[y.k].b, k: y.k, canli: true, kanalan: true, surekli: true }); }
+  }
   for(const a of aday.filter(a => !a.bulundu).slice(0, 70)){
     const k = a.lig + '|' + a.rid, e = once[k];
     if(e && e.v && simdi - (e.t || 0) < 25 * 60e3){ liste.push(e); continue; }
