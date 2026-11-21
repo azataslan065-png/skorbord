@@ -761,7 +761,7 @@ function ekipCikar(metinler, takimlar){
   metinler.forEach(t => {
     const cumleler = t.split(/(?<=[.!?])\s+/).filter(c => !/\?\s*$/.test(c.trim()) || /kimdir/i.test(c));   // soru cümleleri tahmindir ("kimdir?" hariç)
     cumleler.forEach(c => {
-      for(const m of c.matchAll(new RegExp('[Ss]piker(?:i|liğini|liğinde|liği|\\s+koltuğunda)?\\s+(?:olarak\\s+)?' + AD, 'g'))) if(!soru(m, c)) ekle(sp, m[1], 2);
+      for(const m of c.matchAll(new RegExp('[Ss]piker(?:i|liğini|liğinde|liği|\\s+koltuğunda)?\\s*[:：]?\\s+(?:olarak\\s+)?' + AD, 'g'))) if(!soru(m, c)) ekle(sp, m[1], 2);
       for(const m of c.matchAll(new RegExp(AD + '(?:\\s+[a-zçğıöşü]+)?\\s+(?:anlatacak|anlatıyor|anlatacağı|mikrofon başında|mikrofonda olacak)', 'g'))) if(!soru(m, c)) ekle(sp, m[1], 2);
       for(const m of c.matchAll(new RegExp('(?:[Yy]orumcu(?:luk|lar|ları|su)?(?:\\s+koltuğunda|\\s+olarak)?|[Yy]orumlarıyla)\\s+' + AD + '(?:\\s*(?:,|ve)\\s*' + AD + ')?(?:\\s*(?:,|ve)\\s*' + AD + ')?', 'g'))) if(!soru(m, c)) [m[1], m[2], m[3]].filter(Boolean).forEach(a => ekle(yr, a, 2));
       for(const m of c.matchAll(new RegExp(AD + '(?:\\s*(?:,|ve)\\s*' + AD + ')?\\s+(?:yorumlayacak|yorumcu olarak|yorumculuk yapacak)', 'g'))) if(!soru(m, c)) [m[1], m[2]].filter(Boolean).forEach(a => ekle(yr, a, 2));
@@ -771,6 +771,52 @@ function ekipCikar(metinler, takimlar){
   const en = o => Object.entries(o).sort((a, b) => b[1] - a[1]);
   const s = en(sp)[0], y = en(yr).filter(x => !s || x[0] !== s[0]).slice(0, 3).map(x => x[0]), k = en(kn)[0];
   return { spiker: s ? s[0] : '', yorumcu: y, kanal: k ? k[0] : '' };
+}
+/* KİM ANLATIYOR (2026-11-21, kullanıcı: "Kim Anlatıyor X hesabı sürekli paylaşıyor; maç günü '[Takım 1] [Takım 2] maçını kim anlatıyor' /
+   '... maçı spikeri' diye aransın"). X doğrudan okunamıyor (giriş / 429 / bot sayfası), Google arama sonuç vermiyor, Bing Haberler bu
+   haberleri bulmuyordu. DuckDuckGo'nun HTML sonuçları ise @Kimanlatiyor gönderisini tam metniyle döndürüyor:
+     "Galatasaray - Samsunspor 🕛 16.00 📺 beIN SPORTS 1 📱💻 beIN CONNECT & TOD 🎙️ Çağatay Uysal (@caagatayuysal ) Röportajlarda @X olacak"
+   🎙️'den sonraki adlar anlatım ekibidir (ilki spiker, sonrakiler yorumcu), 📺 kanal. Haber sitelerinin sonuç özetleri de ekipCikar'a gider. */
+async function ddgAra(q){
+  for(let i = 0; i < 3; i++){
+    try{ const r = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), { headers: { 'User-Agent': YT_UA['User-Agent'], 'Accept-Language': 'tr-TR,tr;q=0.9' }, signal: AbortSignal.timeout(25000) });
+      const h = r.ok ? await r.text() : '';
+      const ent = x => String(x || '').replace(/<[^>]+>/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&').replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/\s+/g, ' ').trim();
+      const L = [...h.matchAll(/<a[^>]+class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)]
+        .map(m => ({ u: decodeURIComponent((/uddg=([^&]+)/.exec(m[1]) || [, m[1]])[1]), b: ent(m[2]), s: ent(m[3]) }));
+      if(L.length || r.status === 200) return L;
+    }catch(e){}
+    await bek(4000 * (i + 1));   // 202 = hız sınırı
+  }
+  return [];
+}
+const KA_IKON = /[\u{1F300}-\u{1FAFF}\u2300-\u23FF\u2600-\u27BF]/u;
+function kimAnlatiyorCoz(metin){
+  const t = String(metin || '').replace(/\(\s*@[\w.]+\s*\)/g, ' ').replace(/\uFE0F/g, '');
+  const parca = (ikon) => { const i = t.indexOf(ikon); if(i < 0) return ''; let r = t.slice(i + ikon.length); const j = r.search(KA_IKON); if(j >= 0) r = r.slice(0, j); return r.replace(/Röportaj[\s\S]*$/i, '').replace(/@[\w.]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+  const adlar = parca('🎙').split(/\s*(?:,|&|\/|\s[-–]\s|\sve\s)\s*/).map(x => x.trim()).filter(x => /^[A-ZÇĞİÖŞÜ][\wçğıöşüÇĞİÖŞÜ.'’-]+(?:\s+[A-ZÇĞİÖŞÜ][\wçğıöşüÇĞİÖŞÜ.'’-]+){1,3}$/u.test(x));
+  const yor = parca('🗣').split(/\s*(?:,|&|\/|\s[-–]\s|\sve\s)\s*/).map(x => x.trim()).filter(x => /^[A-ZÇĞİÖŞÜ]\S+(?:\s+[A-ZÇĞİÖŞÜ]\S+){1,3}$/u.test(x));
+  const kanal = (EKIP_KANAL.exec(parca('📺')) || [])[1] || '';
+  return { spiker: adlar[0] || '', yorumcu: adlar.slice(1).concat(yor).filter((x, i, A) => A.indexOf(x) === i).slice(0, 3), kanal };
+}
+async function kimAnlatiyorBul(a){
+  const out = { spiker: '', yorumcu: [], kanal: '', kaynak: [], metin: [] };
+  const L = await ddgAra('Kim Anlatıyor ' + a.ev + ' ' + a.dep); await bek(2500);
+  for(const x of L){
+    if(!/(x|twitter)\.com\/kimanlatiyor/i.test(x.u)) continue;
+    const m = x.s; if(!(ytIcerir(m, a.ev) && ytIcerir(m, a.dep))) continue;
+    const tz = Date.parse((/(\d{1,2} [A-Z][a-z]{2} 20\d\d \d\d:\d\d:\d\d)/.exec(m + ' ' + x.b) || [])[1] + ' GMT');
+    if(tz ? (a.z - tz > 2 * 864e5 || tz - a.z > 864e5) : !/\/kimanlatiyor\/?$/i.test(x.u)) continue;   // gönderi tarihi maça yakın olmalı; tarih yoksa yalnız profil özeti (son gönderiler)
+    const c = kimAnlatiyorCoz(m); if(!c.spiker) continue;
+    Object.assign(out, c); out.kaynak.push(x.u); break;
+  }
+  if(!out.spiker){   // kullanıcının arama kalıpları: haber sitelerinin sonuç özetleri ekipCikar'a
+    for(const q of [a.ev + ' ' + a.dep + ' maçını kim anlatıyor', a.ev + ' ' + a.dep + ' maçı spikeri']){
+      const R = await ddgAra(q); await bek(2500);
+      R.filter(x => ytIcerir(x.b + ' ' + x.s, a.ev) && ytIcerir(x.b + ' ' + x.s, a.dep) && /spiker|anlat|yorum/i.test(x.b + ' ' + x.s)).slice(0, 5).forEach(x => { out.metin.push(x.s); if(out.kaynak.length < 3) out.kaynak.push(x.u); });
+    }
+  }
+  return out;
 }
 async function ekipTopla(tum){
   const dosya = path.join(VERI, 'ekip.json'); let eski = {}; try{ eski = JSON.parse(fs.readFileSync(dosya, 'utf8')); }catch(e){}
@@ -789,9 +835,13 @@ async function ekipTopla(tum){
   const liste = [], ATLA = []; let arama = 0;
   for(const a of aday){
     const k = a.lig + '|' + a.rid, e = once[k];
-    if(e && simdi - (e.t || 0) < (e.spiker ? 8 : 4) * 3600e3){ liste.push(e); continue; }   // bulunduysa 8, bulunmadıysa 4 saatte bir yeniden aranır
+    // bulunduysa 8 saatte, bulunmadıysa 4 saatte (maça 14 saatten az kaldıysa saatte) bir yeniden aranır
+    if(e && simdi - (e.t || 0) < (e.spiker ? 8 : (a.z - simdi < 14 * 3600e3 ? 1 : 4)) * 3600e3){ liste.push(e); continue; }
     if(arama >= 35){ if(e) liste.push(e); continue; }
-    const q = a.ev + ' ' + a.dep + ' maçını kim anlatıyor'; arama++;
+    arama++;
+    let ka = null; if(a.z - simdi < 30 * 3600e3){ try{ ka = await kimAnlatiyorBul(a); }catch(err){ console.log('HATA kim anlatıyor', err.message); } }
+    if(ka && ka.spiker){ liste.push(Object.assign({}, a, { t: simdi, spiker: ka.spiker, yorumcu: ka.yorumcu, kanal: ka.kanal || (e && e.kanal) || '', kaynak: ka.kaynak.slice(0, 3), kim: 1 })); continue; }
+    const q = a.ev + ' ' + a.dep + ' maçını kim anlatıyor';
     const r = await al('https://www.bing.com/news/search?q=' + encodeURIComponent(q) + '&format=rss&setlang=tr&cc=tr', { metin: true, accept: 'application/rss+xml,text/xml' });
     const it = [...String(r || '').matchAll(/<item>([\s\S]*?)<\/item>/g)].map(m => m[1]);
     const ent = x => String(x || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -801,6 +851,7 @@ async function ekipTopla(tum){
     for(const x of ilgili){ let u = x.l; const m = /[?&]url=([^&]+)/.exec(u); if(m) u = decodeURIComponent(m[1]);
       try{ const rr = await fetch(u, { headers: { 'User-Agent': YT_UA['User-Agent'], 'Accept-Language': 'tr-TR,tr' }, signal: AbortSignal.timeout(20000) }); if(!rr.ok) continue; const h = await rr.text();
         metin.push(ent(h.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<(nav|header|footer|aside)[\s\S]*?<\/\1>/gi, ' '))); kaynak.push(u); }catch(e){} await bek(300); }
+    if(ka && ka.metin.length){ metin.push(...ka.metin); kaynak.push(...ka.kaynak); }
     const c = ekipCikar(metin, [a.ev, a.dep]);
     const o = Object.assign({}, a, { t: simdi, spiker: c.spiker || (e && e.spiker) || '', yorumcu: c.yorumcu.length ? c.yorumcu : ((e && e.yorumcu) || []), kanal: c.kanal || (e && e.kanal) || '', kaynak: kaynak.slice(0, 3) });
     if(o.spiker || o.yorumcu.length || o.kanal) liste.push(o); else ATLA.push(a.ev + '-' + a.dep);
