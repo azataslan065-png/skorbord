@@ -663,7 +663,9 @@ function ytVideolar(h){
     Object.values(x).forEach(gez); };
   gez(j); return o;
 }
-const ytParca = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|jk|fc|cf|ac|sc|kulubu|futbol|spor|club|the|de|of)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
+// (2026-11-21) "Women / Kadın / U19 / Basketbol" gibi ortak sözcükler takım adı parçası sayılmaz. KÖK SEBEP: "Beşiktaş Women - İstanbul GSK Women"
+// maçı, iki adda da yalnız "women" geçtiği için EuroLeague Women'ın başka bir maçına (Zaragoza - Athinaikos) bağlanmıştı.
+const ytParca = a => norm(a).split(' ').filter(x => x.length > 1 && !/^(fk|sk|as|a|s|jk|fc|cf|ac|sc|bk|gsk|kulubu|futbol|spor|club|the|de|of|women|woman|men|ladies|kadin|kadinlar|bayan|erkek|u\d{2}|basketbol|basketball|basket|voleybol|volleyball|volley)$/.test(x)).map(x => x.length > 6 ? x.replace(/spor$/, '') : x);
 // (2026-11-20) Başlıktaki genel sözcükler ("A Spor Canlı Yayın", "TV", "live") takım adı parçası sayılmaz; ön ek eşleşmesi kısa olanın en az 5 harf
 // ve uzun olanın %60'ı olmasını ister. Önceden "Sportivo Ameliano - Sportivo Luqueño" maçı "Spor" sözcüğü yüzünden "A Spor Canlı Yayın"a bağlanıyordu.
 const YT_GENEL = /^(spor|sport|sports|canli|yayin|yayini|live|tv|hd|izle|mac|maci|vs|ve|ile|the|de|of)$/;
@@ -857,6 +859,9 @@ async function logoTemizle(url){
   if(!url || !/^https?:/.test(url)) return url; const D = tlDizin(), ad = require('crypto').createHash('md5').update(url).digest('hex').slice(0, 16) + '.png';
   if(fs.existsSync(path.join(TL_KLAS, ad))) return 'veri/takim-logo/' + ad;   // dosya adı adresin özeti: dizin dosyasına gerek yok (paralel işler birbirini ezmez)
   if(D[url] === '') return url;   // bu çalışmada işlenemedi: kaynağın kendi adresi kalır
+  // (2026-11-21) Hızlı turda yeni logo indirilmez. KÖK SEBEP: TFF / TheSportsDB logolarının bir kısmı her turda 30 sn zaman aşımıyla düşüyordu
+  // (tur.3 367 sn, tur.4 566 sn); 6 dakikalık hızlı tur 20 dakikada kesiliyor, ekip / YouTube adımlarına hiç sıra gelmiyordu. İndirme günlük tam işte.
+  if(HIZLI) return url;
   if(_sharp === undefined){ try{ _sharp = require('sharp'); }catch(e){ _sharp = null; } } if(!_sharp) return url;
   try{
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) }); if(!r.ok) throw new Error('HTTP ' + r.status);
@@ -1007,9 +1012,12 @@ async function ligLogoTopla(tum, zorla){
   const ana = !SECILI.length && !(GRUP.length === 2 && GRUP[0] !== 0);   // tek iş (grup 0) ortak dosyaları yazar
   if((SECILI.includes('tff') && G0) || ana){ try{ await tffTopla(); }catch(e){ console.log('HATA tff', e && e.stack || e); } }
   if((SECILI.includes('yayin') && G0) || ana){ try{ await yayinTopla(); }catch(e){ console.log('HATA yayın', e && e.stack || e); } }
-  for(const L of ligler){ try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
-  if((SECILI.includes('ekip') && G0) || ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
-  if((SECILI.includes('youtube') && G0) || ana){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
+  // (2026-11-21) Hızlı turda ekip ve YouTube liglerden ÖNCE: maç saatinde güncel olmaları gerekiyor; ligler bir sonraki turu bekleyebilir.
+  if(HIZLI && ana){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
+  const _tBas = Date.now();
+  for(const L of ligler){ if(HIZLI && Date.now() - _tBas > 14 * 60e3){ console.log('HIZLI süre doldu, kalan ligler sonraki turda:', L.slug); break; } try{ await ligIsle(L); }catch(e){ console.log('HATA', L.slug, e && e.stack || e); } }
+  if(!HIZLI && ((SECILI.includes('ekip') && G0) || ana)){ try{ await ekipTopla(tum); }catch(e){ console.log('HATA ekip', e && e.stack || e); } }
+  if(!HIZLI && ((SECILI.includes('youtube') && G0) || ana)){ try{ await youtubeTopla(tum); }catch(e){ console.log('HATA youtube', e && e.stack || e); } }
   if(((SECILI.includes('logo') && G0) || ana) && !HIZLI){ try{ await ligLogoTopla(tum, (SECILI.includes('logo') && G0)); }catch(e){ console.log('HATA logo', e && e.stack || e); } }
   if(!SECILI.length) fs.writeFileSync(path.join(VERI, 'liste.json'), JSON.stringify({ ligler: tum.map(l => l.slug) }));
   if(OZET.length) console.log('FOTOĞRAF ÖZETİ', JSON.stringify(OZET));
