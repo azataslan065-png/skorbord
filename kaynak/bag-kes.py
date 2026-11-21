@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-19-A'
+SB_BUILD = '2026-11-21-A'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -346,4 +346,18 @@ isle('index.html', [
   ('spor gol haritası', rx(r"""(      )(<button class="td-tab\$\{_tdTab==='golh'\?' active':''\}" onclick="switchTdTab\('golh'\)">[^<]*</button>)""", lambda m: m.group(1) + "${(D.sbSpor&&D.sbSpor!=='futbol')?'':`" + m.group(2) + "`}", "?'':`<button class=\"td-tab${_tdTab==='golh'")),
   ('takım logosu işlenmez', degis("""    if(src.indexOf('/veri/lig-logo/')!==-1){ imgEl.style.visibility=''; return; }""",
     """    if(src.indexOf('/veri/lig-logo/')!==-1||src.indexOf('/veri/takim-logo/')!==-1){ imgEl.style.visibility=''; return; }""")),
+])
+
+# ── BASKIMETRE VE CANLI GÖRSEL ANLATIM (2026-11-21, kullanıcı: "Baskımetre niye yok, ekle; sistem puan tablosundaki gibi çalışsın, canlı görsel
+#    anlatımı da ekle"). İkisi de "yalnız SAHA maçı" koşuluna bağlıydı; Skorbord'da gerçek maçlar için de çizilir (veri: gercek.js akisIsle).
+isle('index.html', [
+  ('baskımetre gerçek maçta', degis("""function renderBaskimetre(m){
+  if(!ptSahaGoster())return '';   // SAHA'ya özgü: bkz. ptSahaGoster""", """function renderBaskimetre(m){
+  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)""")),
+  ('görsel anlatım gerçek maçta', degis("""function renderSahaPitch(m,h,a){
+  try{
+    if(!ptSahaGoster())return '';   // SAHA'ya özgü""", """function renderSahaPitch(m,h,a){
+  try{
+    if(window.__sbGorsel){ var _sbg=window.__sbGorsel(m,h,a); if(_sbg!=null) return _sbg; }   // Skorbord: gerçek maçın görsel anlatımı (gercek.js)
+    if(!ptSahaGoster())return '';   // SAHA'ya özgü""")),
 ])

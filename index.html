@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-20-B';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-21-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -14153,6 +14153,7 @@ function gorevliDetay(ad,rol){
 window._sahaPitchPrev=window._sahaPitchPrev||{};
 function renderSahaPitch(m,h,a){
   try{
+    if(window.__sbGorsel){ var _sbg=window.__sbGorsel(m,h,a); if(_sbg!=null) return _sbg; }   // Skorbord: gerçek maçın görsel anlatımı (gercek.js)
     if(!ptSahaGoster())return '';   // SAHA'ya özgü
     if(!m||!m.isLive||!m.sahaMode)return '';
     if(typeof m.ballX!=='number'||typeof m.ballZ!=='number')return '';
@@ -14325,7 +14326,7 @@ function ptSahaPitchGuncelle(kutu,m,h,a){
   }catch(e){ try{ kutu.innerHTML=renderSahaPitch(m,h,a); }catch(_e){} }
 }
 function renderBaskimetre(m){
-  if(!ptSahaGoster())return '';   // SAHA'ya özgü: bkz. ptSahaGoster
+  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)
 
   try{
     /* ── BASKIMETRE / OLAY YOĞUNLUĞU ─────────────────────────────────────────────────
@@ -40238,6 +40239,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=e6ac7e97"></script>
+<script src="gercek.js?v=a7ab18ad"></script>
 </body>
 </html>

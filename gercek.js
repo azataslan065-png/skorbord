@@ -1026,6 +1026,107 @@ function mevkiKod(k, say){
   return 'OOS';
 }
 function evet(v){ return v===true || !!(v&&v.didSub); }
+/* ═══ BASKIMETRE VE CANLI GÖRSEL ANLATIM (2026-11-21, kullanıcı: "Baskımetre niye yok, ekle; sistem puan durumundaki gibi çalışsın, canlı
+   görsel anlatımı da ekle"). KÖK SEBEP: ikisi de Skorbord kodunda "yalnız SAHA maçı" koşuluna bağlıydı (Skorbord'da veri kaynağı SAHA değil),
+   görsel anlatım da SAHA oyununun her an gönderdiği top koordinatıyla çalışıyordu; gerçek maçta böyle bir veri yok.
+   ŞİMDİ veri ESPN'in maç akışından (commentary) gelir: her olayın türü, dakikası, takımı ve oyuncusu.
+   · Baskımetre: Skorbord'un çizimi aynen (renderBaskimetre). Akışta şut / korner / ofsayt / serbest vuruş varsa (Premier Lig, La Liga gibi
+     ayrıntılı ligler) dakika dakika baskı değeri (m.momentum: ev +, deplasman −) hesaplanır; akış yalnız gol / kart / değişiklikten oluşuyorsa
+     (Süper Lig gibi) Skorbord'un olay ağırlıklı hesabı kullanılır.
+   · Görsel anlatım: son olay sahada gösterilir (şut ceza alanında, korner bayrağında, gol kalede, faul / kart orta alanda); hücum eden
+     takımın yarısı renklenir, son olaylar altta listelenir. Top konumu ölçülmez, olay türünden çıkarılır (sahada bunun notu var). */
+function akisTuru(t, metin){
+  t=String(t||'').toLowerCase(); var x=t+' '+String(metin||'').toLowerCase();
+  if(/own.?goal/.test(x)) return 'gol';
+  if(/penalty.*(saved|missed)|penalty.*miss/.test(x)) return 'penkacti';
+  if(/^goal|goal---|penalty---scored|penalty - scored/.test(t)||/^goal!/.test(String(metin||'').toLowerCase())) return 'gol';
+  if(/red.?card/.test(x)) return 'kirmizi';
+  if(/yellow.?card/.test(x)) return 'sari';
+  if(/substitution/.test(x)) return 'degisiklik';
+  if(/corner/.test(x)) return 'korner';
+  if(/offside/.test(x)) return 'ofsayt';
+  if(/penalty/.test(x)) return 'penalti';
+  if(/saved|on.?target/.test(x)) return 'isabet';
+  if(/blocked/.test(x)) return 'blok';
+  if(/shot|attempt|missed|hits the (bar|post)|woodwork/.test(x)) return 'sut';
+  if(/free.?kick|wins a free kick/.test(x)) return 'serbest';
+  if(/foul/.test(x)) return 'faul';
+  if(/^halftime$/.test(t)||/first half ends/.test(x)) return 'devre';
+  if(/^(kickoff|start-2nd-half)$/.test(t)||/half begins/.test(x)) return 'baslama';
+  if(/^(end|full-?time)$/.test(t)||/second half ends|match ends/.test(x)) return 'bitis';
+  return '';
+}
+var AKIS_AD={gol:'Gol',penkacti:'Penaltı kaçtı',kirmizi:'Kırmızı kart',sari:'Sarı kart',degisiklik:'Oyuncu değişikliği',korner:'Korner',ofsayt:'Ofsayt',penalti:'Penaltı',
+  isabet:'İsabetli şut',blok:'Şut engellendi',sut:'Şut',serbest:'Serbest vuruş',faul:'Faul',devre:'Devre arası',baslama:'Başlama vuruşu',bitis:'Maç sonu'};
+// baskı ağırlığı (olayı yapan takım için); faulde baskı rakibe yazılır
+/* ESPN anlatım metnindeki yer ifadesi -> hücum eden takıma göre konum (x: 0 kendi kalesi, 100 rakip kale; y: 0 sol kanat, 100 sağ kanat) */
+function akisYer(metin){
+  var t=String(metin||'').toLowerCase(), x=null, y=null;
+  if(/defensive half/.test(t)) x=35; else if(/attacking half/.test(t)) x=68;
+  if(/right wing/.test(t)){ x=x||74; y=88; } else if(/left wing/.test(t)){ x=x||74; y=12; }
+  if(/outside the box/.test(t)) x=76; if(/centre of the box|center of the box/.test(t)){ x=89; y=50; }
+  if(/very close range|six yard box/.test(t)){ x=95; y=50; }
+  if(/right side of the box/.test(t)){ x=88; y=66; } else if(/left side of the box/.test(t)){ x=88; y=34; }
+  if(/long range|more than 35 yards|40 yards/.test(t)) x=66;
+  if(/right side of the six/.test(t)) y=58; else if(/left side of the six/.test(t)) y=42;
+  return (x!=null||y!=null)?{x:x,y:y}:null;
+}
+var AKIS_AGIRLIK={gol:3,penalti:2,penkacti:1.5,isabet:1.4,sut:1,blok:0.9,korner:0.8,serbest:0.5,ofsayt:0.4,faul:-0.3};
+function akisIsle(m2, j){
+  try{
+    var yon={}; (((j.header||{}).competitions||[{}])[0].competitors||[]).forEach(function(c){ if(c.team) [c.team.displayName,c.team.shortDisplayName,c.team.name].forEach(function(n){ if(n) yon[n]=c.homeAway; }); });
+    var l=[];
+    (j.commentary||[]).forEach(function(c, i){ var p=c.play||{}, tt=(p.type&&(p.type.type||p.type.text))||'', tur=akisTuru(tt, c.text||p.text); if(!tur) return;
+      var tn=p.team&&p.team.displayName, taraf=yon[tn]||null;
+      if(!taraf&&tn){ Object.keys(yon).forEach(function(n){ if(!taraf&&adBenzer(n,tn)>=1) taraf=yon[n]; }); }
+      var oy=(p.participants&&p.participants[0]&&p.participants[0].athlete&&(p.participants[0].athlete.displayName||p.participants[0].athlete.shortName))||'';
+      var it={dk:dk((c.time&&c.time.displayValue)||(p.clock&&p.clock.displayValue)), tur:tur, taraf:taraf, oy:oy, s:i}, yer=akisYer(c.text||p.text); if(yer) it.yer=yer;
+      l.push(it); });
+    if(!l.length) return;
+    m2.sbAkis=l.slice(-30);
+    var ayrinti=l.some(function(e){ return /^(sut|isabet|blok|korner|ofsayt|serbest)$/.test(e.tur); });
+    if(!ayrinti){ delete m2.momentum; return; }
+    var son=90; l.forEach(function(e){ if(e.dk>son) son=e.dk; }); if(m2.isLive&&m2.minute) son=Math.max(son, m2.minute); son=Math.min(son,130);
+    var d=new Array(son+1).fill(0);
+    l.forEach(function(e){ var w=AKIS_AGIRLIK[e.tur]; if(!w||!e.taraf||e.dk>son) return; var t=e.taraf==='home'?1:-1; if(w<0){ t=-t; w=-w; } d[e.dk]+=t*w; });
+    var mom={};
+    for(var i=0;i<=son;i++){ var top=0; for(var k=i-2;k<=i+2;k++){ if(k<0||k>son) continue; top+=d[k]*(1-Math.abs(i-k)*0.3); } top=Math.round(top/1.6*100)/100; if(top) mom[i]=top; }
+    m2.momentum=mom;
+  }catch(e){ gunluk('akış işlenemedi', e.message); }
+}
+/* canlı görsel anlatım (index.html renderSahaPitch başında çağrılır; null dönerse Skorbord'un kendi çizimi) */
+window.__sbGorsel=function(m, h, a){
+  if(!m||!m.isLive||m.sahaMode) return null;
+  var l=(m.sbAkis&&m.sbAkis.length)?m.sbAkis:(m.events||[]).map(function(e){ var t={goal:'gol',pen_goal:'gol',og:'gol',yellow:'sari',red:'kirmizi',yellow2red:'kirmizi',sub:'degisiklik',pen_miss:'penkacti'}[e.type]||''; return t?{dk:e.min||0,tur:t,taraf:e.type==='og'?(e.team==='home'?'away':'home'):e.team,oy:e.player||''}:null; }).filter(Boolean);
+  var son=l[l.length-1]||null, W=300, H=190;
+  // top, son "oyun" olayında durur (değişiklik / devre gibi oyun dışı anlarda en son hücum anı gösterilir); yazı son olayı söyler
+  var oyun=null; for(var oi=l.length-1;oi>=0;oi--){ if(!/^(degisiklik|devre|baslama|bitis)$/.test(l[oi].tur)){ oyun=l[oi]; break; } }
+  // hücum yönü: ev sahibi sağa. x: ev sahibinin kalesinden (0) deplasman kalesine (100)
+  var X={gol:97,penalti:89,penkacti:89,isabet:87,sut:82,blok:80,korner:99,ofsayt:76,serbest:66,faul:55,sari:52,kirmizi:52,degisiklik:50,devre:50,baslama:50,bitis:50};
+  var x=50, y=50, tur=oyun?oyun.tur:'', kim=oyun?oyun.taraf:null;
+  if(oyun){ var son0=son; son=oyun; x=X[tur]!=null?X[tur]:50; if(tur==='faul'&&kim){ kim=kim==='home'?'away':'home'; }   // faul yapan savunur, top rakipte
+    var hs=0; String(son.oy||'').split('').forEach(function(c){ hs=(hs*31+c.charCodeAt(0))%997; }); y=tur==='korner'?((son.s||son.dk)%2?4:96):(tur==='gol'?50:25+hs%50);
+    if(son.yer&&tur!=='faul'){ if(son.yer.x!=null) x=son.yer.x; if(son.yer.y!=null) y=son.yer.y; }   // anlatım metnindeki yer (ceza sahası, kanat, yarı saha)
+    if(kim==='away'){ x=100-x; y=100-y; } if(!kim) x=50;
+    x=Math.max(3,Math.min(97,x)); y=Math.max(4,Math.min(96,y)); son=son0; }
+  var renk=kim==='home'?'var(--ac)':(kim==='away'?'#f97316':'#94a3b8');
+  var bolge=kim?'<rect x="'+(kim==='home'?W*2/3:0)+'" y="0" width="'+(W/3)+'" height="'+H+'" fill="'+renk+'" opacity=".18"/>':'';
+  var cz='stroke="rgba(255,255,255,.6)" stroke-width="1.4" fill="none"';
+  var saha='<rect x="2" y="2" width="296" height="186" rx="4" '+cz+'/><line x1="150" y1="2" x2="150" y2="188" '+cz+'/><circle cx="150" cy="95" r="24" '+cz+'/>'
+    +'<rect x="2" y="50" width="42" height="90" '+cz+'/><rect x="256" y="50" width="42" height="90" '+cz+'/><rect x="2" y="75" width="14" height="40" '+cz+'/><rect x="284" y="75" width="14" height="40" '+cz+'/>';
+  var bx=x/100*W, by=y/100*H;
+  var top='<circle cx="'+bx+'" cy="'+by+'" r="13" fill="'+renk+'" opacity=".35"><animate attributeName="r" values="8;16;8" dur="1.6s" repeatCount="indefinite"/></circle><circle cx="'+bx+'" cy="'+by+'" r="6" fill="#fff" stroke="#111" stroke-width="1.5"/>';
+  var ad=function(t){ return esc((t&&(t.shortName||t.name))||''); };
+  var durum=son?((AKIS_AD[son.tur]||'')+(son.dk?' · '+son.dk+"'":'')+(son.taraf?' · '+(son.taraf==='home'?ad(h):ad(a)):'')+(son.oy?' · '+esc(son.oy):'')):'Maç sürüyor';
+  var ikon={gol:'⚽',sari:'🟨',kirmizi:'🟥',degisiklik:'🔁',korner:'🚩',ofsayt:'🚩',penalti:'⚠️',penkacti:'❌',isabet:'🎯',sut:'👟',blok:'🛡️',serbest:'🦶',faul:'✋',devre:'⏸️',baslama:'▶️',bitis:'🏁'};
+  var liste=l.slice(-5).reverse().map(function(e){ return '<div style="display:flex;gap:.45rem;align-items:center;font-size:.72rem;padding:.22rem 0;border-bottom:1px solid var(--br)"><span style="width:2.2rem;color:var(--mu);font-variant-numeric:tabular-nums">'+(e.dk?e.dk+"'":'')+'</span><span>'+(ikon[e.tur]||'•')+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+(AKIS_AD[e.tur]||'')+'</b>'+(e.oy?' · '+esc(e.oy):'')+(e.taraf?' <span style="color:var(--mu)">('+(e.taraf==='home'?ad(h):ad(a))+')</span>':'')+'</span></div>'; }).join('');
+  return '<div class="md-section-head"> Canlı Görsel Anlatım</div><div style="padding:.6rem .9rem">'
+    +'<div style="display:flex;justify-content:space-between;font-size:.7rem;font-weight:800;margin-bottom:.3rem"><span>◀ '+ad(h)+'</span><span style="color:var(--mu);font-weight:600">'+(m.minute?m.minute+"'":'')+'</span><span>'+ad(a)+' ▶</span></div>'
+    +'<div style="border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 30px,#1b6f35 30px 60px)"><svg viewBox="0 0 300 190" style="display:block;width:100%">'+bolge+saha+top+'</svg></div>'
+    +'<div style="text-align:center;font-size:.8rem;font-weight:800;margin:.45rem 0 .2rem">'+durum+'</div>'
+    +(liste?'<div style="margin-top:.3rem">'+liste+'</div>':'')
+    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Top konumu ölçülmez; son olayın türünden ve anlatımdaki yer bilgisinden (ceza sahası, kanat, yarı saha) gösterilir (ESPN maç akışı). Ev sahibi sağa hücum eder.</div></div>';
+};
 function ozetIsle(mid, j){
   var v=L[A.lig]&&L[A.lig].veri; if(!v) return;
   var m=v.matches[mid]; if(!m) return;
@@ -1072,6 +1173,7 @@ function ozetIsle(mid, j){
     return o;
   }).filter(Boolean);
   if(ke.length>=(m2.events||[]).filter(function(e){ return e.type!=='sub'; }).length){ m2.events=ke; m2._ozet=1; }
+  akisIsle(m2, j);
   gorevliUygula(A.lig, mid, m2);
   if(JSON.stringify(m2)===JSON.stringify(m)) return;
   v.matches[mid]=m2;
