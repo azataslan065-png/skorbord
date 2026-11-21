@@ -1,17 +1,31 @@
-// Deneme 53: Supabase depolama — kova içeriği (klasör bazında toplam boyut; dosya adları yazdırılmaz) ve erişim durumu
+// Deneme 54: spiker / yorumcu kaynakları — X'teki @Kimanlatiyor hesabı (gömme zaman tüneli, kimliksiz yollar) ve arama motorları
+// ("[Takım 1] [Takım 2] maçını kim anlatıyor", "[Takım 1] [Takım 2] maçı spikeri"). Yalnız erişim durumu ve kısa metin örnekleri yazdırılır.
 (async () => {
   if (process.env.PARCA !== '0') return;
-  const U = 'https://oasyhelzshbehnpyrssw.supabase.co', K = 'sb_publishable_DxSYVhhxvfVw_yAA7xkS6A_s1Usv41C';
-  const h = { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' };
-  const liste = async (onek) => { const r = await fetch(U + '/storage/v1/object/list/videos', { method: 'POST', headers: h, body: JSON.stringify({ prefix: onek, limit: 1000, offset: 0, sortBy: { column: 'name', order: 'asc' } }) }); return { s: r.status, j: await r.json().catch(() => null) }; };
-  const kok = await liste(''); console.log('KÖK', kok.s, Array.isArray(kok.j) ? kok.j.length : JSON.stringify(kok.j).slice(0, 200));
-  const top = {}; let tum = [];
-  async function gez(onek, d){ if (d > 3) return; const r = await liste(onek); if (!Array.isArray(r.j)) return;
-    for (const x of r.j) { if (x.id == null) await gez(onek + x.name + '/', d + 1); else { const b = (x.metadata && x.metadata.size) || 0; const k = onek.split('/')[0] || '(kök)'; top[k] = top[k] || { n: 0, b: 0 }; top[k].n++; top[k].b += b; tum.push({ k, b, t: (x.metadata && x.metadata.mimetype) || '', c: (x.metadata && x.metadata.cacheControl) || '', z: x.created_at }); } } }
-  await gez('', 0);
-  Object.entries(top).sort((a, b) => b[1].b - a[1].b).forEach(([k, v]) => console.log('KLASÖR', k.replace(/[^a-zA-Z_-]/g, '#').slice(0, 20), v.n, 'dosya', (v.b / 1048576).toFixed(1), 'MB'));
-  tum.sort((a, b) => b.b - a.b); tum.slice(0, 15).forEach(x => console.log('BÜYÜK', x.k.replace(/[^a-zA-Z_-]/g, '#').slice(0, 20), (x.b / 1048576).toFixed(1), 'MB', x.t, x.c, (x.z || '').slice(0, 10)));
-  const tur = {}; tum.forEach(x => { tur[x.t] = (tur[x.t] || 0) + x.b; }); console.log('TÜR', JSON.stringify(Object.fromEntries(Object.entries(tur).map(([k, v]) => [k, (v / 1048576).toFixed(1) + 'MB']))));
-  const ccs = {}; tum.forEach(x => { ccs[x.c] = (ccs[x.c] || 0) + 1; }); console.log('CACHE', JSON.stringify(ccs));
-  if (tum[0]) { const r = await fetch(U + '/storage/v1/object/public/videos/' + 'x-yok.mp4', { method: 'HEAD' }); console.log('ERİŞİM', r.status); }
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36';
+  const al = async (u, h) => { try{ const r = await fetch(u, { headers: Object.assign({ 'User-Agent': UA, 'Accept-Language': 'tr-TR,tr;q=0.9' }, h || {}), signal: AbortSignal.timeout(30000) }); const t = await r.text(); return { s: r.status, t }; }catch(e){ return { s: 'HATA ' + e.message, t: '' }; } };
+  const temiz = t => t.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/\s+/g, ' ');
+  // 1) X gömme zaman tüneli (widget'ların kullandığı herkese açık uç)
+  for (const u of ['https://syndication.twitter.com/srv/timeline-profile/screen-name/Kimanlatiyor', 'https://syndication.twitter.com/srv/timeline-profile/screen-name/Kimanlatiyor?showReplies=false',
+    'https://cdn.syndication.twimg.com/timeline/profile?screen_name=Kimanlatiyor', 'https://x.com/Kimanlatiyor', 'https://nitter.net/Kimanlatiyor/rss', 'https://nitter.privacydev.net/Kimanlatiyor/rss', 'https://rsshub.app/twitter/user/Kimanlatiyor']) {
+    const r = await al(u); const m = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/.exec(r.t);
+    let tw = [];
+    if (m) { try { const j = JSON.parse(m[1]); const gez = x => { if (!x || typeof x !== 'object') return; if (x.full_text || (x.text && x.created_at)) { tw.push({ z: x.created_at, m: x.full_text || x.text }); return; } Object.values(x).forEach(gez); }; gez(j); } catch (e) {} }
+    if (!tw.length) tw = [...r.t.matchAll(/<(?:description|title)>([\s\S]*?)<\/(?:description|title)>/g)].map(x => ({ m: temiz(x[1]) })).slice(0, 6);
+    console.log('X', u.replace(/^https?:\/\//, '').slice(0, 70), r.s, 'uzunluk', r.t.length, 'tweet', tw.length);
+    tw.slice(0, 8).forEach(x => console.log('   ', x.z || '', String(x.m).replace(/\s+/g, ' ').slice(0, 260)));
+  }
+  // 2) Arama motorları
+  const maclar = [['Galatasaray', 'Samsunspor'], ['Kocaelispor', 'Fenerbahçe'], ['Konyaspor', 'Beşiktaş']];
+  for (const [a, b] of maclar) for (const k of [a + ' ' + b + ' maçını kim anlatıyor', a + ' ' + b + ' maçı spikeri']) {
+    const q = encodeURIComponent(k);
+    for (const [ad, u] of [['google', 'https://www.google.com/search?hl=tr&gl=tr&q=' + q], ['bing-web-rss', 'https://www.bing.com/search?format=rss&setlang=tr&cc=tr&q=' + q],
+      ['bing-haber-rss', 'https://www.bing.com/news/search?format=rss&setlang=tr&cc=tr&q=' + q], ['ddg', 'https://html.duckduckgo.com/html/?q=' + q], ['google-haber-rss', 'https://news.google.com/rss/search?hl=tr&gl=TR&ceid=TR:tr&q=' + q]]) {
+      const r = await al(u); const t = temiz(r.t);
+      const cum = (t.match(/[^.!?|]{0,140}(spiker|anlat|yorumcu)[^.!?|]{0,160}/gi) || []).filter(c => new RegExp(a.slice(0, 5), 'i').test(c) || /spiker/i.test(c)).slice(0, 4);
+      console.log('ARA', ad, '|', k, '|', r.s, 'uzunluk', r.t.length, /captcha|unusual traffic|sorry/i.test(r.t) ? 'ENGEL' : '');
+      cum.forEach(c => console.log('     ', c.trim().slice(0, 300)));
+      await new Promise(r => setTimeout(r, 800));
+    }
+  }
 })();
