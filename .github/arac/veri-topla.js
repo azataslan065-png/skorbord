@@ -778,7 +778,7 @@ function ekipCikar(metinler, takimlar){
      "Galatasaray - Samsunspor 🕛 16.00 📺 beIN SPORTS 1 📱💻 beIN CONNECT & TOD 🎙️ Çağatay Uysal (@caagatayuysal ) Röportajlarda @X olacak"
    🎙️'den sonraki adlar anlatım ekibidir (ilki spiker, sonrakiler yorumcu), 📺 kanal. Haber sitelerinin sonuç özetleri de ekipCikar'a gider. */
 async function ddgAra(q){
-  for(let i = 0; i < 3; i++){
+  for(let i = 0; i < 2; i++){
     try{ const r = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), { headers: { 'User-Agent': YT_UA['User-Agent'], 'Accept-Language': 'tr-TR,tr;q=0.9' }, signal: AbortSignal.timeout(25000) });
       const h = r.ok ? await r.text() : '';
       const ent = x => String(x || '').replace(/<[^>]+>/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&').replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/\s+/g, ' ').trim();
@@ -786,7 +786,7 @@ async function ddgAra(q){
         .map(m => ({ u: decodeURIComponent((/uddg=([^&]+)/.exec(m[1]) || [, m[1]])[1]), b: ent(m[2]), s: ent(m[3]) }));
       if(L.length || r.status === 200) return L;
     }catch(e){}
-    await bek(4000 * (i + 1));   // 202 = hız sınırı
+    await bek(3000);   // 202 = hız sınırı
   }
   return [];
 }
@@ -832,12 +832,15 @@ async function ekipTopla(tum){
       ekle(String(ev.id), t('home'), t('away'), Date.parse(ev.date)); });
   }
   const once = {}; (eski.liste || []).forEach(x => { once[x.lig + '|' + x.rid] = x; });
-  const liste = [], ATLA = []; let arama = 0;
+  const liste = [], ATLA = []; let arama = 0; const _eBas = Date.now();
+  // (2026-11-21) Önce maçı en yakın olanlar (Süper Lig önde); adım 4 dakikayla sınırlı - hızlı turda liglerden önce çalışıyor.
+  const _on = a => (a.z < simdi - 3 * 3600e3 ? 9e15 : Math.abs(a.z - simdi)) - (a.lig === 'tur.1' ? 6 * 3600e3 : 0);
+  aday.sort((x, y) => _on(x) - _on(y));
   for(const a of aday){
     const k = a.lig + '|' + a.rid, e = once[k];
     // bulunduysa 8 saatte, bulunmadıysa 4 saatte (maça 14 saatten az kaldıysa saatte) bir yeniden aranır
     if(e && simdi - (e.t || 0) < (e.spiker ? 8 : (a.z - simdi < 14 * 3600e3 ? 1 : 4)) * 3600e3){ liste.push(e); continue; }
-    if(arama >= 35){ if(e) liste.push(e); continue; }
+    if(arama >= 35 || Date.now() - _eBas > 240e3){ if(e) liste.push(e); continue; }
     arama++;
     let ka = null; if(a.z - simdi < 30 * 3600e3){ try{ ka = await kimAnlatiyorBul(a); }catch(err){ console.log('HATA kim anlatıyor', err.message); } }
     if(ka && ka.spiker){ liste.push(Object.assign({}, a, { t: simdi, spiker: ka.spiker, yorumcu: ka.yorumcu, kanal: ka.kanal || (e && e.kanal) || '', kaynak: ka.kaynak.slice(0, 3), kim: 1 })); continue; }
