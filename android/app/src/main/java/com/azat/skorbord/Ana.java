@@ -150,7 +150,8 @@ public class Ana extends Activity {
             if (!"GET".equalsIgnoreCase(r.getMethod()) || !EV.equals(u.getHost())) return null;
             String p = u.getPath();
             if (p == null || !p.startsWith(YOL)) return null;
-            if (p.startsWith(YOL + "__espn/")) return espn(u, p.substring((YOL + "__espn/").length()));
+            if (p.startsWith(YOL + "__espn/")) return espn(u, "https://site.api.espn.com/" + p.substring((YOL + "__espn/").length()));
+            if (p.startsWith(YOL + "__fm/")) return espn(u, "https://www.fotmob.com/api/data/" + p.substring((YOL + "__fm/").length()));   // canlı maç ayrıntısı (baskı, şut haritası)
             String ad = p.substring(YOL.length());
             if (ad.isEmpty()) ad = "index.html";
             if (ad.contains("..") || ad.startsWith("/") || ad.startsWith("surum.json")) return null;
@@ -167,13 +168,14 @@ public class Ana extends Activity {
     }
 
     /* SKOR SERVİSİ YEDEK YOLU: sayfa skor servisine tarayıcı isteğiyle ulaşamazsa aynı adresi "__espn/" önekiyle ister;
-       istek burada uygulamanın kendi bağlantısıyla yapılır. Yalnızca skor servisine gider. */
+       istek burada uygulamanın kendi bağlantısıyla yapılır. Yalnızca skor servisine (ESPN) ve maç ayrıntısına (FotMob, "__fm/") gider. */
     private WebResourceResponse espn(Uri u, String yol) {
         Map<String, String> hd = new HashMap<>();
         hd.put("Cache-Control", "no-store");
         try {
             String q = u.getEncodedQuery();
-            HttpURLConnection c = (HttpURLConnection) new URL("https://site.api.espn.com/" + yol + (q != null ? "?" + q : "")).openConnection();
+            HttpURLConnection c = (HttpURLConnection) new URL(yol + (q != null ? "?" + q : "")).openConnection();
+            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36");
             c.setConnectTimeout(15000);
             c.setReadTimeout(25000);
             c.setRequestProperty("Accept", "application/json");

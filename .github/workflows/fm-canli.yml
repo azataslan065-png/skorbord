@@ -1,0 +1,38 @@
+# CANLI MAÇ AYRINTISI (2026-11-22, kullanıcı: "Canlı görsel anlatım ve Baskımetre gerçek verileri göstermiyor").
+# KÖK SEBEP: ESPN Süper Lig maçlarında yalnız gol / kart / değişiklik veriyor; baskı ve şut konumu yok. FotMob her maç için dakika dakika
+# baskı (momentum), koordinatlı şut haritası ve istatistik veriyor ama tarayıcıdan okunmasına izin vermiyor. APK kendi bağlantısıyla anlık okur;
+# web sürümü için bu iş 30 saniyede bir canlı maçların ayrıntısını "canli-fm" dalındaki fm.json'a yazar (tek kayıt, her seferinde üzerine).
+name: Canli mac ayrintisi
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 * * * *'
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: fm-canli
+  cancel-in-progress: false
+jobs:
+  dongu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Döngü
+        run: |
+          U="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          mkdir -p out && curl -sf "https://raw.githubusercontent.com/${{ github.repository }}/canli-fm/fm.json" -o out/fm.json || rm -f out/fm.json
+          BIT=$(( $(date +%s) + 330*60 ))
+          while [ $(date +%s) -lt $BIT ]; do
+            T0=$(date +%s)
+            S=$(timeout 120 node .github/arac/fm-canli.js out/fm.json 2>&1); echo "$S"
+            case "$S" in güncellendi*) ( cd out && rm -rf .git && git init -q -b canli-fm && git add fm.json && git -c user.name=github-actions -c user.email=actions@github.com commit -qm "fm $(date -u +%FT%TZ)" && git push -q -f "$U" canli-fm ) || echo "gönderilemedi";; esac
+            G=$(( $(date +%s) - T0 )); [ $G -lt 30 ] && sleep $(( 30 - G ))
+          done
+      - name: Yeniden başlat
+        if: always()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh workflow run fm-canli.yml --ref main || true

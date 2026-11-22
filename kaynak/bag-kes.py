@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-21-A'
+SB_BUILD = '2026-11-22-A'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -360,4 +360,12 @@ isle('index.html', [
   try{
     if(window.__sbGorsel){ var _sbg=window.__sbGorsel(m,h,a); if(_sbg!=null) return _sbg; }   // Skorbord: gerçek maçın görsel anlatımı (gercek.js)
     if(!ptSahaGoster())return '';   // SAHA'ya özgü""")),
+])
+
+# ── GERÇEK BASKI VERİSİ (2026-11-22): FotMob'un dakika dakika baskı değeri varsa Baskımetre onu çizer (gercek.js __sbMom); lig yenilemesi maçı
+#    yeniden kursa bile kaybolmaz.
+isle('index.html', [
+  ('baskımetre FotMob', degis("""  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)""",
+    """  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)
+  if(window.__sbMom){ var _sbm=window.__sbMom(m); if(_sbm) m=Object.assign({},m,{momentum:_sbm}); }   // Skorbord: FotMob gerçek baskı verisi""")),
 ])
