@@ -1307,6 +1307,9 @@ function sahneCss(){
    +'@media (prefers-reduced-motion:reduce){.sbo,.sbt{transition-duration:.01s}.sbs-gol.on,.sbs-bant.yeni,.sbs-iz.on{animation-duration:.01s}}';
   document.head.appendChild(st);
 }
+/* (2026-11-22-G) KÖK SEBEP: sahne detay yeniden çizilince yeni yerine taşınıyor; taşınan düğümde "on" sınıfı duran animasyon (GOL!, halka, yazı)
+   tarayıcıda baştan oynuyordu, gol iki kez kutlanıyordu. Animasyon sınıfı süresi bitince kaldırılır. */
+function sbAnim(el, cls, ms){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); clearTimeout(el['_t'+cls]); el['_t'+cls]=setTimeout(function(){ el.classList.remove(cls); }, ms); }
 function sbImza(x){ try{ return JSON.stringify(x); }catch(e){ return String(Math.random()); } }
 function sahneKur(mid){
   sahneCss();
@@ -1354,7 +1357,7 @@ function sahneGuncelle(s, m, h, a, k){
       var ic='<b style="background:'+(o.t==='e'?'#2563eb':'#dc2626')+'">'+esc(o.q[0])+(o.q[4]==='s'?'<i style="background:#facc15"></i>':'')+'</b><span>'+esc(ad0)+'</span>';
       if(!el){ el=document.createElement('div'); el.className='sbo'; el.dataset.k=o.k; s.oy.appendChild(el); el._yeni=1; }
       var eskiAd=el.dataset.ad; el.dataset.t=o.t; el.dataset.x=o.x.toFixed(1); el.dataset.y=o.y.toFixed(1); el.dataset.f=o.q[2]; el.dataset.g=o.q[2]<.15?1:0; el.dataset.ad=String(o.q[1]||'');
-      if(el._ic!==ic){ el.innerHTML=ic; el._ic=ic; if(eskiAd&&eskiAd!==el.dataset.ad){ el.classList.remove('vurgu'); void el.offsetWidth; el.classList.add('vurgu'); } }
+      if(el._ic!==ic){ el.innerHTML=ic; el._ic=ic; if(eskiAd&&eskiAd!==el.dataset.ad) sbAnim(el, 'vurgu', 1900); }
       if(el._yeni){ el._yeni=0; var p=s.p[o.k]||[o.x,o.y]; sbTasi(s, el, p[0], p[1], true); } });
     Object.keys(var0).forEach(function(kk){ var el=var0[kk]; el.style.transition='opacity .6s'; el.style.opacity='0'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 650); delete s.p[kk]; });   // kırmızı kart: sahadan çıkar
   });
@@ -1408,7 +1411,7 @@ function sahneBant(s, e, sessiz){
   var ik=e.tur==='sari'||e.tur==='kirmizi'?'<i class="sbs-kart" style="background:'+(e.tur==='sari'?'#facc15':'#ef4444')+'"></i>':'<span>'+e.ik+'</span>';
   var html=ik+'<span>'+e.ad+(e.dk?' · '+e.dk+"'":'')+' · <span style="color:'+(e.ev?SB_EV:SB_DP)+'">'+tk+'</span>'+(e.oy?' · '+esc(e.oy):'')+'</span>';
   if(s.bant._h===html) return; s.bant._h=html; s.bant.innerHTML=html;
-  if(!sessiz){ s.bant.classList.remove('yeni'); void s.bant.offsetWidth; s.bant.classList.add('yeni'); }
+  if(!sessiz) sbAnim(s.bant, 'yeni', 600);
 }
 /* olay kuyruğu: sırayla, her olay bir kez, hiçbiri atlanmaz; kuyruk uzarsa oynatma hızlanır (akış yoğunken geride kalmaz) */
 function sahneOynat(s){
@@ -1416,7 +1419,7 @@ function sahneOynat(s){
   var e=s.kuyruk.shift(), hiz=s.kuyruk.length>8?0.35:s.kuyruk.length>3?0.55:1, ev=!!e.ev, kale=ev?104.6:0.4;
   s.oynuyor=1; s.kilit=Date.now()+3200*hiz; sahneBant(s, e);
   var git=function(x, y, hizli){ s.topP=[x,y]; s.top.classList.toggle('hizli', !!hizli); sbTasi(s, s.top, x, y); };
-  var iz=function(x, y){ sbTasi(s, s.iz, x, y, true); s.iz.classList.remove('on'); void s.iz.offsetWidth; s.iz.classList.add('on'); };
+  var iz=function(x, y){ sbTasi(s, s.iz, x, y, true); sbAnim(s.iz, 'on', 1200); };
   var bitir=function(ms){ setTimeout(function(){ s.oynuyor=0; s.top.classList.remove('hizli'); sahneOynat(s); }, ms*hiz); };
   var yer=e.yer?(e.yer[3]?[e.yer[0],e.yer[1]]:[105-e.yer[0],68-e.yer[1]]):null;
   if(e.tur==='sut'){
@@ -1436,7 +1439,7 @@ function sahneOynat(s){
       g.querySelector('b').style.color=renk; g.style.background='radial-gradient(circle,'+renk+'55,transparent 70%)';
       [].forEach.call(g.querySelectorAll('u'), function(u){ u.remove(); });
       for(var i=0;i<14;i++){ var u=document.createElement('u'), aci=i/14*Math.PI*2, r=60+Math.random()*60; u.style.background=i%3?renk:'#fde047'; u.style.setProperty('--dx',(Math.cos(aci)*r).toFixed(0)+'px'); u.style.setProperty('--dy',(Math.sin(aci)*r).toFixed(0)+'px'); g.appendChild(u); }
-      g.classList.remove('on'); void g.offsetWidth; g.classList.add('on');
+      sbAnim(g, 'on', 2900);
       s.saha.style.boxShadow='inset 0 0 0 3px '+renk+', 0 0 22px '+renk+'88'; setTimeout(function(){ s.saha.style.boxShadow=''; }, 2600); }, 1500*hiz);
     setTimeout(function(){ git(52.5, 34); }, 4200*hiz);   // santra
     bitir(4600);
@@ -1446,7 +1449,7 @@ function sahneOynat(s){
     bitir(2400);
   } else {   // kart, değişiklik: top durur, ilgili oyuncu vurgulanır
     var ad=String(e.tur==='degisiklik'?e.giren:e.oy||'').split(' ').pop();
-    [].forEach.call(s.oy.children, function(el){ if(ad&&el.dataset.ad&&(el.dataset.ad===ad||e.oy.indexOf(el.dataset.ad)>=0)){ el.classList.remove('vurgu'); void el.offsetWidth; el.classList.add('vurgu'); } });
+    [].forEach.call(s.oy.children, function(el){ if(ad&&el.dataset.ad&&(el.dataset.ad===ad||e.oy.indexOf(el.dataset.ad)>=0)){ sbAnim(el, 'vurgu', 1900); } });
     bitir(2200);
   }
 }
@@ -2156,5 +2159,5 @@ window.Gercek={anaSporSec:anaSporSec, anaSporMenu:anaSporMenu, anaGoster:anaGost
 baslat();
 })();
 
-/* test sürümü: sekme / uygulama başlığı (sayfanın üstündeki "TEST ORTAMI" şeridi Puan Tablosu'ndan zaten geliyor) */
+/* test sürümü: sekme / uygulama başlığı (sayfanın üstündeki "TEST ORTAMI" şeridi Skorbord'dan zaten geliyor) */
 if(/\/skorbord\/test\//.test(location.pathname)){ try{ document.title='Skorbord Test'; }catch(e){} }
