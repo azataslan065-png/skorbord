@@ -57,7 +57,7 @@ import java.util.Map;
    - Çıkış: Puan Tablosu'ndaki çıkış penceresi (bkz. Cikis).
    Sayfa APK'nın içindedir; site adresine giden istekler içerideki kopyayla yanıtlanır (bkz. ver). */
 public class Ana extends Activity {
-    private static final String EV = "azataslan065-png.github.io", YOL = "/skorbord/";
+    private static final String EV = "azataslan065-png.github.io", YOL = BuildConfig.YOL;   // kök: /skorbord/, test: /skorbord/test/ (build.gradle)
     private static final String ADRES = "https://" + EV + YOL + "index.html";
     private static final int DOSYA = 7;
     private final Handler h = new Handler(Looper.getMainLooper());

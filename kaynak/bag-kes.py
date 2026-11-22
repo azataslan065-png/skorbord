@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-22-E'
+SB_BUILD = '2026-11-22-F'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -379,4 +379,9 @@ isle('index.html', [
   try{
     if(m && m.isLive && m.isHalftime) return 'İY';   // Skorbord: devre arası
     var tb = m && m.tabela;""")),
+])
+
+# ── TEST SÜRÜMÜ (2026-11-22): /skorbord/test/ altında açılan kopya telefonda ayrı kayıt alanı kullanır (sbt:), kökle karışmaz.
+isle('index.html', [
+  ('test kayıt alanı', degis("""<head><script>(function(){try{var P='sb:',""", """<head><script>(function(){try{var P=/\\/skorbord\\/test\\//.test(location.pathname)?'sbt:':'sb:',""")),
 ])

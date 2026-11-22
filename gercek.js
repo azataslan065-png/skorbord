@@ -11,6 +11,10 @@ var ESPN='https://site.api.espn.com/', SITE=ESPN+'apis/site/v2/sports/soccer/', 
 var HIZLI=5000, ORTA=60000, SEZON_TAZE=6*3600*1000;
 /* YÖNETİCİ AYARLARI (2026-11-16): Admin > Yönetim > Skorbord'dan yönetilir; burada YALNIZCA OKUNUR (Skorbord hiçbir yere yazmaz).
    Skorbord'un futbol-ligi ile tek bilinçli bağı budur: herkese açık, salt okunur "skorbord/ayarlar" düğümü (oyuncu/lig verisi yok). */
+/* TEST SÜRÜMÜ (2026-11-22, kullanıcı: "Skorbord için Skorbord gibi bir test sürümü çıkar"). Aynı dosyalar iki yerde çalışır: kök
+   (/skorbord/, kararlı) ve test (/skorbord/test/, yeni geliştirmeler önce burada). Fark adresten anlaşılır: test sürümü veri dosyalarını kökteki
+   veri/ klasöründen okur, telefonda ayrı bir kayıt alanı kullanır (sbt:, bkz. index.html başı), başlıkta TEST rozeti taşır. */
+var SB_TEST=/\/skorbord\/test\//.test(location.pathname), SB_YOL=SB_TEST?'/skorbord/test/':'/skorbord/';
 var UZAK_URL='https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord/ayarlar.json', U={};
 function gunluk(){ try{ console.log.apply(console, ['[SB]'].concat([].slice.call(arguments))); }catch(e){} }
 
@@ -93,8 +97,8 @@ function veriAl(slug, taze){
   var c=VD[slug]||(VD[slug]={t:0});
   if(c.p && !taze) return c.p;
   if(c.j && !taze && Date.now()-c.t<10*60000) return Promise.resolve(c.j);
-  c.p=fetch(new URL('veri/'+slug+'.json?t='+Math.floor(Date.now()/60000), location.href).href, {cache:'no-store'})
-    .then(function(r){ return r.ok?r.json():null; }).then(function(j){ c.p=null; if(j){ c.j=j; c.t=Date.now(); } return c.j||null; }, function(){ c.p=null; return c.j||null; });
+  c.p=fetch(new URL((SB_TEST?'../':'')+'veri/'+slug+'.json?t='+Math.floor(Date.now()/60000), location.href).href, {cache:'no-store'})
+    .then(function(r){ return r.ok?r.text():null; }).then(function(t){ return t==null?null:JSON.parse(SB_TEST?t.replace(/"veri\//g,'"../veri/'):t); }).then(function(j){ c.p=null; if(j){ c.j=j; c.t=Date.now(); } return c.j||null; }, function(){ c.p=null; return c.j||null; });
   return c.p;
 }
 window.__sbVeri=function(){ var c=VD[A.lig]; return c&&c.j||null; };
@@ -185,7 +189,7 @@ function getJSON(url){
   return ham(url).catch(function(e){
     // Android uygulaması: tarayıcı isteği olmazsa aynı adres uygulamanın kendi bağlantısıyla denenir (bkz. Ana.java "__espn")
     if(window.SkorbordApp && url.indexOf(ESPN)===0)
-      return ham(location.origin+'/skorbord/__espn/'+url.slice(ESPN.length)).catch(function(e2){ throw new Error(e.message+' / uygulama: '+e2.message); });
+      return ham(location.origin+SB_YOL+'__espn/'+url.slice(ESPN.length)).catch(function(e2){ throw new Error(e.message+' / uygulama: '+e2.message); });
     throw e;
   });
 }
@@ -1211,7 +1215,7 @@ function yapiF(k){
   if(k.bitti) Y.push({type:'match_end', min:90, id:'ye'});
   return Y;
 }
-function fmJSON(yol){ if(!window.SkorbordApp) return Promise.reject(new Error('web')); return ham(location.origin+'/skorbord/__fm/'+yol); }
+function fmJSON(yol){ if(!window.SkorbordApp) return Promise.reject(new Error('web')); return ham(location.origin+SB_YOL+'__fm/'+yol); }
 /* web yolu: GitHub'ın dosya servisi (raw) 5 dakika önbellekliyor; bu yüzden dosya GitHub API'den "değiştiyse ver" (ETag) isteğiyle okunur —
    değişmemiş yanıt kotaya sayılmaz. Saatlik kota (60) dolarsa raw dosyaya düşülür. Dakikada en çok bir istek. */
 function fmDosya(){
@@ -2151,3 +2155,6 @@ function baslat(){
 window.Gercek={anaSporSec:anaSporSec, anaSporMenu:anaSporMenu, anaGoster:anaGoster, anaLigAc:anaLigAc, anaMacAc:anaMacAc, anaFavLig:anaFavLig, anaFavMac:function(r){ anaFavMac(r); }, anaGun:anaGun, anaTakvim:anaTakvim, siralama:siralamaAc, siraSekme:siraSekme, siraAra:siraAra, siraTr:siraTr, anaYenile:function(){ anaYukle(true); }, grupSec:grupSec, ayar:A, ligler:LIGLER, ligYukle:ligYukle, ligiAc:ligiAc, ligSec:ligSec, ayarla:ayarla, yenile:yenile, ozetIste:ozetIste, kadroIste:kadroIste, L:L, B:B, hata:''};
 baslat();
 })();
+
+/* test sürümü: sekme / uygulama başlığı (sayfanın üstündeki "TEST ORTAMI" şeridi Puan Tablosu'ndan zaten geliyor) */
+if(/\/skorbord\/test\//.test(location.pathname)){ try{ document.title='Skorbord Test'; }catch(e){} }

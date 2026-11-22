@@ -58,7 +58,7 @@ import java.util.Locale;
    beklenir, sonra uygulama açılır). Uygulama arka plandan dönünce de 15 dk'da bir denetlenir. Güncelleme her zaman zorunludur: "Sonra"
    yoktur, geri tuşu uygulamayı kapatır; güncelleme kurulmadan uygulamaya girilemez, dolayısıyla eski sürümle yeni özellikler kullanılamaz. */
 final class Guncelle {
-    private static final String KAYNAK = "https://github.com/azataslan065-png/skorbord/releases/download/apk/surum.json";
+    private static final String KAYNAK = "https://github.com/azataslan065-png/skorbord/releases/download/" + BuildConfig.SURUM_ETIKET + "/surum.json";   // test sürümü: apk-test
     private static final long ARALIK = 15L * 60 * 1000;   // arka plandan dönüşte denetim aralığı
     private static FrameLayout bekle;
     private static final Handler H = new Handler(Looper.getMainLooper());

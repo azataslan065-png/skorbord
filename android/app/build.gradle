@@ -1,8 +1,12 @@
 plugins { id 'com.android.application' }
 // Sayfa ve ikonlar APK'ya gömülür (bkz. Ana.ver): uygulama, site yayında olmasa da kendi kopyasından açılır.
 def SITE = ['index.html', 'yerel-vt.js', 'gercek.js', 'manifest.json', 'app-icon-192.png', 'app-icon-512.png', 'ortak/ortak.js', 'ortak/saha-ikon.ttf']
-def hedef = file('build/site'); hedef.mkdirs()
-SITE.each { ad -> def f = new File(hedef, ad); f.parentFile.mkdirs(); f.bytes = file("../../${ad}").bytes }
+// İki sürüm (2026-11-22, kullanıcı: "Puan Tablosu gibi bir test sürümü çıkar"): kok = Skorbord (sayfa sitenin kökünden, /skorbord/),
+// deneme = Skorbord Test (ayrı uygulama kimliği, yan yana kurulur; sayfa /skorbord/test/ klasöründen).
+[['kok', ''], ['deneme', 'test/']].each { k ->
+    def hedef = file("build/site-${k[0]}"); hedef.mkdirs()
+    SITE.each { ad -> def f = new File(hedef, ad); f.parentFile.mkdirs(); f.bytes = file("../../${k[1]}${ad}").bytes }
+}
 def NO = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
 android {
     namespace 'com.azat.skorbord'
@@ -13,7 +17,11 @@ android {
         targetSdk 34
         versionCode NO
         versionName '1.0.' + NO
-        resValue 'string', 'app_name', 'Skorbord'
+    }
+    flavorDimensions 'surum'
+    productFlavors {
+        kok { dimension 'surum'; resValue 'string', 'app_name', 'Skorbord'; buildConfigField 'String', 'YOL', '"/skorbord/"'; buildConfigField 'String', 'SURUM_ETIKET', '"apk"' }
+        deneme { dimension 'surum'; applicationIdSuffix '.test'; resValue 'string', 'app_name', 'Skorbord Test'; buildConfigField 'String', 'YOL', '"/skorbord/test/"'; buildConfigField 'String', 'SURUM_ETIKET', '"apk-test"' }
     }
     signingConfigs {
         imza {
@@ -26,7 +34,7 @@ android {
     }
     buildTypes { release { minifyEnabled false; signingConfig signingConfigs.imza } }
     buildFeatures { buildConfig true }
-    sourceSets { main.assets.srcDirs = ['build/site'] }
+    sourceSets { kok.assets.srcDirs = ['build/site-kok']; deneme.assets.srcDirs = ['build/site-deneme'] }
     lint { checkReleaseBuilds false; abortOnError false }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }

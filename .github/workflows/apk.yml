@@ -3,7 +3,7 @@ name: APK
 on:
   push:
     branches: [main]
-    paths: [android/**, .github/workflows/apk.yml, index.html, yerel-vt.js, gercek.js, manifest.json, app-icon-192.png, app-icon-512.png, ortak/**]
+    paths: [android/**, .github/workflows/apk.yml, index.html, yerel-vt.js, gercek.js, manifest.json, app-icon-192.png, app-icon-512.png, ortak/**, test/**]
   workflow_dispatch:
 permissions:
   contents: write
@@ -18,13 +18,14 @@ jobs:
         with: { gradle-version: '8.14.3' }
       - name: Derle
         working-directory: android
-        run: gradle assembleRelease --no-daemon --console=plain
+        run: gradle assembleKokRelease assembleDenemeRelease --no-daemon --console=plain
       - name: Yayinla
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir out
-          cp android/app/build/outputs/apk/release/*.apk out/Skorbord.apk
+          cp android/app/build/outputs/apk/kok/release/*.apk out/Skorbord.apk
+          mkdir out-test && cp android/app/build/outputs/apk/deneme/release/*.apk out-test/Skorbord-Test.apk
           # Güncelleme bilgisi (bkz. android Guncelle): "skorbord" alanı yeni sistem, üst düzey kod eski (derleme 6-7) kabuk için.
           BOY=$(stat -c %s out/Skorbord.apk); NOT=$(git log -1 --pretty=%s | tr -d '"\\' | cut -c1-160)
           URL="https://github.com/${{ github.repository }}/releases/download/apk/Skorbord.apk"
@@ -33,3 +34,13 @@ jobs:
           ls -la out
           gh release delete apk -y --cleanup-tag 2>/dev/null || true
           gh release create apk out/Skorbord.apk out/surum.json --title "Skorbord APK (derleme $GITHUB_RUN_NUMBER)" --notes "Telefona indirip kur; yeni sürüm eskisinin üstüne kurulur." --latest
+      - name: Test surumunu yayinla
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Skorbord Test (com.azat.skorbord.test): sayfası test/ klasöründen; kendi "apk-test" sürümü, kökle karışmaz.
+          BOY=$(stat -c %s out-test/Skorbord-Test.apk); NOT=$(git log -1 --pretty=%s | tr -d '"\\' | cut -c1-160)
+          URL="https://github.com/${{ github.repository }}/releases/download/apk-test/Skorbord-Test.apk"
+          printf '{"skorbord":{"kod":%s,"ad":"1.0.%s","url":"%s","boyut":%s,"tarih":%s,"not":"%s"}}' "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" "$URL" "$BOY" "$(date +%s%3N)" "$NOT" > out-test/surum.json
+          gh release delete apk-test -y --cleanup-tag 2>/dev/null || true
+          gh release create apk-test out-test/Skorbord-Test.apk out-test/surum.json --title "Skorbord Test APK (derleme $GITHUB_RUN_NUMBER)" --notes "Test sürümü: Skorbord'un yanına ayrı uygulama olarak kurulur." --latest=false

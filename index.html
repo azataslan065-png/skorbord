@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr" data-theme="dark">
-<head><script>(function(){try{var P='sb:',S=Storage.prototype,g=S.getItem,st=S.setItem,r=S.removeItem,k=S.key,L=Object.getOwnPropertyDescriptor(S,'length').get;
+<head><script>(function(){try{var P=/\/skorbord\/test\//.test(location.pathname)?'sbt:':'sb:',S=Storage.prototype,g=S.getItem,st=S.setItem,r=S.removeItem,k=S.key,L=Object.getOwnPropertyDescriptor(S,'length').get;
 function bizim(d){var o=[],n=L.call(d);for(var i=0;i<n;i++){var x=k.call(d,i);if(x&&x.indexOf(P)===0)o.push(x)}return o}
 S.getItem=function(a){return g.call(this,P+a)};S.setItem=function(a,v){return st.call(this,P+a,v)};S.removeItem=function(a){return r.call(this,P+a)};
 S.key=function(i){var o=bizim(this);return i<o.length?o[i].slice(P.length):null};S.clear=function(){var d=this;bizim(d).forEach(function(x){r.call(d,x)})};
@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-22-E';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-22-F';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -40242,6 +40242,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=80762a15"></script>
+<script src="gercek.js?v=9a1f4a53"></script>
 </body>
 </html>
