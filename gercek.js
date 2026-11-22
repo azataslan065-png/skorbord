@@ -1228,6 +1228,7 @@ function fmDosya(){
 function fmEsle(evAd, depAd, a, b){ return adBenzer(evAd,a)>=0.5 && adBenzer(depAd,b)>=0.5; }
 function fmYansit(mid, k){
   FMV[mid]=k;
+  try{ var sh=SAHNE[mid]; if(sh&&sh.el.isConnected&&sh.m) sahneGuncelle(sh, sh.m, sh.h, sh.a, k); }catch(e){}   // açık sahne yerinde (detay yeniden çizilmeden)
   var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m) return;
   var m2=JSON.parse(JSON.stringify(m)), mom={}; (k.mom||[]).forEach(function(d){ if(d[1]) mom[d[0]]=d[1]; });
   m2.sbYapiF=yapiF(k); yapiEkle(m2);
@@ -1252,111 +1253,244 @@ function fmIste(mid){
     return idP.then(function(id){ if(!id) throw new Error('FotMob maçı yok'); return fmJSON('matchDetails?matchId='+id); }).then(function(md){ fmYansit(mid, fmKisa(md)); });
   };
   (window.SkorbordApp?uyg().catch(function(e){ gunluk('FotMob uygulama yolu', e.message); return web(); }):web())
-    .catch(function(e){ gunluk('FotMob alınamadı', e.message); }).then(function(){ c.y=0; });
+    .then(function(){ c.ok=Date.now(); c.hata=0; }, function(e){ gunluk('FotMob alınamadı', e.message); c.hata=(c.hata||0)+1;
+      if(m.isLive) c.t=Date.now()-15000+Math.min(30000, 4000*Math.pow(2, c.hata-1)); })   // bağlantı koptu: 4, 8, 16, 30 sn sonra yeniden
+    .then(function(){ c.y=0; });
 }
-/* CANLANDIRMA (2026-11-22, kullanıcı: "oyuncular ve top o an sahanın neresindeyse anlık göstermeli, şu an fotoğraf gibi duruyor").
-   Gerçek maçta oyuncu / top koordinatı herkese açık hiçbir kaynakta yok (yalnız ücretli izleme sistemlerinde); FotMob dakika dakika baskı değeri,
-   şutların sahadaki yeri ve olaylar veriyor. Sahne bunlarla canlandırılır: top 1,2 sn'de bir baskın takımın baskı bölgesinde dolaşır (baskı ne kadar
-   güçlüyse rakip kaleye o kadar yakın), yeni şut gelince şutun atıldığı yere gider; iki takım dizilişini koruyarak topa göre blok halinde kayar,
-   topa en yakın oyuncular topa yaklaşır. Devre arasında ve maç bitince herkes yerine döner. Sahada bunun canlandırma olduğu yazılır. */
-var CANLI={};
-function canliDurum(mid){ return CANLI[mid]||(CANLI[mid]={top:[52.5,34], o:{}, sut:'', sutT:0, sutP:null, hedef:[52.5,34], t:0}); }
-function canliKonum(mid, an, x, y){ var c=canliDurum(mid); if(an==='top') return c.top; return c.o[an]||[x,y]; }
-function canliVeri(mid, k){
-  var c=canliDurum(mid), s=(k.sut||[])[(k.sut||[]).length-1]; c.k=k;
-  if(s){ var an=s[4]+'|'+s[5]+'|'+s[0]; if(c.sut&&an!==c.sut){ c.sutP=s[3]?[s[0],s[1]]:[105-s[0],68-s[1]]; c.sutT=Date.now(); } c.sut=an; }
+/* ═══ CANLI GÖRSEL ANLATIM MOTORU (2026-11-22-E, kullanıcı: "mevcut canlı görsel anlatım modülünü koru, yalnızca geliştir; gerçek zamanlı,
+   akıcı, yüksek performanslı; aynı olayı iki kez gösterme, olayları zaman sırasıyla işle, bağlantı koparsa yeniden bağlan ve eksikleri
+   eşitle; kasma / donma / gereksiz DOM güncellemesi / bellek sızıntısı olmasın; gol, şut, korner, kart, değişiklik geçişleri akıcı olsun").
+   ÖNCEKİ SORUNLAR: (1) her veri güncellemesinde maç detayı baştan çiziliyor, saha da 23 oyuncusuyla yeniden kuruluyordu (hareket sıfırlanıyor,
+   DOM baştan ayrıştırılıyordu); (2) oyuncu / top left-top ile taşınıyordu (her adımda sayfa yerleşimi yeniden hesaplanır); (3) olaylar sıraya
+   girmiyordu, yeni şut yalnız "son şut" olarak görülüyordu, araya giren olaylar kayboluyordu.
+   ŞİMDİ: saha her maç için BİR kez kurulan kalıcı bir düğümdür (SAHNE). Detay yeniden çizildiğinde aynı düğüm yeni yerine taşınır (yer tutucu +
+   MutationObserver); veri gelince yalnız değişen parça güncellenir (imza karşılaştırması). Hareket transform: translate3d ile (GPU, yerleşim
+   hesabı yok), tek bir zamanlayıcı yalnız görünen sahneleri işler. Yeni olaylar (şut, gol, kart, değişiklik, korner) anahtarla bir kez kuyruğa
+   girer, dakika sırasıyla oynatılır; ilk açılışta geçmiş olaylar oynatılmaz. Veri her seferinde maçın tamamı olarak geldiği için bağlantı
+   dönünce eksik olaylar kendiliğinden kuyruğa girer. Kullanılmayan sahne 2 dk sonra silinir. */
+var SAHNE={}, FM_TUR={Goal:'Gol',kk:'Kendi kalesine',AttemptSaved:'İsabetli şut',Miss:'İsabetsiz şut',Post:'Direk',Blocked:'Şut engellendi'};
+var SB_EV='#60a5fa', SB_DP='#f87171';
+function sahneCss(){
+  if(document.getElementById('sb-sahne-css')) return;
+  var st=document.createElement('style'); st.id='sb-sahne-css';
+  st.textContent='.sbs-saha{position:relative;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%);contain:layout paint;transition:box-shadow .5s}'
+   +'.sbs-saha svg{display:block;width:100%}'
+   +'.sbo,.sbt{position:absolute;left:0;top:0;will-change:transform;pointer-events:none}'
+   +'.sbo{z-index:2;transition:transform 1.25s cubic-bezier(.45,.05,.35,1)}'
+   +'.sbo b{position:relative;display:flex;align-items:center;justify-content:center;width:17px;height:17px;margin:-8.5px 0 0 -8.5px;border-radius:50%;border:1.5px solid #fff;color:#fff;font-size:.56rem;font-weight:800;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.5)}'
+   +'.sbo i{position:absolute;right:-5px;top:-4px;width:5px;height:7px;border-radius:1px}'
+   +'.sbo span{position:absolute;left:0;top:10px;transform:translateX(-50%);font-size:.5rem;color:#fff;white-space:nowrap;text-shadow:0 1px 2px #000}'
+   +'.sbo.vurgu b{animation:sbNabiz .9s ease-out 2}'
+   +'.sbt{z-index:3;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0 45%,#d4d4d4 70%,#737373);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 10px 3px rgba(250,204,21,.5);transition:transform .95s cubic-bezier(.3,.1,.25,1)}'
+   +'.sbt.hizli{transition-duration:.45s}'
+   +'.sbs-iz{position:absolute;left:0;top:0;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;border:2px solid #fff;opacity:0;pointer-events:none;z-index:1}'
+   +'.sbs-iz.on{animation:sbHalka 1.1s ease-out}'
+   +'.sbs-gol{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:5;opacity:0}'
+   +'.sbs-gol.on{animation:sbGol 2.8s ease-out}'
+   +'.sbs-gol b{font-size:2.4rem;font-weight:900;letter-spacing:.06em;color:#fff;text-shadow:0 3px 14px rgba(0,0,0,.6)}'
+   +'.sbs-gol small{font-size:.75rem;font-weight:800;color:#fff;text-shadow:0 1px 4px #000;margin-top:.15rem}'
+   +'.sbs-gol u{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:2px;opacity:0;text-decoration:none}'
+   +'.sbs-gol.on u{animation:sbKonfeti 1.6s ease-out forwards}'
+   +'.sbs-bant{min-height:2.3rem;display:flex;align-items:center;justify-content:center;gap:.4rem;text-align:center;font-size:.8rem;font-weight:800;margin:.45rem 0 .1rem}'
+   +'.sbs-bant.yeni{animation:sbBant .5s ease-out}'
+   +'.sbs-kart{display:inline-block;width:12px;height:16px;border-radius:2px;animation:sbKart .6s ease-out}'
+   +'@keyframes sbNabiz{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}'
+   +'@keyframes sbHalka{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(2.2)}}'
+   +'@keyframes sbGol{0%{opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1.12)}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}'
+   +'@keyframes sbKonfeti{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(540deg)}}'
+   +'@keyframes sbBant{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}'
+   +'@keyframes sbKart{0%{transform:rotateY(90deg) scale(.6)}100%{transform:none}}'
+   +'@media (prefers-reduced-motion:reduce){.sbo,.sbt{transition-duration:.01s}.sbs-gol.on,.sbs-bant.yeni,.sbs-iz.on{animation-duration:.01s}}';
+  document.head.appendChild(st);
 }
-function canliTik(){
-  try{
-    if(document.hidden) return;
-    var kaplar=document.querySelectorAll('.sb-canli'); if(!kaplar.length) return;
-    [].forEach.call(kaplar, function(kap){
-      var mid=kap.getAttribute('data-mid'), c=canliDurum(mid), k=c.k||{}, v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid];
-      var dur=!m||!m.isLive||m.isHalftime||k.iy||k.bitti;
-      // baskı: son 3 dakika (+ ev sahibi sağa hücum), -1..1
-      var mom=k.mom||[], son=mom.length?mom[mom.length-1][0]:0, b=0; mom.forEach(function(d){ if(d[0]>son-3) b+=d[1]; }); b=Math.max(-1,Math.min(1,b/120));
-      var hx, hy;
-      if(dur){ hx=52.5; hy=34; }
-      else if(c.sutP&&Date.now()-c.sutT<9000){ hx=c.sutP[0]; hy=c.sutP[1]; }     // yeni şut: top şutun yerinde
-      else {
-        if(Date.now()-c.t>2600||!c.hedef){ c.t=Date.now();
-          var yon=Math.random()<(0.5+Math.abs(b)*0.4)?(b>=0?1:-1):(b>=0?-1:1);      // baskın takım topu daha çok tutar
-          var derin=10+Math.random()*28+Math.abs(b)*14;
-          c.hedef=[Math.max(6,Math.min(99,52.5+yon*derin+(Math.random()-.5)*10)), 8+Math.random()*52]; }
-        var e=c.top; hx=e[0]+(c.hedef[0]-e[0])*0.55+(Math.random()-.5)*4; hy=e[1]+(c.hedef[1]-e[1])*0.55+(Math.random()-.5)*4;
-      }
-      hx=Math.max(1,Math.min(104,hx)); hy=Math.max(1,Math.min(67,hy)); c.top=[hx,hy];
-      var yuz=function(x,y){ return [((x+2)/109*100).toFixed(2)+'%', ((y+1)/70*100).toFixed(2)+'%']; };
-      var t=kap.querySelector('.sbt'); if(t){ var p=yuz(hx,hy); t.style.left=p[0]; t.style.top=p[1]; }
-      var ol=[].slice.call(kap.querySelectorAll('.sbo')), yakin={e:[],d:[]};
-      ol.forEach(function(el){ var x=+el.getAttribute('data-x'), y=+el.getAttribute('data-y'), tk=el.getAttribute('data-t'), gk=el.getAttribute('data-g')==='1';
-        var nx=x, ny=y;
-        if(!dur){ var f=+el.getAttribute('data-f')||0.5, ilerle=tk==='e'?Math.max(0,(hx-52.5)/52.5):Math.max(0,(52.5-hx)/52.5);
-          var kay=(hx-52.5)*(gk?0.12:0.5)+(tk==='e'?(b>0?b*7:b*3):(b<0?b*7:b*3))+(gk?0:ilerle*f*24*(tk==='e'?1:-1));   // hücumda ileri oyuncular rakip yarıya daha çok çıkar
-          nx=x+kay; ny=y+(hy-34)*(gk?0.15:0.22)+(Math.random()-.5)*1.6; nx+=(Math.random()-.5)*1.6; }
-        el._p=[nx,ny]; if(!gk&&!dur) yakin[tk].push(el); });
-      if(!dur) ['e','d'].forEach(function(tk){ yakin[tk].sort(function(a,b2){ return Math.hypot(a._p[0]-hx,a._p[1]-hy)-Math.hypot(b2._p[0]-hx,b2._p[1]-hy); });
-        yakin[tk].slice(0,2).forEach(function(el,i){ var f=i?0.35:0.6; el._p=[el._p[0]+(hx-el._p[0])*f+(tk==='e'?-1.5:1.5), el._p[1]+(hy-el._p[1])*f+(i?2:-1)]; }); });
-      ol.forEach(function(el){ var q=[Math.max(2,Math.min(103,el._p[0])), Math.max(2,Math.min(66,el._p[1]))]; c.o[el.getAttribute('data-k')]=q; var p=yuz(q[0],q[1]); el.style.left=p[0]; el.style.top=p[1]; });
-    });
-  }catch(e){}
-}
-setInterval(canliTik, 1300);
-/* gerçek şut haritasıyla canlı görsel anlatım (FotMob). Saha 105 x 68 m; ev sahibi sağa hücum eder, deplasmanın şutları aynalanır. */
-var FM_TUR={Goal:'Gol',kk:'Kendi kalesine',AttemptSaved:'İsabetli şut',Miss:'İsabetsiz şut',Post:'Direk',Blocked:'Şut engellendi'};
-function fmGorsel(m, h, a, k){
-  var ad=function(t){ return esc((t&&(t.shortName||t.name))||''); }, EV='#60a5fa', DP='#f87171';
-  var xy=function(s){ return s[3]?[s[0],s[1]]:[Math.round((105-s[0])*10)/10,Math.round((68-s[1])*10)/10]; };
+function sbImza(x){ try{ return JSON.stringify(x); }catch(e){ return String(Math.random()); } }
+function sahneKur(mid){
+  sahneCss();
   var cz='stroke="rgba(255,255,255,.55)" stroke-width=".35" fill="none"';
-  var saha='<rect x=".5" y=".5" width="104" height="67" rx="1" '+cz+'/><line x1="52.5" y1=".5" x2="52.5" y2="67.5" '+cz+'/><circle cx="52.5" cy="34" r="9.15" '+cz+'/><circle cx="52.5" cy="34" r=".5" fill="rgba(255,255,255,.6)"/>'
+  var el=document.createElement('div'); el.className='sb-sahne'; el.style.padding='.6rem .9rem';
+  el.innerHTML='<div class="sbs-ust" style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;font-weight:800;margin-bottom:.3rem"><span class="sbs-ev" style="color:'+SB_EV+'"></span><span class="sbs-dk" style="color:var(--mu);font-weight:600;display:flex;align-items:center;gap:.3rem"></span><span class="sbs-dep" style="color:'+SB_DP+'"></span></div>'
+    +'<div class="sbs-saha"><svg viewBox="-2 -1 109 70"><rect class="sbs-bolge" y="0" width="35" height="68" opacity="0" style="transition:opacity .8s"/>'
+    +'<rect x=".5" y=".5" width="104" height="67" rx="1" '+cz+'/><line x1="52.5" y1=".5" x2="52.5" y2="67.5" '+cz+'/><circle cx="52.5" cy="34" r="9.15" '+cz+'/><circle cx="52.5" cy="34" r=".5" fill="rgba(255,255,255,.6)"/>'
     +'<rect x=".5" y="13.84" width="16" height="40.32" '+cz+'/><rect x="88.5" y="13.84" width="16" height="40.32" '+cz+'/><rect x=".5" y="24.84" width="5" height="18.32" '+cz+'/><rect x="99.5" y="24.84" width="5" height="18.32" '+cz+'/>'
-    +'<rect x="-1.2" y="30.34" width="1.7" height="7.32" '+cz+'/><rect x="104.5" y="30.34" width="1.7" height="7.32" '+cz+'/>';
-  // son 5 dakikanın baskısı: baskın takımın hücum ettiği üçte bir renklenir
+    +'<rect x="-1.2" y="30.34" width="1.7" height="7.32" '+cz+'/><rect x="104.5" y="30.34" width="1.7" height="7.32" '+cz+'/><g class="sbs-sutlar"></g></svg>'
+    +'<div class="sbs-oy"></div><div class="sbs-iz"></div><div class="sbt"></div><div class="sbs-gol"><b>GOL!</b><small></small></div></div>'
+    +'<div class="sbs-bant"></div><div class="sbs-baski" style="text-align:center;font-size:.68rem;color:var(--mu)"></div><div class="sbs-ist" style="margin-top:.4rem"></div><div class="sbs-liste" style="margin-top:.3rem"></div>'
+    +'<div class="sbs-not" style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5"></div>';
+  var q=function(c){ return el.querySelector(c); };
+  var s={mid:mid, el:el, saha:q('.sbs-saha'), oy:q('.sbs-oy'), top:q('.sbt'), iz:q('.sbs-iz'), gol:q('.sbs-gol'), bant:q('.sbs-bant'), W:0, H:0,
+    p:{}, topP:[52.5,34], hedef:null, hT:0, gorulen:null, kuyruk:[], oynuyor:0, kilit:0, imza:{}, kullan:Date.now()};
+  s.olcu=function(){ var r=s.saha.getBoundingClientRect(); if(r.width){ s.W=r.width; s.H=r.width*70/109; } };
+  try{ s.ro=new ResizeObserver(function(){ var w0=s.W; s.olcu(); if(Math.abs(s.W-w0)>1) sahneYerles(s, true); }); s.ro.observe(s.saha); }catch(e){}
+  return (SAHNE[mid]=s);
+}
+// saha metresi (viewBox -2 -1 109 70) -> piksel; tek yazım: transform (yerleşim hesabı yok)
+function sbTasi(s, el, x, y, aninda){
+  if(!s.W) s.olcu(); if(!s.W) return;
+  if(aninda){ el.style.transition='none'; }
+  el.style.transform='translate3d('+((x+2)/109*s.W).toFixed(1)+'px,'+((y+1)/70*s.H).toFixed(1)+'px,0)';
+  if(aninda){ void el.offsetWidth; el.style.transition=''; }
+}
+function sahneYerles(s, aninda){
+  sbTasi(s, s.top, s.topP[0], s.topP[1], aninda);
+  [].forEach.call(s.oy.children, function(el){ var p=s.p[el.dataset.k]||[+el.dataset.x,+el.dataset.y]; sbTasi(s, el, p[0], p[1], aninda); });
+}
+function sbAd(t){ return esc((t&&(t.shortName||t.name))||''); }
+/* veri güncellemesi: yalnız değişen parça yazılır */
+function sahneGuncelle(s, m, h, a, k){
+  s.m=m; s.k=k; s.h=h; s.a=a; s.kullan=Date.now();
+  var I=s.imza, set=function(an, deger, yaz){ var i=sbImza(deger); if(I[an]!==i){ I[an]=i; yaz(); } };
+  set('ad', [sbAd(h),sbAd(a)], function(){ s.el.querySelector('.sbs-ev').innerHTML=sbAd(h)+' ▶'; s.el.querySelector('.sbs-dep').innerHTML='◀ '+sbAd(a); });
+  // oyuncular: yuva başına kalıcı düğüm; numara / ad / kart değişirse yalnız o düğüm
+  var dz=k.diz||{}, yuva=[];
+  [['e',dz.ev||[]],['d',dz.dep||[]]].forEach(function(t){ t[1].forEach(function(q, n){ var x=2+q[2]*48, y=q[3]*68; if(t[0]==='d'){ x=105-x; y=68-y; } yuva.push({k:t[0]+n, t:t[0], q:q, x:x, y:y}); }); });
+  set('diz', yuva.map(function(o){ return [o.k,o.q]; }), function(){
+    var var0={}; [].forEach.call(s.oy.children, function(el){ var0[el.dataset.k]=el; });
+    yuva.forEach(function(o){ var el=var0[o.k]; delete var0[o.k];
+      var ad0=String(o.q[1]||''); if(ad0.length>10) ad0=ad0.slice(0,9)+'…';
+      var ic='<b style="background:'+(o.t==='e'?'#2563eb':'#dc2626')+'">'+esc(o.q[0])+(o.q[4]==='s'?'<i style="background:#facc15"></i>':'')+'</b><span>'+esc(ad0)+'</span>';
+      if(!el){ el=document.createElement('div'); el.className='sbo'; el.dataset.k=o.k; s.oy.appendChild(el); el._yeni=1; }
+      var eskiAd=el.dataset.ad; el.dataset.t=o.t; el.dataset.x=o.x.toFixed(1); el.dataset.y=o.y.toFixed(1); el.dataset.f=o.q[2]; el.dataset.g=o.q[2]<.15?1:0; el.dataset.ad=String(o.q[1]||'');
+      if(el._ic!==ic){ el.innerHTML=ic; el._ic=ic; if(eskiAd&&eskiAd!==el.dataset.ad){ el.classList.remove('vurgu'); void el.offsetWidth; el.classList.add('vurgu'); } }
+      if(el._yeni){ el._yeni=0; var p=s.p[o.k]||[o.x,o.y]; sbTasi(s, el, p[0], p[1], true); } });
+    Object.keys(var0).forEach(function(kk){ var el=var0[kk]; el.style.transition='opacity .6s'; el.style.opacity='0'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 650); delete s.p[kk]; });   // kırmızı kart: sahadan çıkar
+  });
+  // şutların gerçek yerleri (soluk)
+  set('sut', (k.sut||[]).map(function(x){ return [x[0],x[1],x[2],x[3]]; }), function(){
+    s.el.querySelector('.sbs-sutlar').innerHTML=(k.sut||[]).map(function(x){ var p=x[3]?[x[0],x[1]]:[105-x[0],68-x[1]], gol=x[2]==='Goal'||x[2]==='kk';
+      if(gol) return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.6" fill="#fff" stroke="#111" stroke-width=".5" opacity=".85"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r=".65" fill="#111"/>';
+      var dolu=x[2]==='AttemptSaved'||x[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r=".95" fill="'+(dolu?'#fde047':'none')+'" stroke="#fde047" stroke-width=".4" opacity=".5"/>'; }).join(''); });
+  // baskı bölgesi + metin
   var mom=k.mom||[], sonDk=mom.length?mom[mom.length-1][0]:0, top5=0; mom.forEach(function(d){ if(d[0]>sonDk-5) top5+=d[1]; });
-  var bolge=Math.abs(top5)>=15?'<rect x="'+(top5>0?70:0)+'" y="0" width="35" height="68" fill="'+(top5>0?EV:DP)+'" opacity=".16"/>':'';
-  /* SAHADAKİ OYUNCULAR (2026-11-22, kullanıcı: "canlı görsel anlatım oyuncu sayısı eksik"): iki takımın sahadaki on biri dizilişteki yerinde,
-     forma numarası ve soyadıyla. Değişiklikte giren oyuncu çıkanın yerine geçer, kırmızı kart gören sahadan kalkar (fmKisa). */
-  var oyuncu=function(l, ev){ return (l||[]).map(function(q, n){ var x=2+q[2]*48, y=q[3]*68; if(!ev){ x=105-x; y=68-y; } var renk=ev?'#2563eb':'#dc2626', ad0=String(q[1]||'');
-    if(ad0.length>10) ad0=ad0.slice(0,9)+'…';
-    var p=canliKonum(m.id, (ev?'e':'d')+n, x, y);
-    return '<div class="sbo" data-k="'+(ev?'e':'d')+n+'" data-t="'+(ev?'e':'d')+'" data-x="'+x.toFixed(1)+'" data-y="'+y.toFixed(1)+'" data-g="'+(q[2]<.15?1:0)+'" data-f="'+q[2]+'" style="position:absolute;left:'+((p[0]+2)/109*100).toFixed(2)+'%;top:'+((p[1]+1)/70*100).toFixed(2)+'%;transform:translate(-50%,-50%);transition:left 1.3s ease-in-out,top 1.3s ease-in-out;pointer-events:none;z-index:2">'
-      +'<span style="position:relative;width:17px;height:17px;border-radius:50%;background:'+renk+';border:1.5px solid #fff;color:#fff;font-size:.56rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.5)">'+esc(q[0])
-      +(q[4]==='s'?'<i style="position:absolute;right:-5px;top:-4px;width:5px;height:7px;background:#facc15;border-radius:1px"></i>':'')+'</span>'
-      +'<span style="position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:.5rem;color:#fff;white-space:nowrap;text-shadow:0 1px 2px #000">'+esc(ad0)+'</span></div>'; }).join(''); };
-  var dz=k.diz||{}, oyuncular=oyuncu(dz.ev,1)+oyuncu(dz.dep,0);
-  canliVeri(m.id, k);
-  var tp=canliKonum(m.id, 'top', 52.5, 34), topHtml='<div class="sbt" style="position:absolute;left:'+((tp[0]+2)/109*100).toFixed(2)+'%;top:'+((tp[1]+1)/70*100).toFixed(2)+'%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0 45%,#d4d4d4 70%,#737373);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 10px 3px rgba(250,204,21,.55);transition:left 1.1s ease-in-out,top 1.1s ease-in-out;z-index:3;pointer-events:none"></div>';
-  var sutlar=(k.sut||[]).slice(), son=sutlar[sutlar.length-1];
-  var nokta=sutlar.map(function(s){ var p=xy(s), gol=s[2]==='Goal'||s[2]==='kk', renk=s[3]?EV:DP;
-    if(gol) return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.7" fill="#fff" stroke="#111" stroke-width=".5"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r=".7" fill="#111"/>';
-    var dolu=s[2]==='AttemptSaved'||s[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1" fill="'+(dolu?'#fde047':'none')+'" stroke="#fde047" stroke-width=".4" opacity=".55"/>'; }).join('');
-  var vurgu=''; if(son){ var p=xy(son); vurgu='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="none" stroke="#fff" stroke-width=".5"><animate attributeName="r" values="2;5;2" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>'; }
-  // olaylar: şutlar (gol dışı) + gol / kart / değişiklik, en yeniden eskiye
+  var b5=Math.abs(top5)>=15?(top5>0?1:-1):0;
+  set('baski', [b5, b5?(b5>0?sbAd(h):sbAd(a)):''], function(){ var r=s.el.querySelector('.sbs-bolge'); r.setAttribute('x', b5>0?70:0); r.setAttribute('fill', b5>0?SB_EV:SB_DP); r.setAttribute('opacity', b5?'.16':'0');
+    s.el.querySelector('.sbs-baski').innerHTML=b5?'Son 5 dakikada baskı: <b style="color:'+(b5>0?SB_EV:SB_DP)+'">'+(b5>0?sbAd(h):sbAd(a))+'</b>':'Son 5 dakikada baskı dengeli'; });
+  // istatistik
+  var Ist=k.ist||{};
+  set('ist', Ist, function(){ var sat=function(et, d, yuzde){ if(!d) return ''; var x=parseFloat(d[0])||0, y=parseFloat(d[1])||0, t=x+y||1;
+      return '<div style="font-size:.68rem;margin:.28rem 0"><div style="display:flex;justify-content:space-between"><b style="color:'+SB_EV+'">'+esc(d[0])+(yuzde?'%':'')+'</b><span style="color:var(--mu)">'+et+'</span><b style="color:'+SB_DP+'">'+esc(d[1])+(yuzde?'%':'')+'</b></div>'
+        +'<div style="display:flex;height:4px;border-radius:3px;overflow:hidden;margin-top:2px;background:var(--br)"><div style="width:'+(x/t*100).toFixed(1)+'%;background:'+SB_EV+';transition:width .8s"></div><div style="width:'+(y/t*100).toFixed(1)+'%;background:'+SB_DP+';transition:width .8s"></div></div></div>'; };
+    s.el.querySelector('.sbs-ist').innerHTML=sat('Topa sahip olma',Ist.top,1)+sat('Gol beklentisi (xG)',Ist.xg)+sat('Şut',Ist.sut)+sat('İsabetli şut',Ist.isabet)+sat('Korner',Ist.korner); });
+  // son olaylar listesi
+  var ol=sahneOlaylar(k); s.ol=ol;
+  set('liste', ol.slice(0,6).map(function(e){ return e.an; }).concat([sbAd(h),sbAd(a)]), function(){
+    s.el.querySelector('.sbs-liste').innerHTML=ol.slice(0,6).map(function(e){ return '<div style="display:flex;gap:.45rem;align-items:center;font-size:.72rem;padding:.22rem 0;border-bottom:1px solid var(--br)"><span style="width:2.2rem;color:var(--mu);font-variant-numeric:tabular-nums">'+e.dk+"'</span><span>"+e.ik+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+e.ad+'</b> · '+esc(e.oy)+' <span style="color:'+(e.ev?SB_EV:SB_DP)+'">('+(e.ev?sbAd(h):sbAd(a))+')</span></span></div>'; }).join(''); });
+  set('not', [dz.fev,dz.fdep], function(){ s.el.querySelector('.sbs-not').innerHTML='Canlandırma: sahadaki güncel on birler ('+esc(dz.fev||'')+' / '+esc(dz.fdep||'')+') ve top, FotMob\'un dakika dakika baskı verisine, şutların gerçek yerine ve maçın olaylarına göre hareket eder; her yeni olay sırayla bir kez oynatılır. Oyuncu ve topun anlık konumu ölçülmez, canlı yayın verisinde bu bilgi yok. Soluk sarı noktalar maçtaki şutların gerçek yeri.'; });
+  sahneDurum(s);
+  // yeni olaylar: anahtarla bir kez, dakika sırasıyla kuyruğa
+  var yeni=[], gor=s.gorulen, ilk=!gor; if(ilk) gor=s.gorulen={};
+  ol.slice().reverse().forEach(function(e){ if(!gor[e.an]){ gor[e.an]=1; if(!ilk) yeni.push(e); } });
+  var kr=Ist.korner; if(kr){ ['e','d'].forEach(function(t, i){ var n=+kr[i]||0, an='k|'+t; if(s.korner&&n>(s.korner[i]||0)&&!ilk) yeni.push({an:an+n, tur:'korner', dk:parseInt(k.dk,10)||sonDk, ev:t==='e'?1:0, ik:'🚩', ad:'Korner', oy:'', sira:999}); }); s.korner=[+kr[0]||0,+kr[1]||0]; }
+  if(yeni.length){ yeni.sort(function(x,y){ return x.dk-y.dk||x.sira-y.sira; }); s.kuyruk=s.kuyruk.concat(yeni); sahneOynat(s); }
+  if(ilk){ var bant=ol[0]; if(bant) sahneBant(s, bant, true); }
+}
+function sahneDurum(s){
+  var m=s.m||{}, k=s.k||{}, c=FMO[m.id]||{}, gec=c.ok?Date.now()-c.ok:0, kopuk=gec>50000;
+  var dk=m.isHalftime||k.iy?'İY':(m.minute?m.minute+"'":(k.dk?k.dk+"'":''));
+  var html=(kopuk?'<span title="Bağlantı yeniden kuruluyor" style="width:7px;height:7px;border-radius:50%;background:#f59e0b"></span>Bağlanıyor… ':'<span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e"></span>')+dk;
+  if(s._dk!==html){ s._dk=html; s.el.querySelector('.sbs-dk').innerHTML=html; }
+}
+function sahneOlaylar(k){
   var IK={gol:'⚽',kk:'⚽',sari:'🟨',kirmizi:'🟥',degisiklik:'🔁',AttemptSaved:'🧤',Miss:'👟',Post:'🥅',Blocked:'🛡️'};
   var AD={gol:'Gol',kk:'Kendi kalesine gol',sari:'Sarı kart',kirmizi:'Kırmızı kart',degisiklik:'Oyuncu değişikliği'};
-  var ol=(k.olay||[]).map(function(e){ return {dk:e[0], ik:IK[e[1]]||'•', ad:AD[e[1]]||'', ev:e[2], oy:e[3]+(e[4]?' ↔ '+e[4]:'')}; })
-    .concat(sutlar.filter(function(s){ return s[2]!=='Goal'&&s[2]!=='kk'; }).map(function(s){ return {dk:s[4], ik:IK[s[2]]||'👟', ad:FM_TUR[s[2]]||'Şut', ev:s[3], oy:s[5]+(s[6]!=null?' · xG '+s[6].toFixed(2):'')}; }));
-  ol.sort(function(x,y){ return y.dk-x.dk; });
-  var ilk=ol[0], durum=ilk?(ilk.ik+' '+ilk.ad+' · '+ilk.dk+"' · "+(ilk.ev?ad(h):ad(a))+' · '+esc(ilk.oy)):'Maç sürüyor';
-  var liste=ol.slice(0,6).map(function(e){ return '<div style="display:flex;gap:.45rem;align-items:center;font-size:.72rem;padding:.22rem 0;border-bottom:1px solid var(--br)"><span style="width:2.2rem;color:var(--mu);font-variant-numeric:tabular-nums">'+e.dk+"'</span><span>"+e.ik+'</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+e.ad+'</b> · '+esc(e.oy)+' <span style="color:'+(e.ev?EV:DP)+'">('+(e.ev?ad(h):ad(a))+')</span></span></div>'; }).join('');
-  var I=k.ist||{}, sat=function(et, d, yuzde){ if(!d) return ''; var x=parseFloat(d[0])||0, y=parseFloat(d[1])||0, t=x+y||1;
-    return '<div style="font-size:.68rem;margin:.28rem 0"><div style="display:flex;justify-content:space-between"><b style="color:'+EV+'">'+esc(d[0])+(yuzde?'%':'')+'</b><span style="color:var(--mu)">'+et+'</span><b style="color:'+DP+'">'+esc(d[1])+(yuzde?'%':'')+'</b></div>'
-      +'<div style="display:flex;height:4px;border-radius:3px;overflow:hidden;margin-top:2px;background:var(--br)"><div style="width:'+(x/t*100)+'%;background:'+EV+'"></div><div style="width:'+(y/t*100)+'%;background:'+DP+'"></div></div></div>'; };
-  var ist=sat('Topa sahip olma',I.top,1)+sat('Gol beklentisi (xG)',I.xg)+sat('Şut',I.sut)+sat('İsabetli şut',I.isabet)+sat('Korner',I.korner);
-  var baski=Math.abs(top5)>=15?'Son 5 dakikada baskı: <b style="color:'+(top5>0?EV:DP)+'">'+(top5>0?ad(h):ad(a))+'</b>':'Son 5 dakikada baskı dengeli';
-  return '<div class="md-section-head"> Canlı Görsel Anlatım</div><div style="padding:.6rem .9rem">'
-    +'<div style="display:flex;justify-content:space-between;font-size:.7rem;font-weight:800;margin-bottom:.3rem"><span style="color:'+EV+'">'+ad(h)+' ▶</span><span style="color:var(--mu);font-weight:600">'+(m.minute?m.minute+"'":(k.dk?k.dk+"'":''))+'</span><span style="color:'+DP+'">◀ '+ad(a)+'</span></div>'
-    +'<div class="sb-canli" data-mid="'+esc(m.id)+'" style="position:relative;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%)"><svg viewBox="-2 -1 109 70" style="display:block;width:100%">'+bolge+saha+nokta+vurgu+'</svg>'+oyuncular+topHtml+'</div>'
-    +'<div style="text-align:center;font-size:.8rem;font-weight:800;margin:.45rem 0 .1rem">'+durum+'</div>'
-    +'<div style="text-align:center;font-size:.68rem;color:var(--mu)">'+baski+'</div>'
-    +(ist?'<div style="margin-top:.4rem">'+ist+'</div>':'')
-    +(liste?'<div style="margin-top:.3rem">'+liste+'</div>':'')
-    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Canlandırma: sahadaki güncel on birler ('+esc(dz.fev||'')+' / '+esc(dz.fdep||'')+') ve top, FotMob\'un dakika dakika baskı verisine ve şutların gerçek yerine göre hareket eder; yeni şutta top şutun atıldığı yere gider. Oyuncu ve topun anlık konumu ölçülmez, canlı yayın verisinde bu bilgi yok. Soluk sarı noktalar maçtaki şutların gerçek yeri.</div></div>';
+  var sut=k.sut||[], n=0;
+  var ol=(k.olay||[]).map(function(e){ var gk=null; if(e[1]==='gol'||e[1]==='kk'){ sut.forEach(function(x){ if((x[2]==='Goal'||x[2]==='kk')&&Math.abs(x[4]-e[0])<=1&&!gk) gk=x; }); }
+      return {an:'o|'+e[0]+'|'+e[1]+'|'+e[3]+'|'+e[4], tur:e[1], dk:e[0], ik:IK[e[1]]||'•', ad:AD[e[1]]||'', ev:e[2], oy:e[3]+(e[4]?' ↔ '+e[4]:''), giren:e[3], cikan:e[4], yer:gk, sira:n++}; })
+    .concat(sut.filter(function(x){ return x[2]!=='Goal'&&x[2]!=='kk'; }).map(function(x){ return {an:'s|'+x[4]+'|'+x[5]+'|'+x[0]+'|'+x[1], tur:'sut', sonuc:x[2], dk:x[4], ik:IK[x[2]]||'👟', ad:FM_TUR[x[2]]||'Şut', ev:x[3], oy:x[5]+(x[6]!=null?' · xG '+x[6].toFixed(2):''), yer:x, sira:n++}; }));
+  ol.sort(function(x,y){ return y.dk-x.dk||y.sira-x.sira; });
+  return ol;
 }
-/* BASKIMETRE (FotMob verisi, 2026-11-22, kullanıcı: "aynı maçın Baskımetre'si bizimkisi doğru göstermiyor, eksik ve hatalı" — FotMob'un grafiğiyle
-   karşılaştırdı). KÖK SEBEP: değerler Skorbord'un SAHA için yazılmış çiziminden geçiyordu; o çizim çubukları en büyük değere göre ölçekleyip
-   inceltiyor, devre arasını ve uzatmayı ayırmıyordu, küçük baskılar kayboluyordu. ŞİMDİ FotMob verisi kendi ölçeğinde (±100) her dakika bir çubuk
-   olarak çizilir: üstte ev sahibi, altta deplasman, 45. dakikada devre çizgisi (İY), goller kendi takımının tarafında, canlı maçta şimdiki dakika. */
+function sahneBant(s, e, sessiz){
+  var tk=e.ev?sbAd(s.h):sbAd(s.a);
+  var ik=e.tur==='sari'||e.tur==='kirmizi'?'<i class="sbs-kart" style="background:'+(e.tur==='sari'?'#facc15':'#ef4444')+'"></i>':'<span>'+e.ik+'</span>';
+  var html=ik+'<span>'+e.ad+(e.dk?' · '+e.dk+"'":'')+' · <span style="color:'+(e.ev?SB_EV:SB_DP)+'">'+tk+'</span>'+(e.oy?' · '+esc(e.oy):'')+'</span>';
+  if(s.bant._h===html) return; s.bant._h=html; s.bant.innerHTML=html;
+  if(!sessiz){ s.bant.classList.remove('yeni'); void s.bant.offsetWidth; s.bant.classList.add('yeni'); }
+}
+/* olay kuyruğu: sırayla, her olay bir kez, hiçbiri atlanmaz; kuyruk uzarsa oynatma hızlanır (akış yoğunken geride kalmaz) */
+function sahneOynat(s){
+  if(s.oynuyor||!s.kuyruk.length) return;
+  var e=s.kuyruk.shift(), hiz=s.kuyruk.length>8?0.35:s.kuyruk.length>3?0.55:1, ev=!!e.ev, kale=ev?104.6:0.4;
+  s.oynuyor=1; s.kilit=Date.now()+3200*hiz; sahneBant(s, e);
+  var git=function(x, y, hizli){ s.topP=[x,y]; s.top.classList.toggle('hizli', !!hizli); sbTasi(s, s.top, x, y); };
+  var iz=function(x, y){ sbTasi(s, s.iz, x, y, true); s.iz.classList.remove('on'); void s.iz.offsetWidth; s.iz.classList.add('on'); };
+  var bitir=function(ms){ setTimeout(function(){ s.oynuyor=0; s.top.classList.remove('hizli'); sahneOynat(s); }, ms*hiz); };
+  var yer=e.yer?(e.yer[3]?[e.yer[0],e.yer[1]]:[105-e.yer[0],68-e.yer[1]]):null;
+  if(e.tur==='sut'){
+    var p=yer||[ev?84:21, 34]; git(p[0], p[1]);
+    setTimeout(function(){ iz(p[0], p[1]); var r=e.sonuc;
+      if(r==='Blocked') git(p[0]+(ev?-4:4), p[1]+6, 1);
+      else if(r==='Miss') git(ev?106:-1, p[1]<34?26:42, 1);
+      else if(r==='Post') { git(kale, 30.5, 1); setTimeout(function(){ git(ev?97:8, 26, 1); }, 450*hiz); }
+      else git(ev?101.5:3.5, 32+Math.random()*4, 1); }, 1000*hiz);
+    bitir(2600);
+  } else if(e.tur==='gol'||e.tur==='kk'){
+    var gt=e.tur==='kk'?!ev:ev, kale2=gt?105.6:-0.6, p2=yer||[gt?90:15, 34];
+    git(p2[0], p2[1]);
+    setTimeout(function(){ iz(p2[0], p2[1]); git(kale2, 32.5+Math.random()*3, 1); }, 900*hiz);
+    setTimeout(function(){ var renk=gt?SB_EV:SB_DP, g=s.gol;
+      g.querySelector('small').textContent=(gt?sbAd(s.h):sbAd(s.a)).replace(/&amp;/g,'&')+(e.giren?' · '+e.giren:'');
+      g.querySelector('b').style.color=renk; g.style.background='radial-gradient(circle,'+renk+'55,transparent 70%)';
+      [].forEach.call(g.querySelectorAll('u'), function(u){ u.remove(); });
+      for(var i=0;i<14;i++){ var u=document.createElement('u'), aci=i/14*Math.PI*2, r=60+Math.random()*60; u.style.background=i%3?renk:'#fde047'; u.style.setProperty('--dx',(Math.cos(aci)*r).toFixed(0)+'px'); u.style.setProperty('--dy',(Math.sin(aci)*r).toFixed(0)+'px'); g.appendChild(u); }
+      g.classList.remove('on'); void g.offsetWidth; g.classList.add('on');
+      s.saha.style.boxShadow='inset 0 0 0 3px '+renk+', 0 0 22px '+renk+'88'; setTimeout(function(){ s.saha.style.boxShadow=''; }, 2600); }, 1500*hiz);
+    setTimeout(function(){ git(52.5, 34); }, 4200*hiz);   // santra
+    bitir(4600);
+  } else if(e.tur==='korner'){
+    var y=Math.random()<.5?1.2:66.8; git(ev?104:1, y);
+    setTimeout(function(){ iz(ev?104:1, y); git(ev?94:11, 30+Math.random()*8, 1); }, 1200*hiz);
+    bitir(2400);
+  } else {   // kart, değişiklik: top durur, ilgili oyuncu vurgulanır
+    var ad=String(e.tur==='degisiklik'?e.giren:e.oy||'').split(' ').pop();
+    [].forEach.call(s.oy.children, function(el){ if(ad&&el.dataset.ad&&(el.dataset.ad===ad||e.oy.indexOf(el.dataset.ad)>=0)){ el.classList.remove('vurgu'); void el.offsetWidth; el.classList.add('vurgu'); } });
+    bitir(2200);
+  }
+}
+/* tek zamanlayıcı: yalnız sayfada görünen sahneler; olay oynarken top kuyruktaki olaya aittir */
+function sahneTik(){
+  if(document.hidden) return;
+  Object.keys(SAHNE).forEach(function(mid){
+    var s=SAHNE[mid];
+    if(!s.el.isConnected){ if(Date.now()-s.kullan>120000){ try{ s.ro&&s.ro.disconnect(); }catch(e){} delete SAHNE[mid]; } return; }
+    s.kullan=Date.now(); sahneDurum(s);
+    if(!s.W){ s.olcu(); if(!s.W) return; sahneYerles(s, true); }
+    var m=s.m||{}, k=s.k||{}, dur=!m.isLive||m.isHalftime||k.iy||k.bitti;
+    var mom=k.mom||[], son=mom.length?mom[mom.length-1][0]:0, b=0; mom.forEach(function(d){ if(d[0]>son-3) b+=d[1]; }); b=Math.max(-1,Math.min(1,b/120));
+    if(!s.oynuyor){
+      var hx, hy;
+      if(dur){ hx=52.5; hy=34; }
+      else { if(Date.now()-s.hT>2600||!s.hedef){ s.hT=Date.now(); var yon=Math.random()<(0.5+Math.abs(b)*0.4)?(b>=0?1:-1):(b>=0?-1:1), derin=10+Math.random()*28+Math.abs(b)*14;
+          s.hedef=[Math.max(6,Math.min(99,52.5+yon*derin+(Math.random()-.5)*10)), 8+Math.random()*52]; }
+        var e0=s.topP; hx=e0[0]+(s.hedef[0]-e0[0])*0.5+(Math.random()-.5)*3; hy=e0[1]+(s.hedef[1]-e0[1])*0.5+(Math.random()-.5)*3; }
+      s.topP=[Math.max(1,Math.min(104,hx)), Math.max(1,Math.min(67,hy))]; sbTasi(s, s.top, s.topP[0], s.topP[1]);
+    }
+    var tx=Math.max(1,Math.min(104,s.topP[0])), ty=Math.max(1,Math.min(67,s.topP[1])), ol=[].slice.call(s.oy.children), yakin={e:[],d:[]};
+    ol.forEach(function(el){ var x=+el.dataset.x, y=+el.dataset.y, tk=el.dataset.t, gk=el.dataset.g==='1', nx=x, ny=y;
+      if(!dur){ var f=+el.dataset.f||0.5, ilerle=tk==='e'?Math.max(0,(tx-52.5)/52.5):Math.max(0,(52.5-tx)/52.5);
+        nx=x+(tx-52.5)*(gk?0.12:0.5)+(tk==='e'?(b>0?b*7:b*3):(b<0?b*7:b*3))+(gk?0:ilerle*f*24*(tk==='e'?1:-1))+(Math.random()-.5)*1.4;
+        ny=y+(ty-34)*(gk?0.15:0.22)+(Math.random()-.5)*1.4; }
+      el._p=[nx,ny]; if(!gk&&!dur) yakin[tk].push(el); });
+    if(!dur) ['e','d'].forEach(function(tk){ yakin[tk].sort(function(p,q){ return Math.hypot(p._p[0]-tx,p._p[1]-ty)-Math.hypot(q._p[0]-tx,q._p[1]-ty); });
+      yakin[tk].slice(0,2).forEach(function(el,i){ var f=i?0.35:0.6; el._p=[el._p[0]+(tx-el._p[0])*f+(tk==='e'?-1.5:1.5), el._p[1]+(ty-el._p[1])*f+(i?2:-1)]; }); });
+    ol.forEach(function(el){ var p=[Math.max(2,Math.min(103,el._p[0])), Math.max(2,Math.min(66,el._p[1]))], o=s.p[el.dataset.k];
+      if(o&&Math.abs(o[0]-p[0])<.3&&Math.abs(o[1]-p[1])<.3) return;   // kıpırdamayan oyuncuya yazılmaz
+      s.p[el.dataset.k]=p; sbTasi(s, el, p[0], p[1]); });
+  });
+}
+setInterval(sahneTik, 1300);
+/* yerleştirme: maç detayı yeniden çizilince yer tutucuya aynı kalıcı sahne taşınır (yeniden kurulmaz, hareket kesilmez) */
+function sahneYerlestir(){ [].forEach.call(document.querySelectorAll('.sb-sahne-yer'), function(y){ var s=SAHNE[y.getAttribute('data-mid')]; if(s&&s.el.parentNode!==y){ y.appendChild(s.el); if(!s.W){ s.olcu(); sahneYerles(s, true); } } }); }
+try{ new MutationObserver(function(ml){ for(var i=0;i<ml.length;i++){ var a=ml[i].addedNodes; for(var j=0;j<a.length;j++){ if(a[j].nodeType===1&&(a[j].classList.contains('sb-sahne-yer')||a[j].querySelector&&a[j].querySelector('.sb-sahne-yer'))){ sahneYerlestir(); return; } } } })
+  .observe(document.documentElement, {childList:true, subtree:true}); }catch(e){}
+/* bağlantı: çevrimiçi olunca / uygulamaya dönünce açık maç hemen yeniden istenir (eksik olaylar tam veriyle eşitlenir) */
+function fmHemen(){ try{ var mid=acikMac(); if(mid){ if(FMO[mid]) FMO[mid].t=0; FMC.t=0; FMD.t=0; fmIste(mid); fmCanliAl(); } }catch(e){} }
+window.addEventListener('online', fmHemen);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) fmHemen(); });
+function fmGorsel(m, h, a, k){
+  var s=SAHNE[m.id]||sahneKur(m.id);
+  sahneGuncelle(s, m, h, a, k);
+  return '<div class="md-section-head"> Canlı Görsel Anlatım</div><div class="sb-sahne-yer" data-mid="'+esc(m.id)+'"></div>';
+}
 window.__sbBaski=function(m){
   try{
     var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null;
