@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-22-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-22-B';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken
@@ -7564,6 +7564,7 @@ function _ptRenderImzasi(d){
 window._ptTbAlinma = window._ptTbAlinma || {};
 function ptCanliSaat(m){
   try{
+    if(m && m.isLive && m.isHalftime) return 'İY';   // Skorbord: devre arası
     var tb = m && m.tabela;
     // YALNIZCA DAKİKA (2026-10-02-I, kullanıcı: "'dk - sn' yerine sadece 'Dk' olsun ve canlı hareket etsin"):
     // saniye gösterilmez; saat yine iki yazım arasında ilerletilir, dakika dolduğu anda değişir.
@@ -14327,6 +14328,7 @@ function ptSahaPitchGuncelle(kutu,m,h,a){
 }
 function renderBaskimetre(m){
   if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)
+  if(window.__sbBaski){ var _sbb=window.__sbBaski(m); if(_sbb!=null) return _sbb; }   // Skorbord: FotMob baskı grafiği (kendi ölçeğinde, devre çizgili)
   if(window.__sbMom){ var _sbm=window.__sbMom(m); if(_sbm) m=Object.assign({},m,{momentum:_sbm}); }   // Skorbord: FotMob gerçek baskı verisi
 
   try{
@@ -40240,6 +40242,6 @@ window.voteMvp=function(matchId,player){
   window.ptSahaLogoDinle=dinle; dinle();
 })();
 </script>
-<script src="gercek.js?v=b2e1c0d0"></script>
+<script src="gercek.js?v=d3872fa9"></script>
 </body>
 </html>

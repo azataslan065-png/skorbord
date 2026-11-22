@@ -240,6 +240,7 @@ function durumNotu(e){
   return '';
 }
 function macNesnesi(e, hafta, eski){
+  if(sporu(A.lig)==='futbol') fmCanliUygula(e);
   var d=e.date, m=eski||{};
   m.id='m'+e.rid; m.homeId='t'+e.h.id; m.awayId='t'+e.a.id;
   m.week=hafta||m.week||1;
@@ -247,8 +248,12 @@ function macNesnesi(e, hafta, eski){
   var canli=e.state==='in', bitti=e.state==='post' && !/POSTPONED|CANCEL/.test(e.sname);
   m.played=bitti; m.isLive=canli;
   if(canli||bitti){ m.homeGoals=+e.h.score||0; m.awayGoals=+e.a.score||0; } else { delete m.homeGoals; delete m.awayGoals; }
-  if(canli){ m.minute=dk(e.clock)||1; m.isHalftime=/HALFTIME/.test(e.sname); } else { delete m.minute; delete m.isHalftime; }
-  if(e.evs.length || !m.events || !m._ozet) m.events=(m._ozet && (m.events||[]).length>=e.evs.length)?m.events:e.evs;
+  if(canli){ m.minute=dk(e.clock)||1; m.isHalftime=/HALFTIME/.test(e.sname);
+    // (2026-11-22) ESPN devre arasında saati "45'+4'" bırakıyordu, listede "49'" görünüyordu: devre arası "İY", uzatmadaki dakika "45+4"
+    var ek=/^(\d+)'?\s*\+\s*(\d+)/.exec(String(e.clock||'')); if(m.isHalftime) m.minute=45; else if(ek){ m.minute=+ek[1]; m.sbEk=+ek[2]; } if(!ek||m.isHalftime) delete m.sbEk;
+  } else { delete m.minute; delete m.isHalftime; delete m.sbEk; delete m.sahaUzatma; }
+  if(e.evs.length || !m.events || !m._ozet) m.events=(m._ozet && (m.events||[]).filter(function(x){ return !YAPI_TUR.test(x.type); }).length>=e.evs.length)?m.events:e.evs;
+  yapiEkle(m);
   if(e.stad) m.stadium=e.stad;
   if(e.hakem && !m._gorevli) m.referee=e.hakem;
   var nt=durumNotu(e); if(nt) m.note=nt; else if(m.note && /Ertelendi|İptal|Yarıda|Gecikti/.test(m.note)) delete m.note;
@@ -992,7 +997,7 @@ function seritSporListe(sp){ var bugun=[], eksik=[];
 window.__sbSeritNot=function(){ var sp=seritSpor(); return 'Bugün '+(sp==='basketbol'?'basketbol':sp==='voleybol'?'voleybol':'futbol')+' maçı yok · Skorbord'; };
 function seritListe(){
   var sp=seritSpor(); if(sp!=='futbol'){ var so={in:0,pre:1,post:2}; return seritSporListe(sp).slice().sort(function(x,y){ return (so[x.state]-so[y.state])||(x.date-y.date); }); }
-  var l=B.liste, v=L[A.lig]&&L[A.lig].veri;
+  var l=B.liste.map(fmCanliUygula), v=L[A.lig]&&L[A.lig].veri;
   if(A.serit==='secili' && v) l=l.filter(function(e){ return e.lid===v.lid; });
   var sira={in:0,pre:1,post:2};
   return l.slice().sort(function(x,y){ return (sira[x.state]-sira[y.state])||(x.date-y.date)||(x.rid<y.rid?-1:1); });
@@ -1002,7 +1007,7 @@ setTimeout(function(){ try{ _liveTickerEnabled=true; seritCiz(); }catch(e){} }, 
 window.__sbSerit={
   on:function(){ return seritListe().length>0; },
   matches:function(){ return seritListe().map(function(e){ var c=e.state==='in', b=e.state==='post'&&!/POSTPONED|CANCEL/.test(e.sname);
-    return {id:'m'+e.rid, homeId:'t'+e.h.id, awayId:'t'+e.a.id, homeGoals:+e.h.score||0, awayGoals:+e.a.score||0, played:b, isLive:c, week:0, time:p2(e.date.getHours())+':'+p2(e.date.getMinutes())}; }); },
+    return {id:'m'+e.rid, homeId:'t'+e.h.id, awayId:'t'+e.a.id, homeGoals:+e.h.score||0, awayGoals:+e.a.score||0, played:b, isLive:c, minute:c?(/HALFTIME/.test(e.sname||'')?45:(parseInt(String(e.clock||''),10)||dk(e.clock)||1)):undefined, isHalftime:c&&/HALFTIME/.test(e.sname||''), week:0, time:p2(e.date.getHours())+':'+p2(e.date.getMinutes())}; }); },
   teams:function(){ var t={}; seritListe().forEach(function(e){ t['t'+e.h.id]={id:'t'+e.h.id,name:e.h.name,logo:e.h.logo}; t['t'+e.a.id]={id:'t'+e.a.id,name:e.a.name,logo:e.a.logo}; }); return t; }
 };
 function seritCiz(){ try{ if(typeof renderLiveTicker==='function') renderLiveTicker(); }catch(e){} }
@@ -1097,6 +1102,13 @@ function akisIsle(m2, j){
       l.push(it); });
     if(!l.length) return;
     m2.sbAkis=l.slice(-30);
+    var YE=[];
+    (j.commentary||[]).forEach(function(c){ var t=String(c.text||'').toLowerCase(), d=dk(c.time&&c.time.displayValue);
+      var u=/announced (\d+) minutes? of added time/.exec(t); if(u){ var yr=d<=50?1:2; YE.push({type:'extra_time', half:yr, min:yr===1?45:90, extraMin:+u[1], id:'yu'+yr}); }
+      if(/first half begins/.test(t)) YE.push({type:'match_start', min:0, id:'ys'});
+      if(/first half ends/.test(t)) YE.push({type:'half_time', min:45, id:'yh'});
+      if(/second half ends|match ends/.test(t)) YE.push({type:'match_end', min:90, id:'ye'}); });
+    if(YE.length){ m2.sbYapiE=YE; yapiEkle(m2); }
     if(m2.sbFm) return;   // FotMob'un gerçek baskı verisi var (bkz. fmIste)
     var ayrinti=l.some(function(e){ return /^(sut|isabet|blok|korner|ofsayt|serbest)$/.test(e.tur); });
     if(!ayrinti){ delete m2.momentum; return; }
@@ -1117,22 +1129,88 @@ function akisIsle(m2, j){
    toplayıcının yazdığı dosyayı okur (.github/workflows/fm-canli.yml). Maç, iki takımın adıyla eşleştirilir. */
 var FM_DOSYA='https://raw.githubusercontent.com/azataslan065-png/skorbord/canli-fm/fm.json', FM_API='https://api.github.com/repos/azataslan065-png/skorbord/contents/fm.json?ref=canli-fm';
 function fmKisa(md){
-  var g=md.general||{}, h=md.header||{}, c=md.content||{}, st=h.status||{}, hid=(g.homeTeam||{}).id;
+  var g=md.general||{}, h=md.header||{}, c=md.content||{}, st=h.status||{}, hid=(g.homeTeam||{}).id, lt=st.liveTime||{};
   var o={id:+g.matchId, ev:(g.homeTeam||{}).name||'', dep:(g.awayTeam||{}).name||'', bas:!!g.started, bitti:!!g.finished,
-    dk:((st.liveTime||{}).short||'').replace(/[^0-9+]/g,''), t:Date.now()};
+    dk:String(lt.short||'').replace(/[^0-9+]/g,''), iy:/^HT$/i.test(String(lt.short||'').replace(/[^A-Za-z]/g,'')), t:Date.now()};
+  var sk=/(\d+)\s*-\s*(\d+)/.exec(st.scoreStr||''); if(sk) o.skor=[+sk[1],+sk[2]];
   var mom=(((c.momentum||{}).main||{}).data)||[]; o.mom=mom.filter(function(d){ return d&&d.value!=null; }).map(function(d){ return [d.minute, Math.round(d.value)]; });
-  o.sut=(((c.shotmap||{}).shots)||[]).map(function(s){ return [Math.round(s.x*10)/10, Math.round(s.y*10)/10, s.isOwnGoal?'kk':(s.eventType||''), s.teamId===hid?1:0, (s.min||0)+(s.minAdded||0), s.playerName||'', s.expectedGoals!=null?Math.round(s.expectedGoals*100)/100:null, s.situation||'']; });
-  o.olay=((((c.matchFacts||{}).events)||{}).events||[]).filter(function(e){ return /^(Goal|Card|Substitution)$/.test(e.type); }).map(function(e){
+  o.sut=(((c.shotmap||{}).shots)||[]).map(function(s){ return [Math.round(s.x*10)/10, Math.round(s.y*10)/10, s.isOwnGoal?'kk':(s.isBlocked?'Blocked':(s.eventType||'')), s.teamId===hid?1:0, (s.min||0)+(s.minAdded||0), s.playerName||'', s.expectedGoals!=null?Math.round(s.expectedGoals*100)/100:null, s.situation||'']; });
+  var evs=(((c.matchFacts||{}).events)||{}).events||[];
+  o.olay=evs.filter(function(e){ return /^(Goal|Card|Substitution)$/.test(e.type); }).map(function(e){
     var tur=e.type==='Goal'?(e.ownGoal?'kk':'gol'):e.type==='Card'?(/red/i.test(e.card||'')?'kirmizi':'sari'):'degisiklik';
     var oy=(e.player&&e.player.name)||e.fullName||'', iki='';
     if(e.type==='Substitution'&&e.swap&&e.swap.length){ oy=(e.swap[0]||{}).name||oy; iki=(e.swap[1]||{}).name||''; }
     return [(e.time||0)+(e.overloadTime||0), tur, e.isHome?1:0, oy, iki]; });
+  o.yari=evs.filter(function(e){ return e.type==='Half'; }).map(function(e){ return [e.time||0, e.halfStrShort||'']; });
+  o.uz=evs.filter(function(e){ return e.type==='AddedTime'; }).map(function(e){ var n=+e.minutesAddedInput||parseInt(String(e.minutesAddedStr||'').replace(/[^0-9]/g,''),10)||0; return [e.time>45?2:1, n]; });
+  // sahadaki oyuncular: ilk 11; değişikliklerde giren oyuncu çıkanın yerini alır, kırmızı kart gören sahadan çıkar
+  try{
+    var L=c.lineup||{}, diz={}, tk=[['ev',L.homeTeam,true],['dep',L.awayTeam,false]];
+    tk.forEach(function(x){ var T=x[1]; if(!T||!T.starters||!T.starters.length) return;
+      var yedek={}; (T.subs||[]).forEach(function(p){ yedek[String(p.id)]=p; });
+      var cur=T.starters.map(function(p){ var l=p.horizontalLayout||{}; return {id:String(p.id), no:p.shirtNumber||'', ad:p.lastName||p.name||'', x:l.x, y:l.y, k:''}; });
+      evs.filter(function(e){ return e.isHome===x[2]; }).sort(function(a,b){ return (a.time||0)-(b.time||0); }).forEach(function(e){
+        if(e.type==='Substitution'&&e.swap&&e.swap.length>1){ var gir=String(e.swap[0].id), cik=String(e.swap[1].id), p=yedek[gir]||{};
+          cur.forEach(function(q){ if(q.id===cik){ q.id=gir; q.no=p.shirtNumber||''; q.ad=p.lastName||p.name||e.swap[0].name||''; q.k=''; } }); }
+        if(e.type==='Card'&&e.player){ var pid=String(e.player.id); cur.forEach(function(q){ if(q.id===pid) q.k=/red/i.test(e.card||'')?'k':(q.k||'s'); }); }
+      });
+      diz[x[0]]=cur.filter(function(q){ return q.k!=='k'&&q.x!=null; }).map(function(q){ return [q.no, q.ad, Math.round(q.x*1000)/1000, Math.round(q.y*1000)/1000, q.k]; });
+      diz['f'+x[0]]=T.formation||''; });
+    if(diz.ev||diz.dep) o.diz=diz;
+  }catch(e){}
   var ist={}, ad={BallPossesion:'top',expected_goals:'xg',total_shots:'sut',ShotsOnTarget:'isabet',corners:'korner',fouls:'faul',Offsides:'ofsayt'};
   try{ (((c.stats||{}).Periods||{}).All||{}).stats.forEach(function(grp){ (grp.stats||[]).forEach(function(s){ var k=ad[s.key]; if(k&&s.stats&&s.stats.length===2&&!ist[k]) ist[k]=s.stats; }); }); }catch(e){}
   o.ist=ist;
   return o;
 }
+/* FotMob gün listesi -> canlı / yeni bitmiş maçların skor ve durumu (skor şeridi ve listeler için; ESPN'den hızlı) */
+function fmDurum(j, simdi){
+  var out=[]; ((j&&j.leagues)||[]).forEach(function(l){ (l.matches||[]).forEach(function(m){ var s=m.status||{}; if(!s.started||s.cancelled) return;
+    var z=Date.parse(s.utcTime||''); if(s.finished&&simdi-z>4*3600e3) return;
+    var lt=s.liveTime||{}, sk=/(\d+)\s*-\s*(\d+)/.exec(s.scoreStr||'');
+    out.push({ev:(m.home||{}).name||'', dep:(m.away||{}).name||'', z:s.utcTime, skor:sk?[+sk[1],+sk[2]]:null, dk:String(lt.short||'').replace(/[^0-9+]/g,''), iy:/^HT$/i.test(String(lt.short||'').replace(/[^A-Za-z]/g,'')), bitti:!!s.finished, uz:lt.addedTime||0}); }); });
+  return out;
+}
+/* CANLI SKOR HIZI (2026-11-22, kullanıcı: "canlı veri anlık değil ve doğru göstermiyor"). KÖK SEBEP: skor ve dakika yalnız ESPN'den geliyordu;
+   ESPN Süper Lig'de gecikiyor (Konyaspor-Beşiktaş'ta 34. dakikadaki golü dakikalarca göstermedi, devre arasını "49'" gösterdi). ŞİMDİ FotMob'un
+   gün listesi (APK 10 sn'de bir doğrudan, web 1 dk'da bir toplayıcı dosyasından) canlı / yeni bitmiş maçların skorunu, dakikasını ve devre arasını
+   ESPN'in üzerine yazar; maç tarih ve iki takımın adıyla eşleşir. */
+var FMC={l:[], t:0};
+function fmCanliAl(){
+  if(FMC.y||Date.now()-FMC.t<(window.SkorbordApp?10000:60000)) return; FMC.y=1; FMC.t=Date.now();
+  var gun=new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Istanbul'}).replace(/-/g,'');
+  var web=function(){ return fmDosya().then(function(j){ return (j&&j.durum)||null; }); };
+  (window.SkorbordApp?fmJSON('matches?date='+gun+'&timezone=Europe/Istanbul').then(function(j){ return fmDurum(j, Date.now()); }).catch(web):web())
+    .then(function(l){ FMC.y=0; if(l&&l.length) FMC.l=l; }, function(){ FMC.y=0; });
+}
+function fmCanliUygula(e){
+  try{
+    if(!FMC.l.length||!e||!e.h||!e.a||/POSTPONED|CANCEL/.test(e.sname||'')) return e;
+    var z=+e.date, x=FMC.l.filter(function(f){ return Math.abs(Date.parse(f.z)-z)<3*3600e3 && fmEsle(f.ev,f.dep,e.h.full||e.h.name,e.a.full||e.a.name); })[0]; if(!x) return e;
+    if(x.skor){ e.h.score=String(x.skor[0]); e.a.score=String(x.skor[1]); }
+    if(x.bitti){ if(e.state!=='post'){ e.state='post'; e.sname='STATUS_FULL_TIME'; } }
+    else { e.state='in'; if(x.iy){ e.sname='STATUS_HALFTIME'; e.clock="45'"; } else if(x.dk){ var p=x.dk.split('+'); e.clock=p[0]+"'"+(p[1]?'+'+p[1]+"'":''); if(/HALFTIME/.test(e.sname||'')) e.sname='STATUS_SECOND_HALF'; } }
+    e.fm=1;
+  }catch(er){}
+  return e;
+}
 var FMV={}, FMI={}, FMG={}, FMD={t:0}, FMO={};   // FMV: maç -> kısa ayrıntı; FMI: maç -> FotMob kimliği (0: bulunamadı); FMG: gün listesi; FMD: web dosyası
+/* MAÇ BÖLÜMLERİ (2026-11-22, kullanıcı: "maç akışında hakemin ilk yarı ve ikinci yarı verilen uzatmaları ekle"). Başlama, hakemin verdiği uzatma
+   (ilk yarı / maç sonu), devre arası ve bitiş Maç Akışı'na Skorbord'un kendi bölüm satırlarıyla (match_start, extra_time, half_time, match_end)
+   eklenir. Kaynak: FotMob olayları (sbYapiF), yoksa ESPN anlatımındaki "Fourth official has announced N minutes" satırları (sbYapiE). */
+var YAPI_TUR=/^(match_start|half_time|extra_time|match_end)$/;
+function yapiEkle(m){
+  var Y={}; (m.sbYapiE||[]).forEach(function(e){ Y[e.id]=e; }); (m.sbYapiF||[]).forEach(function(e){ Y[e.id]=e; });
+  var l=Object.keys(Y).map(function(k){ return JSON.parse(JSON.stringify(Y[k])); }); if(!l.length) return;
+  m.events=(m.events||[]).filter(function(e){ return !YAPI_TUR.test(e.type); }).concat(l);
+}
+function yapiF(k){
+  var Y=[{type:'match_start', min:0, id:'ys'}], dkS=parseInt(k.dk,10)||0, ikinci=k.bitti||(k.yari||[]).some(function(x){ return x[0]===45; })||k.iy||dkS>45;
+  (k.uz||[]).forEach(function(u){ Y.push({type:'extra_time', half:u[0], min:u[0]===1?45:90, extraMin:u[1], id:'yu'+u[0]}); });
+  if(ikinci) Y.push({type:'half_time', min:45, id:'yh'});
+  if(k.bitti) Y.push({type:'match_end', min:90, id:'ye'});
+  return Y;
+}
 function fmJSON(yol){ if(!window.SkorbordApp) return Promise.reject(new Error('web')); return ham(location.origin+'/skorbord/__fm/'+yol); }
 /* web yolu: GitHub'ın dosya servisi (raw) 5 dakika önbellekliyor; bu yüzden dosya GitHub API'den "değiştiyse ver" (ETag) isteğiyle okunur —
    değişmemiş yanıt kotaya sayılmaz. Saatlik kota (60) dolarsa raw dosyaya düşülür. Dakikada en çok bir istek. */
@@ -1152,7 +1230,11 @@ function fmYansit(mid, k){
   FMV[mid]=k;
   var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m) return;
   var m2=JSON.parse(JSON.stringify(m)), mom={}; (k.mom||[]).forEach(function(d){ if(d[1]) mom[d[0]]=d[1]; });
-  if(!Object.keys(mom).length) return; m2.momentum=mom; m2.sbFm=k.t||1;
+  m2.sbYapiF=yapiF(k); yapiEkle(m2);
+  // hakemin verdiği uzatma: maç uzatmadayken canlı dakika rozetinde "+N"
+  var uzS=null, dkS=String(k.dk||''); if(m2.isLive&&/\+/.test(dkS)){ var yr=(parseInt(dkS,10)||0)<=45?1:2; (k.uz||[]).forEach(function(u){ if(u[0]===yr) uzS=u[1]; }); }
+  if(uzS) m2.sahaUzatma=uzS; else delete m2.sahaUzatma;
+  if(Object.keys(mom).length){ m2.momentum=mom; m2.sbFm=k.t||1; }
   if(JSON.stringify(m2)===JSON.stringify(m)) return;
   v.matches[mid]=m2; YerelVT.yaz('leagues/'+ligKimlik(A.lig)+'/matches/'+mid, m2);
 }
@@ -1184,10 +1266,20 @@ function fmGorsel(m, h, a, k){
   // son 5 dakikanın baskısı: baskın takımın hücum ettiği üçte bir renklenir
   var mom=k.mom||[], sonDk=mom.length?mom[mom.length-1][0]:0, top5=0; mom.forEach(function(d){ if(d[0]>sonDk-5) top5+=d[1]; });
   var bolge=Math.abs(top5)>=15?'<rect x="'+(top5>0?70:0)+'" y="0" width="35" height="68" fill="'+(top5>0?EV:DP)+'" opacity=".16"/>':'';
+  /* SAHADAKİ OYUNCULAR (2026-11-22, kullanıcı: "canlı görsel anlatım oyuncu sayısı eksik"): iki takımın sahadaki on biri dizilişteki yerinde,
+     forma numarası ve soyadıyla. Değişiklikte giren oyuncu çıkanın yerine geçer, kırmızı kart gören sahadan kalkar (fmKisa). */
+  var oyuncu=function(l, ev){ return (l||[]).map(function(q){ var x=2+q[2]*48, y=q[3]*68; if(!ev){ x=105-x; y=68-y; } var renk=ev?'#2563eb':'#dc2626', ad0=String(q[1]||'');
+    if(ad0.length>10) ad0=ad0.slice(0,9)+'…';
+    // numara ve ad sahanın üstünde HTML olarak (SVG metni sayfada donmaya yol açtı)
+    return '<div style="position:absolute;left:'+((x+2)/109*100).toFixed(2)+'%;top:'+((y+1)/70*100).toFixed(2)+'%;transform:translate(-50%,-50%);pointer-events:none">'
+      +'<span style="position:relative;width:17px;height:17px;border-radius:50%;background:'+renk+';border:1.5px solid #fff;color:#fff;font-size:.56rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1">'+esc(q[0])
+      +(q[4]==='s'?'<i style="position:absolute;right:-5px;top:-4px;width:5px;height:7px;background:#facc15;border-radius:1px"></i>':'')+'</span>'
+      +'<span style="position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:.5rem;color:#fff;white-space:nowrap;text-shadow:0 1px 2px #000">'+esc(ad0)+'</span></div>'; }).join(''); };
+  var dz=k.diz||{}, oyuncular=oyuncu(dz.ev,1)+oyuncu(dz.dep,0);
   var sutlar=(k.sut||[]).slice(), son=sutlar[sutlar.length-1];
   var nokta=sutlar.map(function(s){ var p=xy(s), gol=s[2]==='Goal'||s[2]==='kk', renk=s[3]?EV:DP;
-    if(gol) return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.9" fill="#fff" stroke="'+renk+'" stroke-width=".7"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r=".6" fill="#111"/>';
-    var dolu=s[2]==='AttemptSaved'||s[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.25" fill="'+(dolu?renk:'none')+'" stroke="'+renk+'" stroke-width=".45" opacity=".9"/>'; }).join('');
+    if(gol) return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.7" fill="#fff" stroke="#111" stroke-width=".5"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r=".7" fill="#111"/>';
+    var dolu=s[2]==='AttemptSaved'||s[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1" fill="'+(dolu?'#fde047':'none')+'" stroke="#fde047" stroke-width=".4" opacity=".95"/>'; }).join('');
   var vurgu=''; if(son){ var p=xy(son); vurgu='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="none" stroke="#fff" stroke-width=".5"><animate attributeName="r" values="2;5;2" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>'; }
   // olaylar: şutlar (gol dışı) + gol / kart / değişiklik, en yeniden eskiye
   var IK={gol:'⚽',kk:'⚽',sari:'🟨',kirmizi:'🟥',degisiklik:'🔁',AttemptSaved:'🧤',Miss:'👟',Post:'🥅',Blocked:'🛡️'};
@@ -1204,13 +1296,49 @@ function fmGorsel(m, h, a, k){
   var baski=Math.abs(top5)>=15?'Son 5 dakikada baskı: <b style="color:'+(top5>0?EV:DP)+'">'+(top5>0?ad(h):ad(a))+'</b>':'Son 5 dakikada baskı dengeli';
   return '<div class="md-section-head"> Canlı Görsel Anlatım</div><div style="padding:.6rem .9rem">'
     +'<div style="display:flex;justify-content:space-between;font-size:.7rem;font-weight:800;margin-bottom:.3rem"><span style="color:'+EV+'">'+ad(h)+' ▶</span><span style="color:var(--mu);font-weight:600">'+(m.minute?m.minute+"'":(k.dk?k.dk+"'":''))+'</span><span style="color:'+DP+'">◀ '+ad(a)+'</span></div>'
-    +'<div style="border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%)"><svg viewBox="-2 -1 109 70" style="display:block;width:100%">'+bolge+saha+nokta+vurgu+'</svg></div>'
+    +'<div style="position:relative;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%)"><svg viewBox="-2 -1 109 70" style="display:block;width:100%">'+bolge+saha+nokta+vurgu+'</svg>'+oyuncular+'</div>'
     +'<div style="text-align:center;font-size:.8rem;font-weight:800;margin:.45rem 0 .1rem">'+durum+'</div>'
     +'<div style="text-align:center;font-size:.68rem;color:var(--mu)">'+baski+'</div>'
     +(ist?'<div style="margin-top:.4rem">'+ist+'</div>':'')
     +(liste?'<div style="margin-top:.3rem">'+liste+'</div>':'')
-    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Noktalar maçtaki şutların gerçek yeridir: beyaz gol, dolu isabetli, boş isabetsiz; yanıp sönen son şut. Mavi '+ad(h)+', kırmızı '+ad(a)+'. Veri: FotMob.</div></div>';
+    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Oyuncular sahadaki güncel on bir, dizilişteki yerinde ('+esc(dz.fev||'')+' / '+esc(dz.fdep||'')+'). Sarı noktalar şutların gerçek yeri: dolu isabetli, boş isabetsiz, beyaz top gol; yanıp sönen son şut. Veri: FotMob.</div></div>';
 }
+/* BASKIMETRE (FotMob verisi, 2026-11-22, kullanıcı: "aynı maçın Baskımetre'si bizimkisi doğru göstermiyor, eksik ve hatalı" — FotMob'un grafiğiyle
+   karşılaştırdı). KÖK SEBEP: değerler Skorbord'un SAHA için yazılmış çiziminden geçiyordu; o çizim çubukları en büyük değere göre ölçekleyip
+   inceltiyor, devre arasını ve uzatmayı ayırmıyordu, küçük baskılar kayboluyordu. ŞİMDİ FotMob verisi kendi ölçeğinde (±100) her dakika bir çubuk
+   olarak çizilir: üstte ev sahibi, altta deplasman, 45. dakikada devre çizgisi (İY), goller kendi takımının tarafında, canlı maçta şimdiki dakika. */
+window.__sbBaski=function(m){
+  try{
+    var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null;
+    var T=(typeof D!=='undefined'&&D.teams)||{}, th=T[m.homeId]||{}, ta=T[m.awayId]||{}, EV='#60a5fa', DP='#f87171';
+    var son=0; k.mom.forEach(function(d){ if(d[0]>son) son=d[0]; }); var N=Math.max(90, son+1);
+    var ikinci=k.bitti||k.iy||(parseInt(k.dk,10)||0)>45||son>46;
+    var W=N+1, H=100, orta=50, cub=k.mom.map(function(d){ var v=Math.max(-100,Math.min(100,d[1])), h=Math.abs(v)/100*(H/2-2); if(h<.6) return '';
+      return '<rect x="'+(d[0]+.12)+'" y="'+(v>0?orta-h:orta)+'" width=".76" height="'+h+'" fill="'+(v>0?EV:DP)+'"/>'; }).join('');
+    var zemin='<rect x="0" y="0" width="'+W+'" height="50" fill="'+EV+'" opacity=".09"/><rect x="0" y="50" width="'+W+'" height="50" fill="'+DP+'" opacity=".09"/>'
+      +[16.7,33.3,66.7,83.3].map(function(y){ return '<line x1="0" x2="'+W+'" y1="'+y+'" y2="'+y+'" stroke="rgba(255,255,255,.07)" stroke-width=".5" vector-effect="non-scaling-stroke"/>'; }).join('')
+      +'<line x1="0" x2="'+W+'" y1="50" y2="50" stroke="rgba(255,255,255,.35)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+    var devre=ikinci?'<line x1="45.5" x2="45.5" y1="0" y2="100" stroke="rgba(255,255,255,.35)" stroke-width="1" vector-effect="non-scaling-stroke"/>':'';
+    var simdi=(m.isLive&&!k.iy&&son)?'<line x1="'+(son+1)+'" x2="'+(son+1)+'" y1="0" y2="100" stroke="#facc15" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>':'';
+    var yuzde=function(dk){ return Math.max(0,Math.min(100,(dk+.5)/W*100)); };
+    var goller=(k.olay||[]).filter(function(e){ return e[1]==='gol'||e[1]==='kk'; }).map(function(e){ var ev=e[1]==='kk'?!e[2]:!!e[2];
+      return '<span title="'+esc(e[0]+"' "+e[3])+'" style="position:absolute;left:'+yuzde(Math.min(e[0],N))+'%;'+(ev?'top:-15px':'bottom:-15px')+';transform:translateX(-50%);font-size:.7rem;line-height:1">⚽</span>'; }).join('');
+    var etiket=[0,15,30,45,60,75,90].map(function(d){ return '<span style="position:absolute;left:'+yuzde(d)+'%;transform:translateX(-50%)">'+d+"'</span>"; }).join('')
+      +(ikinci?'<span style="position:absolute;left:'+yuzde(45)+'%;top:-118px;transform:translateX(-50%);font-weight:800;color:var(--tx)">İY</span>':'');
+    var logo=function(t,renk){ return t.logo?'<img src="'+esc(t.logo)+'" alt="" style="width:22px;height:22px;object-fit:contain" onerror="this.style.display=\'none\'">':'<span style="width:10px;height:10px;border-radius:50%;background:'+renk+'"></span>'; };
+    var ad=function(t){ return esc(t.shortName||t.name||''); };
+    var top5=0; k.mom.forEach(function(d){ if(d[0]>son-5) top5+=d[1]; });
+    var durum=m.isLive?(Math.abs(top5)>=15?'Son 5 dakikada baskı: <b style="color:'+(top5>0?EV:DP)+'">'+(top5>0?ad(th):ad(ta))+'</b>':'Son 5 dakikada baskı dengeli'):'';
+    return '<div class="md-section-head"> Baskımetre</div><div class="mi-card" style="padding:.7rem .8rem">'
+      +'<div style="display:flex;gap:.5rem;align-items:stretch">'
+      +'<div style="display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:6px 0;width:26px">'+logo(th,EV)+logo(ta,DP)+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="position:relative;margin:17px 0 17px">'+goller
+      +'<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="display:block;width:100%;height:110px;border-radius:10px">'+zemin+devre+cub+simdi+'</svg>'
+      +'<div style="position:relative;height:12px;font-size:.55rem;color:var(--mu);margin-top:4px">'+etiket+'</div></div></div></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:.62rem;font-weight:800;margin-top:.1rem"><span style="color:'+EV+'">▲ '+ad(th)+'</span><span style="color:var(--mu);font-weight:600">'+durum+'</span><span style="color:'+DP+'">▼ '+ad(ta)+'</span></div>'
+      +'<div style="font-size:.58rem;color:var(--mu);margin-top:.35rem;line-height:1.45">Her çubuk bir dakika: yukarı '+ad(th)+', aşağı '+ad(ta)+' baskısı; boyu tehlikeli atak yoğunluğu. Veri: FotMob.</div></div>';
+  }catch(e){ gunluk('baskımetre çizilemedi', e.message); return null; }
+};
 window.__sbMom=function(m){ var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null; var o={}; k.mom.forEach(function(d){ if(d[1]) o[d[0]]=d[1]; }); return o; };
 window.__sbGorsel=function(m, h, a){
   if(!m||!m.isLive||m.sahaMode) return null;
@@ -1290,7 +1418,7 @@ function ozetIsle(mid, j){
     if(tur==='sub'){ o.player2=ps[1]||''; }
     return o;
   }).filter(Boolean);
-  if(ke.length>=(m2.events||[]).filter(function(e){ return e.type!=='sub'; }).length){ m2.events=ke; m2._ozet=1; }
+  if(ke.length>=(m2.events||[]).filter(function(e){ return e.type!=='sub'&&!YAPI_TUR.test(e.type); }).length){ m2.events=ke; m2._ozet=1; yapiEkle(m2); }
   akisIsle(m2, j);
   gorevliUygula(A.lig, mid, m2);
   if(JSON.stringify(m2)===JSON.stringify(m)) return;
@@ -1393,6 +1521,7 @@ function hizli(){
   clearTimeout(zH);
   if(document.hidden) return;
   var mid=acikMac(); if(mid){ ozetIste(mid); fmIste(mid); }
+  fmCanliAl();
   if(!ligCanli()||hMesgul){ zH=setTimeout(hizli, ligCanli()?HIZLI:15000); return; }
   hMesgul=true;
   if(TSDB_LIG[A.lig]){ veriAl(A.lig, true).then(function(j){ if(j&&j.mac) ligeIsle(j.mac.map(tsdbE)); }).then(function(){ hMesgul=false; zH=setTimeout(hizli, 60000); }); return; }
@@ -1587,7 +1716,10 @@ function anaYukle(zorla){
 function anaSatir(e, slug, fav){
   var canli=e.state==='in', bitti=e.state==='post', ert=/POSTPONED|CANCEL/.test(e.sname||'');
   var sp=sporu(slug), cz=sp==='basketbol'?((e.period?e.period+'.Ç ':'')+(e.clock||'')).trim():sp==='voleybol'?(e.period?e.period+'. set':''):'';
-  var sol=canli?'<b class="sba-dk">'+esc(sp!=='futbol'?(cz||'Canlı'):(e.clock?(dk(e.clock)||'')+"'":'Canlı'))+'</b>':ert?'<span class="sba-ert">'+(/CANCEL/.test(e.sname)?'İptal':'Ert.')+'</span>':bitti?'<span class="sba-ms">MS</span>':esc(p2(e.date.getHours())+':'+p2(e.date.getMinutes()));
+  if(sp==='futbol') fmCanliUygula(e);
+  canli=e.state==='in'; bitti=e.state==='post';
+  var iy=canli&&/HALFTIME/.test(e.sname||''), ekS=/^(\d+)'?\s*\+\s*(\d+)/.exec(String(e.clock||''));
+  var sol=iy?'<b class="sba-dk" style="color:#f59e0b;background:rgba(245,158,11,.14);border-radius:6px;padding:.05rem .35rem">İY</b>':canli?'<b class="sba-dk">'+esc(sp!=='futbol'?(cz||'Canlı'):(e.clock?(ekS?ekS[1]+'+'+ekS[2]:(dk(e.clock)||''))+"'":'Canlı'))+'</b>':ert?'<span class="sba-ert">'+(/CANCEL/.test(e.sname)?'İptal':'Ert.')+'</span>':bitti?'<span class="sba-ms">MS</span>':esc(p2(e.date.getHours())+':'+p2(e.date.getMinutes()));
   var orta=(canli||bitti)?'<b class="sba-skor'+(canli?' canli':'')+'">'+esc(e.h.score==null?'-':e.h.score)+' - '+esc(e.a.score==null?'-':e.a.score)+'</b>':'<span class="sba-v">v</span>';
   var hk=bitti&&+e.h.score>+e.a.score, ak=bitti&&+e.a.score>+e.h.score;
   return '<div class="sba-mac" onclick="Gercek.anaMacAc(\''+esc(slug)+'\',\''+esc(e.rid)+'\')"><span class="sba-saat">'+sol+'</span><span class="sba-ev'+(hk?' kaz':'')+'">'+esc(trAd(e.h.name||e.h.full))+'</span>'+orta+'<span class="sba-dep'+(ak?' kaz':'')+'">'+esc(trAd(e.a.name||e.a.full))+'</span>'

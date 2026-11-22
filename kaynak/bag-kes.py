@@ -62,7 +62,7 @@ isle('index.html', [('geri tuşu', lambda s: s.replace("if(window.SahaApp)return
 # ── SKORBORD SÜRÜMÜ (2026-11-16, kullanıcı: "güncelleme sisteminin aynısını skorborda getir"). Skorbord'un kendi sürüm damgası; her teslimde
 #    bir harf ilerletilir (gün değişince A). surum.json sayfanın yanında durur: ortak.js'deki güncelleme sistemi açılışta, 10 dk'da bir ve uygulamaya
 #    dönüşte buna bakar; admin Skorbord kaynağındaki "Zorunlu güncelleme" anahtarı skorbord/globalConfig/minSurum'a yazar.
-SB_BUILD = '2026-11-22-A'
+SB_BUILD = '2026-11-22-B'
 isle('index.html', [('sürüm', rx(r"window\.APP_BUILD='[^']*';", "window.APP_BUILD='" + SB_BUILD + "';", "window.APP_BUILD='" + SB_BUILD + "';"))])
 open('surum.json', 'w', encoding='utf-8').write('{\n "index": "' + SB_BUILD + '"\n}\n'); print('surum.json:', SB_BUILD)
 
@@ -367,5 +367,19 @@ isle('index.html', [
 isle('index.html', [
   ('baskımetre FotMob', degis("""  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)""",
     """  if(!ptSahaGoster()&&!window.Gercek)return '';   // SAHA'ya özgü: bkz. ptSahaGoster (Skorbord: gerçek maçlarda da, bkz. gercek.js akisIsle)
+  if(window.__sbMom){ var _sbm=window.__sbMom(m); if(_sbm) m=Object.assign({},m,{momentum:_sbm}); }   // Skorbord: FotMob gerçek baskı verisi""")),
+])
+
+# ── DEVRE ARASI VE FOTMOB BASKIMETRESİ (2026-11-22): canlı dakika rozeti devre arasında "İY" (ESPN saati "45'+4'" bırakıyordu → "49 Dk");
+#    FotMob baskı verisi varsa Baskımetre kendi çizimiyle (gercek.js __sbBaski).
+isle('index.html', [
+  ('devre arası rozeti', degis("""function ptCanliSaat(m){
+  try{
+    var tb = m && m.tabela;""", """function ptCanliSaat(m){
+  try{
+    if(m && m.isLive && m.isHalftime) return 'İY';   // Skorbord: devre arası
+    var tb = m && m.tabela;""")),
+  ('baskımetre FotMob çizimi', degis("""  if(window.__sbMom){ var _sbm=window.__sbMom(m); if(_sbm) m=Object.assign({},m,{momentum:_sbm}); }   // Skorbord: FotMob gerçek baskı verisi""",
+    """  if(window.__sbBaski){ var _sbb=window.__sbBaski(m); if(_sbb!=null) return _sbb; }   // Skorbord: FotMob baskı grafiği (kendi ölçeğinde, devre çizgili)
   if(window.__sbMom){ var _sbm=window.__sbMom(m); if(_sbm) m=Object.assign({},m,{momentum:_sbm}); }   // Skorbord: FotMob gerçek baskı verisi""")),
 ])
