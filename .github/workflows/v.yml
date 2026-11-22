@@ -1,0 +1,16 @@
+name: Video logolari
+on:
+  push:
+    branches: [video]
+permissions:
+  contents: write
+jobs:
+  al:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir out && cd out
+          while read u; do f=$(echo "$u" | sed 's#https://a.espncdn.com/i/teamlogos/##; s#/500/#-#'); curl -sf -m 20 "$u" -o "$f" || echo "yok $u"; done < ../liste.txt
+          ls | wc -l
+          git init -q -b video-out && git add -A && git -c user.name=t -c user.email=t@users.noreply.github.com commit -qm t && git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" video-out
