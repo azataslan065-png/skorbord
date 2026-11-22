@@ -1254,6 +1254,54 @@ function fmIste(mid){
   (window.SkorbordApp?uyg().catch(function(e){ gunluk('FotMob uygulama yolu', e.message); return web(); }):web())
     .catch(function(e){ gunluk('FotMob alınamadı', e.message); }).then(function(){ c.y=0; });
 }
+/* CANLANDIRMA (2026-11-22, kullanıcı: "oyuncular ve top o an sahanın neresindeyse anlık göstermeli, şu an fotoğraf gibi duruyor").
+   Gerçek maçta oyuncu / top koordinatı herkese açık hiçbir kaynakta yok (yalnız ücretli izleme sistemlerinde); FotMob dakika dakika baskı değeri,
+   şutların sahadaki yeri ve olaylar veriyor. Sahne bunlarla canlandırılır: top 1,2 sn'de bir baskın takımın baskı bölgesinde dolaşır (baskı ne kadar
+   güçlüyse rakip kaleye o kadar yakın), yeni şut gelince şutun atıldığı yere gider; iki takım dizilişini koruyarak topa göre blok halinde kayar,
+   topa en yakın oyuncular topa yaklaşır. Devre arasında ve maç bitince herkes yerine döner. Sahada bunun canlandırma olduğu yazılır. */
+var CANLI={};
+function canliDurum(mid){ return CANLI[mid]||(CANLI[mid]={top:[52.5,34], o:{}, sut:'', sutT:0, sutP:null, hedef:[52.5,34], t:0}); }
+function canliKonum(mid, an, x, y){ var c=canliDurum(mid); if(an==='top') return c.top; return c.o[an]||[x,y]; }
+function canliVeri(mid, k){
+  var c=canliDurum(mid), s=(k.sut||[])[(k.sut||[]).length-1]; c.k=k;
+  if(s){ var an=s[4]+'|'+s[5]+'|'+s[0]; if(c.sut&&an!==c.sut){ c.sutP=s[3]?[s[0],s[1]]:[105-s[0],68-s[1]]; c.sutT=Date.now(); } c.sut=an; }
+}
+function canliTik(){
+  try{
+    if(document.hidden) return;
+    var kaplar=document.querySelectorAll('.sb-canli'); if(!kaplar.length) return;
+    [].forEach.call(kaplar, function(kap){
+      var mid=kap.getAttribute('data-mid'), c=canliDurum(mid), k=c.k||{}, v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid];
+      var dur=!m||!m.isLive||m.isHalftime||k.iy||k.bitti;
+      // baskı: son 3 dakika (+ ev sahibi sağa hücum), -1..1
+      var mom=k.mom||[], son=mom.length?mom[mom.length-1][0]:0, b=0; mom.forEach(function(d){ if(d[0]>son-3) b+=d[1]; }); b=Math.max(-1,Math.min(1,b/120));
+      var hx, hy;
+      if(dur){ hx=52.5; hy=34; }
+      else if(c.sutP&&Date.now()-c.sutT<9000){ hx=c.sutP[0]; hy=c.sutP[1]; }     // yeni şut: top şutun yerinde
+      else {
+        if(Date.now()-c.t>2600||!c.hedef){ c.t=Date.now();
+          var yon=Math.random()<(0.5+Math.abs(b)*0.4)?(b>=0?1:-1):(b>=0?-1:1);      // baskın takım topu daha çok tutar
+          var derin=10+Math.random()*28+Math.abs(b)*14;
+          c.hedef=[Math.max(6,Math.min(99,52.5+yon*derin+(Math.random()-.5)*10)), 8+Math.random()*52]; }
+        var e=c.top; hx=e[0]+(c.hedef[0]-e[0])*0.55+(Math.random()-.5)*4; hy=e[1]+(c.hedef[1]-e[1])*0.55+(Math.random()-.5)*4;
+      }
+      hx=Math.max(1,Math.min(104,hx)); hy=Math.max(1,Math.min(67,hy)); c.top=[hx,hy];
+      var yuz=function(x,y){ return [((x+2)/109*100).toFixed(2)+'%', ((y+1)/70*100).toFixed(2)+'%']; };
+      var t=kap.querySelector('.sbt'); if(t){ var p=yuz(hx,hy); t.style.left=p[0]; t.style.top=p[1]; }
+      var ol=[].slice.call(kap.querySelectorAll('.sbo')), yakin={e:[],d:[]};
+      ol.forEach(function(el){ var x=+el.getAttribute('data-x'), y=+el.getAttribute('data-y'), tk=el.getAttribute('data-t'), gk=el.getAttribute('data-g')==='1';
+        var nx=x, ny=y;
+        if(!dur){ var f=+el.getAttribute('data-f')||0.5, ilerle=tk==='e'?Math.max(0,(hx-52.5)/52.5):Math.max(0,(52.5-hx)/52.5);
+          var kay=(hx-52.5)*(gk?0.12:0.5)+(tk==='e'?(b>0?b*7:b*3):(b<0?b*7:b*3))+(gk?0:ilerle*f*24*(tk==='e'?1:-1));   // hücumda ileri oyuncular rakip yarıya daha çok çıkar
+          nx=x+kay; ny=y+(hy-34)*(gk?0.15:0.22)+(Math.random()-.5)*1.6; nx+=(Math.random()-.5)*1.6; }
+        el._p=[nx,ny]; if(!gk&&!dur) yakin[tk].push(el); });
+      if(!dur) ['e','d'].forEach(function(tk){ yakin[tk].sort(function(a,b2){ return Math.hypot(a._p[0]-hx,a._p[1]-hy)-Math.hypot(b2._p[0]-hx,b2._p[1]-hy); });
+        yakin[tk].slice(0,2).forEach(function(el,i){ var f=i?0.35:0.6; el._p=[el._p[0]+(hx-el._p[0])*f+(tk==='e'?-1.5:1.5), el._p[1]+(hy-el._p[1])*f+(i?2:-1)]; }); });
+      ol.forEach(function(el){ var q=[Math.max(2,Math.min(103,el._p[0])), Math.max(2,Math.min(66,el._p[1]))]; c.o[el.getAttribute('data-k')]=q; var p=yuz(q[0],q[1]); el.style.left=p[0]; el.style.top=p[1]; });
+    });
+  }catch(e){}
+}
+setInterval(canliTik, 1300);
 /* gerçek şut haritasıyla canlı görsel anlatım (FotMob). Saha 105 x 68 m; ev sahibi sağa hücum eder, deplasmanın şutları aynalanır. */
 var FM_TUR={Goal:'Gol',kk:'Kendi kalesine',AttemptSaved:'İsabetli şut',Miss:'İsabetsiz şut',Post:'Direk',Blocked:'Şut engellendi'};
 function fmGorsel(m, h, a, k){
@@ -1268,18 +1316,20 @@ function fmGorsel(m, h, a, k){
   var bolge=Math.abs(top5)>=15?'<rect x="'+(top5>0?70:0)+'" y="0" width="35" height="68" fill="'+(top5>0?EV:DP)+'" opacity=".16"/>':'';
   /* SAHADAKİ OYUNCULAR (2026-11-22, kullanıcı: "canlı görsel anlatım oyuncu sayısı eksik"): iki takımın sahadaki on biri dizilişteki yerinde,
      forma numarası ve soyadıyla. Değişiklikte giren oyuncu çıkanın yerine geçer, kırmızı kart gören sahadan kalkar (fmKisa). */
-  var oyuncu=function(l, ev){ return (l||[]).map(function(q){ var x=2+q[2]*48, y=q[3]*68; if(!ev){ x=105-x; y=68-y; } var renk=ev?'#2563eb':'#dc2626', ad0=String(q[1]||'');
+  var oyuncu=function(l, ev){ return (l||[]).map(function(q, n){ var x=2+q[2]*48, y=q[3]*68; if(!ev){ x=105-x; y=68-y; } var renk=ev?'#2563eb':'#dc2626', ad0=String(q[1]||'');
     if(ad0.length>10) ad0=ad0.slice(0,9)+'…';
-    // numara ve ad sahanın üstünde HTML olarak (SVG metni sayfada donmaya yol açtı)
-    return '<div style="position:absolute;left:'+((x+2)/109*100).toFixed(2)+'%;top:'+((y+1)/70*100).toFixed(2)+'%;transform:translate(-50%,-50%);pointer-events:none">'
-      +'<span style="position:relative;width:17px;height:17px;border-radius:50%;background:'+renk+';border:1.5px solid #fff;color:#fff;font-size:.56rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1">'+esc(q[0])
+    var p=canliKonum(m.id, (ev?'e':'d')+n, x, y);
+    return '<div class="sbo" data-k="'+(ev?'e':'d')+n+'" data-t="'+(ev?'e':'d')+'" data-x="'+x.toFixed(1)+'" data-y="'+y.toFixed(1)+'" data-g="'+(q[2]<.15?1:0)+'" data-f="'+q[2]+'" style="position:absolute;left:'+((p[0]+2)/109*100).toFixed(2)+'%;top:'+((p[1]+1)/70*100).toFixed(2)+'%;transform:translate(-50%,-50%);transition:left 1.3s ease-in-out,top 1.3s ease-in-out;pointer-events:none;z-index:2">'
+      +'<span style="position:relative;width:17px;height:17px;border-radius:50%;background:'+renk+';border:1.5px solid #fff;color:#fff;font-size:.56rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.5)">'+esc(q[0])
       +(q[4]==='s'?'<i style="position:absolute;right:-5px;top:-4px;width:5px;height:7px;background:#facc15;border-radius:1px"></i>':'')+'</span>'
       +'<span style="position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:.5rem;color:#fff;white-space:nowrap;text-shadow:0 1px 2px #000">'+esc(ad0)+'</span></div>'; }).join(''); };
   var dz=k.diz||{}, oyuncular=oyuncu(dz.ev,1)+oyuncu(dz.dep,0);
+  canliVeri(m.id, k);
+  var tp=canliKonum(m.id, 'top', 52.5, 34), topHtml='<div class="sbt" style="position:absolute;left:'+((tp[0]+2)/109*100).toFixed(2)+'%;top:'+((tp[1]+1)/70*100).toFixed(2)+'%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0 45%,#d4d4d4 70%,#737373);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 10px 3px rgba(250,204,21,.55);transition:left 1.1s ease-in-out,top 1.1s ease-in-out;z-index:3;pointer-events:none"></div>';
   var sutlar=(k.sut||[]).slice(), son=sutlar[sutlar.length-1];
   var nokta=sutlar.map(function(s){ var p=xy(s), gol=s[2]==='Goal'||s[2]==='kk', renk=s[3]?EV:DP;
     if(gol) return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1.7" fill="#fff" stroke="#111" stroke-width=".5"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r=".7" fill="#111"/>';
-    var dolu=s[2]==='AttemptSaved'||s[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1" fill="'+(dolu?'#fde047':'none')+'" stroke="#fde047" stroke-width=".4" opacity=".95"/>'; }).join('');
+    var dolu=s[2]==='AttemptSaved'||s[2]==='Post'; return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="1" fill="'+(dolu?'#fde047':'none')+'" stroke="#fde047" stroke-width=".4" opacity=".55"/>'; }).join('');
   var vurgu=''; if(son){ var p=xy(son); vurgu='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="none" stroke="#fff" stroke-width=".5"><animate attributeName="r" values="2;5;2" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle>'; }
   // olaylar: şutlar (gol dışı) + gol / kart / değişiklik, en yeniden eskiye
   var IK={gol:'⚽',kk:'⚽',sari:'🟨',kirmizi:'🟥',degisiklik:'🔁',AttemptSaved:'🧤',Miss:'👟',Post:'🥅',Blocked:'🛡️'};
@@ -1296,12 +1346,12 @@ function fmGorsel(m, h, a, k){
   var baski=Math.abs(top5)>=15?'Son 5 dakikada baskı: <b style="color:'+(top5>0?EV:DP)+'">'+(top5>0?ad(h):ad(a))+'</b>':'Son 5 dakikada baskı dengeli';
   return '<div class="md-section-head"> Canlı Görsel Anlatım</div><div style="padding:.6rem .9rem">'
     +'<div style="display:flex;justify-content:space-between;font-size:.7rem;font-weight:800;margin-bottom:.3rem"><span style="color:'+EV+'">'+ad(h)+' ▶</span><span style="color:var(--mu);font-weight:600">'+(m.minute?m.minute+"'":(k.dk?k.dk+"'":''))+'</span><span style="color:'+DP+'">◀ '+ad(a)+'</span></div>'
-    +'<div style="position:relative;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%)"><svg viewBox="-2 -1 109 70" style="display:block;width:100%">'+bolge+saha+nokta+vurgu+'</svg>'+oyuncular+'</div>'
+    +'<div class="sb-canli" data-mid="'+esc(m.id)+'" style="position:relative;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(90deg,#1f7a3a 0 8.33%,#1b6f35 8.33% 16.66%)"><svg viewBox="-2 -1 109 70" style="display:block;width:100%">'+bolge+saha+nokta+vurgu+'</svg>'+oyuncular+topHtml+'</div>'
     +'<div style="text-align:center;font-size:.8rem;font-weight:800;margin:.45rem 0 .1rem">'+durum+'</div>'
     +'<div style="text-align:center;font-size:.68rem;color:var(--mu)">'+baski+'</div>'
     +(ist?'<div style="margin-top:.4rem">'+ist+'</div>':'')
     +(liste?'<div style="margin-top:.3rem">'+liste+'</div>':'')
-    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Oyuncular sahadaki güncel on bir, dizilişteki yerinde ('+esc(dz.fev||'')+' / '+esc(dz.fdep||'')+'). Sarı noktalar şutların gerçek yeri: dolu isabetli, boş isabetsiz, beyaz top gol; yanıp sönen son şut. Veri: FotMob.</div></div>';
+    +'<div style="font-size:.62rem;color:var(--mu);margin-top:.35rem;line-height:1.5">Canlandırma: sahadaki güncel on birler ('+esc(dz.fev||'')+' / '+esc(dz.fdep||'')+') ve top, FotMob\'un dakika dakika baskı verisine ve şutların gerçek yerine göre hareket eder; yeni şutta top şutun atıldığı yere gider. Oyuncu ve topun anlık konumu ölçülmez, canlı yayın verisinde bu bilgi yok. Soluk sarı noktalar maçtaki şutların gerçek yeri.</div></div>';
 }
 /* BASKIMETRE (FotMob verisi, 2026-11-22, kullanıcı: "aynı maçın Baskımetre'si bizimkisi doğru göstermiyor, eksik ve hatalı" — FotMob'un grafiğiyle
    karşılaştırdı). KÖK SEBEP: değerler Skorbord'un SAHA için yazılmış çiziminden geçiyordu; o çizim çubukları en büyük değere göre ölçekleyip
@@ -1339,7 +1389,10 @@ window.__sbBaski=function(m){
       +'<div style="font-size:.58rem;color:var(--mu);margin-top:.35rem;line-height:1.45">Her çubuk bir dakika: yukarı '+ad(th)+', aşağı '+ad(ta)+' baskısı; boyu tehlikeli atak yoğunluğu. Veri: FotMob.</div></div>';
   }catch(e){ gunluk('baskımetre çizilemedi', e.message); return null; }
 };
-window.__sbMom=function(m){ var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null; var o={}; k.mom.forEach(function(d){ if(d[1]) o[d[0]]=d[1]; }); return o; };
+/* (2026-11-22, kullanıcı: "Baskımetre görünümü eskiden daha iyiydi"): FotMob'a benzeyen çizim kaldırıldı, Skorbord'un Baskımetre'si geri geldi.
+   "Eksik" görünmesinin kökü: değerler en büyük değere (100) göre 15 piksellik yarıya ölçekleniyordu; 3'ün altındaki baskılar 0 piksele düşüp
+   hiç çizilmiyordu. Değer artık karekök ölçekle verilir (sıra ve işaret korunur, küçük baskılar da görünür): 5 → %22, 25 → %50, 100 → %100. */
+window.__sbMom=function(m){ var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null; var o={}; k.mom.forEach(function(d){ if(d[1]) o[d[0]]=Math.round((d[1]>0?1:-1)*Math.sqrt(Math.abs(d[1])/100)*1000)/10; }); return o; };
 window.__sbGorsel=function(m, h, a){
   if(!m||!m.isLive||m.sahaMode) return null;
   var fk=m.id&&FMV[m.id]; if(fk&&((fk.sut||[]).length||(fk.mom||[]).length)) return fmGorsel(m, h, a, fk);   // FotMob'da bu maçın şut / baskı verisi yoksa ESPN akışı
