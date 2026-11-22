@@ -858,9 +858,13 @@ var SahaGuncelleme = (function(){
       try{ var ae = document.activeElement; if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) bekle = true; }catch(e){}
       if(bekle){ _sessizZ = setTimeout(sessizDene, 15000); return; }
       var an = 'sg-sessiz-' + _sessizHedef, son = 0; try{ son = Number(sessionStorage.getItem(an)) || 0; }catch(e){}
-      if(Date.now() - son < 180000) return;                                   // az önce denendi (önbellek eskiyi verdiyse döngü olmasın)
+      /* (2026-11-22, kullanıcı: "güncelleme düşmedi"). KÖK SEBEP: uygulama sayfayı siteden yeniden açınca telefonun önbelleği ve GitHub'ın sunucu
+         önbelleği (10 dk) eski index.html'i verebiliyordu; uygulama da aynı oturumda ikinci kez denemiyordu, kullanıcı eski sürümde kalıyordu.
+         ŞİMDİ ilk denemeden sonra hâlâ eski sürümdeysek sayfa, önbelleği atlayan bir adresle (?sb=<sürüm>) bir kez daha açılır. */
+      var zorla = function(){ try{ if(location.search.indexOf('sb=' + _sessizHedef) < 0) location.replace(location.pathname + '?sb=' + encodeURIComponent(_sessizHedef)); }catch(e){} };
+      if(Date.now() - son < 180000){ if(apk) zorla(); return; }               // az önce denendi: önbelleği atlayarak bir kez daha
       try{ sessionStorage.setItem(an, String(Date.now())); }catch(e){}
-      if(apk){ try{ SkorbordApp.siteYukle(); }catch(e){} return; }
+      if(apk){ try{ SkorbordApp.siteYukle(); }catch(e){} setTimeout(zorla, 5000); return; }   // uygulama zaten siteden açıyorsa yeniden yükleme olmaz: önbelleği atla
       guncelle();
     }catch(e){}
   }
