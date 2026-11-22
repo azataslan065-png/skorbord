@@ -1115,7 +1115,7 @@ function akisIsle(m2, j){
    ŞİMDİ kaynak FotMob: her maç için dakika dakika gerçek baskı değeri (momentum), koordinatlı şut haritası (her şutun sahadaki yeri, sonucu, xG),
    olaylar ve istatistik. APK FotMob'u kendi bağlantısıyla okur (Ana.java "__fm", gecikmesiz); web sürümü ve eski APK, GitHub'daki 30 saniyelik
    toplayıcının yazdığı dosyayı okur (.github/workflows/fm-canli.yml). Maç, iki takımın adıyla eşleştirilir. */
-var FM_DOSYA='https://raw.githubusercontent.com/azataslan065-png/skorbord/canli-fm/fm.json';
+var FM_DOSYA='https://raw.githubusercontent.com/azataslan065-png/skorbord/canli-fm/fm.json', FM_API='https://api.github.com/repos/azataslan065-png/skorbord/contents/fm.json?ref=canli-fm';
 function fmKisa(md){
   var g=md.general||{}, h=md.header||{}, c=md.content||{}, st=h.status||{}, hid=(g.homeTeam||{}).id;
   var o={id:+g.matchId, ev:(g.homeTeam||{}).name||'', dep:(g.awayTeam||{}).name||'', bas:!!g.started, bitti:!!g.finished,
@@ -1134,10 +1134,17 @@ function fmKisa(md){
 }
 var FMV={}, FMI={}, FMG={}, FMD={t:0}, FMO={};   // FMV: maç -> kısa ayrıntı; FMI: maç -> FotMob kimliği (0: bulunamadı); FMG: gün listesi; FMD: web dosyası
 function fmJSON(yol){ if(!window.SkorbordApp) return Promise.reject(new Error('web')); return ham(location.origin+'/skorbord/__fm/'+yol); }
+/* web yolu: GitHub'ın dosya servisi (raw) 5 dakika önbellekliyor; bu yüzden dosya GitHub API'den "değiştiyse ver" (ETag) isteğiyle okunur —
+   değişmemiş yanıt kotaya sayılmaz. Saatlik kota (60) dolarsa raw dosyaya düşülür. Dakikada en çok bir istek. */
 function fmDosya(){
-  if(FMD.p) return FMD.p; if(FMD.j&&Date.now()-FMD.t<15000) return Promise.resolve(FMD.j);
-  FMD.p=fetch(FM_DOSYA+'?t='+Math.floor(Date.now()/15000),{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; })
-    .then(function(j){ FMD.p=null; if(j){ FMD.j=j; FMD.t=Date.now(); } return FMD.j||null; }, function(){ FMD.p=null; return FMD.j||null; });
+  if(FMD.p) return FMD.p; if(FMD.j&&Date.now()-FMD.t<60000) return Promise.resolve(FMD.j);
+  var raw=function(){ return fetch(FM_DOSYA,{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }); };
+  var api=(FMD.kota&&Date.now()<FMD.kota)?raw():fetch(FM_API,{cache:'no-store',headers:Object.assign({Accept:'application/vnd.github.raw+json'},FMD.etag?{'If-None-Match':FMD.etag}:{})}).then(function(r){
+    if(r.status===304) return FMD.j;
+    if(r.status===403||r.status===429){ FMD.kota=Date.now()+15*60000; return raw(); }
+    if(!r.ok) return raw();
+    FMD.etag=r.headers.get('ETag')||''; return r.json(); }, raw);
+  FMD.p=api.then(function(j){ FMD.p=null; FMD.t=Date.now(); if(j) FMD.j=j; return FMD.j||null; }, function(){ FMD.p=null; FMD.t=Date.now(); return FMD.j||null; });
   return FMD.p;
 }
 function fmEsle(evAd, depAd, a, b){ return adBenzer(evAd,a)>=0.5 && adBenzer(depAd,b)>=0.5; }
@@ -1145,7 +1152,7 @@ function fmYansit(mid, k){
   FMV[mid]=k;
   var v=L[A.lig]&&L[A.lig].veri, m=v&&v.matches[mid]; if(!m) return;
   var m2=JSON.parse(JSON.stringify(m)), mom={}; (k.mom||[]).forEach(function(d){ if(d[1]) mom[d[0]]=d[1]; });
-  if(Object.keys(mom).length) m2.momentum=mom; m2.sbFm=k.t||1;
+  if(!Object.keys(mom).length) return; m2.momentum=mom; m2.sbFm=k.t||1;
   if(JSON.stringify(m2)===JSON.stringify(m)) return;
   v.matches[mid]=m2; YerelVT.yaz('leagues/'+ligKimlik(A.lig)+'/matches/'+mid, m2);
 }
@@ -1207,7 +1214,7 @@ function fmGorsel(m, h, a, k){
 window.__sbMom=function(m){ var k=m&&m.id&&FMV[m.id]; if(!k||!k.mom||!k.mom.length) return null; var o={}; k.mom.forEach(function(d){ if(d[1]) o[d[0]]=d[1]; }); return o; };
 window.__sbGorsel=function(m, h, a){
   if(!m||!m.isLive||m.sahaMode) return null;
-  var fk=m.id&&FMV[m.id]; if(fk) return fmGorsel(m, h, a, fk);
+  var fk=m.id&&FMV[m.id]; if(fk&&((fk.sut||[]).length||(fk.mom||[]).length)) return fmGorsel(m, h, a, fk);   // FotMob'da bu maçın şut / baskı verisi yoksa ESPN akışı
   var l=(m.sbAkis&&m.sbAkis.length)?m.sbAkis:(m.events||[]).map(function(e){ var t={goal:'gol',pen_goal:'gol',og:'gol',yellow:'sari',red:'kirmizi',yellow2red:'kirmizi',sub:'degisiklik',pen_miss:'penkacti'}[e.type]||''; return t?{dk:e.min||0,tur:t,taraf:e.type==='og'?(e.team==='home'?'away':'home'):e.team,oy:e.player||''}:null; }).filter(Boolean);
   var son=l[l.length-1]||null, W=300, H=190;
   // top, son "oyun" olayında durur (değişiklik / devre gibi oyun dışı anlarda en son hücum anı gösterilir); yazı son olayı söyler
