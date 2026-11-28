@@ -2422,7 +2422,7 @@ iframe.ptp-video{pointer-events:none}
    görünüyordu. Tek kaynak artık #ptCanliRozet. */
 </style>
 
-<script src="yerel-vt.js?v=7640c892"></script>
+<script src="yerel-vt.js?v=t20261128a"></script>
 <script>/* YEDEK KAYNAK: gstatic yüklenemediyse aynı dosya jsDelivr'den. */if(typeof firebase==='undefined'){window._fbGstaticHata=true;document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.js" crossorigin="anonymous" onerror="window._fbLoadFailed=true"><\/scr'+'ipt>');}</script>
 <!-- ═══ KİMLİK DOĞRULAMA SDK'SI - KOŞULLU YÜKLEME ═══════════════════════════════════════
      Bu SDK sayfaya sabit bir betik etiketiyle eklenemez. Yüklendiği anda kendini Firebase'e bir
@@ -3396,7 +3396,7 @@ const db=firebase.database();
 /* SÜRÜM DAMGASI: Aynı sorunu üç kez yaşadık - dosyanın güncellenip güncellenmediği
    ekrandan anlaşılamıyordu. Bu damga admin panelindeki teşhis ekranında görünür;
    yeni dosyayı yükleyip yüklemediğinizi tek bakışta doğrulayabilirsiniz. */
-window.APP_BUILD='2026-11-22-G';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
+window.APP_BUILD='2026-11-28-A';try{ /* (2026-11-07-K) ESKİ UYGULAMA KABUĞU: zorunlu güncellemeden önceki APK'lar güncellemeyi günde bir kez denetliyordu. Sayfa eski kabuğu tanır (SkorbordApp.kabuk yok) ve denetimi hemen başlatır; yeni sürüm zorunlu olarak gösterilir. */ if(window.SkorbordApp&&typeof SkorbordApp.kabuk!=='function'&&typeof SkorbordApp.guncellemeDenetle==='function'){ var _ek=0; try{ _ek=+sessionStorage.getItem('_eskiKabuk')||0; }catch(e){} if(Date.now()-_ek>600000){ try{ sessionStorage.setItem('_eskiKabuk',String(Date.now())); }catch(e){} setTimeout(function(){ try{ SkorbordApp.guncellemeDenetle(); }catch(e){} },1500); } } }catch(e){}
 /* CİHAZ SESİ (2026-11-08, kullanıcı: "TV izlerken ekran kapatıldığında arka planda oynatmaya devam edecek APK için ses kontrolünün cihazın kendi sesiyle
    entegre edilmesi gerekiyor"). Uygulamada TV oynatıcısının ses çubuğu ve kumandanın ses düğmeleri artık oynatıcının iç sesini değil CİHAZIN MEDYA
    SESİNİ ayarlar (oynatıcı tam seste kalır); telefonun ses tuşlarıyla ses değişince çubuk da kendiliğinden güncellenir. Böylece ekran kapalıyken

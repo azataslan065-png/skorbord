@@ -21,7 +21,9 @@ function parcala(y){ return y ? y.split('/') : []; }
    ve uygulamanın gördüğü ağaçla birleştirir:
    · Maç / takım / lig listesi (ESPN, gercek.js) ve kullanıcının kendi verisi YEREL kalır ve aynı alanda yerel kazanır.
    · Diğer her şey uzaktan gelir. Kullanıcı yazmaları yalnızca cihazda kalır (Skorbord'da hesap yok). */
-var UZAK = {}, UZAK_ADRES = 'https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/skorbord.json';
+/* (2026-11-28, kullanıcı: "test klasörüne sahip uygulamaların veritabanı ayrı olmalı"): Skorbord Test, ayarlarını test/skorbord/
+   düğümünden okur (test admin oraya yazar); kök Skorbord skorbord/ düğümünü okumaya devam eder. */
+var UZAK = {}, UZAK_ADRES = 'https://superlig-208e3-default-rtdb.europe-west1.firebasedatabase.app/' + (/\/test\//.test(location.pathname) || /skorbord\.test/.test(navigator.userAgent) ? 'test/' : '') + 'skorbord.json';
 var YALNIZ_YEREL = /^(leaguesMeta|activeDisplayLeague|userProfiles|kullanicilar|kimlik|ayarlar)(\/|$)|^leagues\/[^\/]+\/(teams|matches|season|leagueName)(\/|$)/;
 function agacOku(kok, y){
   var p = parcala(y), n = kok;
